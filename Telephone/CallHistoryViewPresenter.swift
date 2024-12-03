@@ -31,7 +31,8 @@ final class CallHistoryViewPresenter {
     }
 }
 
-extension CallHistoryViewPresenter: ContactCallHistoryRecordGetAllUseCaseOutput {
+@MainActor
+extension CallHistoryViewPresenter: @preconcurrency ContactCallHistoryRecordGetAllUseCaseOutput {
     func update(records: [ContactCallHistoryRecord]) {
         view.show(records.map(makeRecord))
     }

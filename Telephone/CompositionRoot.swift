@@ -21,6 +21,7 @@ import Foundation
 import StoreKit
 import UseCases
 
+@MainActor
 final class CompositionRoot: NSObject {
     @objc let userAgent: AKSIPUserAgent
     @objc let preferencesController: PreferencesController

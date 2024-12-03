@@ -18,6 +18,7 @@
 
 import UseCases
 
+@MainActor
 protocol StoreViewStateMachine: PurchaseCheckUseCaseOutput, StoreViewEventTarget, ProductsFetchUseCaseOutput, StoreEventTarget {
     var state: StoreViewState { get }
     func changeState(_ newState: StoreViewState)

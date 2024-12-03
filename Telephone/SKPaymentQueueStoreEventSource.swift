@@ -19,6 +19,7 @@
 import StoreKit
 import UseCases
 
+@MainActor
 final class SKPaymentQueueStoreEventSource: NSObject {
     private let queue: SKPaymentQueue
     private let target: StoreEventTarget
@@ -36,21 +37,21 @@ final class SKPaymentQueueStoreEventSource: NSObject {
 }
 
 extension SKPaymentQueueStoreEventSource: SKPaymentTransactionObserver {
-    func paymentQueue(_ queue: SKPaymentQueue, updatedTransactions transactions: [SKPaymentTransaction]) {
-        DispatchQueue.main.async {
-            self.handleStateChange(of: transactions)
+    nonisolated func paymentQueue(_ queue: SKPaymentQueue, updatedTransactions transactions: [SKPaymentTransaction]) {
+        Task { @MainActor in
+            handleStateChange(of: transactions)
         }
     }
 
-    func paymentQueueRestoreCompletedTransactionsFinished(_ queue: SKPaymentQueue) {
-        DispatchQueue.main.async {
-            self.target.didRestorePurchases()
+    nonisolated func paymentQueueRestoreCompletedTransactionsFinished(_ queue: SKPaymentQueue) {
+        Task { @MainActor in
+            target.didRestorePurchases()
         }
     }
 
-    func paymentQueue(_ queue: SKPaymentQueue, restoreCompletedTransactionsFailedWithError error: Error) {
-        DispatchQueue.main.async {
-            self.notifyTargetAboutFailedRestoration(error: error)
+    nonisolated func paymentQueue(_ queue: SKPaymentQueue, restoreCompletedTransactionsFailedWithError error: Error) {
+        Task { @MainActor in
+            notifyTargetAboutFailedRestoration(error: error)
         }
     }
 

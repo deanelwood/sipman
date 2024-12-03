@@ -34,7 +34,7 @@ final class DefaultAppSettings: NSObject {
         settings.register(defaults: defaults)
     }
 
-    static let accountDefaults: [String: Any] = [
+    static let accountDefaults: [String: Sendable] = [
         UserDefaultsKeys.substitutePlusCharacter: false,
         UserDefaultsKeys.plusCharacterSubstitutionString: "00",
         AKSIPAccountKeys.desc: "",

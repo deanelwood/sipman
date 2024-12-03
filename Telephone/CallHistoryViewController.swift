@@ -219,6 +219,7 @@ extension CallHistoryViewController: NSMenuItemValidation {
     }
 }
 
+@MainActor
 private func makeDeleteRecordAlert(recordName name: String) -> NSAlert {
     return makeDeletionAlert(
         messageText: String(
@@ -230,6 +231,7 @@ private func makeDeleteRecordAlert(recordName name: String) -> NSAlert {
     )
 }
 
+@MainActor
 private func makeDeleteAllAlert() -> NSAlert {
     return makeDeletionAlert(
         messageText: NSLocalizedString(
@@ -238,6 +240,7 @@ private func makeDeleteAllAlert() -> NSAlert {
     )
 }
 
+@MainActor
 private func makeDeletionAlert(messageText text: String) -> NSAlert {
     let a = NSAlert()
     a.messageText = text

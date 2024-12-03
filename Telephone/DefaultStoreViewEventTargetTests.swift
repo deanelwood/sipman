@@ -20,6 +20,7 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@MainActor
 final class DefaultStoreViewEventTargetTests: XCTestCase {
 
     // MARK: - Purchase check

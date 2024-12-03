@@ -21,6 +21,7 @@ import UseCasesTestDoubles
 import XCTest
 
 final class CallHistoryViewPresenterTests: XCTestCase {
+    @MainActor
     func testShowsRecordsOnRecordsUpdate() {
         let factory = CallHistoryRecordTestFactory()
         let record1 = factory.makeRecord(number: 1)
@@ -44,6 +45,7 @@ final class CallHistoryViewPresenterTests: XCTestCase {
         XCTAssertEqual(view.invokedRecords, [expected1, expected2])
     }
 
+    @MainActor
     func testContactColorIsSystemRedForMissedCallRecords() {
         let record = CallHistoryRecord(
             uri: URI(user: "any-user", host: "any-host", displayName: "any-name"),
@@ -63,6 +65,7 @@ final class CallHistoryViewPresenterTests: XCTestCase {
         XCTAssertEqual(view.invokedRecords.first!.contact.color, NSColor.systemRed)
     }
 
+    @MainActor
     func testTitleIsEmailAddressOrPhoneNumberAndTooltipIsEmptyWhenNameIsEmpty() {
         let factory = CallHistoryRecordTestFactory()
         let record1 = factory.makeRecord(number: 1)

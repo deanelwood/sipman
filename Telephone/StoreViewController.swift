@@ -171,14 +171,17 @@ extension StoreViewController: StoreView {
 
 extension StoreViewController: NSTableViewDelegate {}
 
+@MainActor
 private func makePurchaseErrorAlert(text: String) -> NSAlert {
     return makeAlert(message: NSLocalizedString("Could not make purchase.", comment: "Product purchase error."), text: text)
 }
 
+@MainActor
 private func makeRestorationErrorAlert(text: String) -> NSAlert {
     return makeAlert(message: NSLocalizedString("Could not restore purchases.", comment: "Purchase restoration error."), text: text)
 }
 
+@MainActor
 private func makeAlert(message: String, text: String) -> NSAlert {
     let result = NSAlert()
     result.messageText = message
@@ -186,6 +189,7 @@ private func makeAlert(message: String, text: String) -> NSAlert {
     return result
 }
 
+@MainActor
 private func makeReceiptRefreshAlert() -> NSAlert {
     let result = NSAlert()
     result.messageText = NSLocalizedString("Refresh receipt?", comment: "Receipt refresh alert message text.")
@@ -200,6 +204,7 @@ private func makeReceiptRefreshAlert() -> NSAlert {
     return result
 }
 
+@MainActor
 private func makeHyperlink(from field: NSTextField, url: URL) {
     field.attributedStringValue = makeHyperlink(from: field.attributedStringValue, url: url)
 }

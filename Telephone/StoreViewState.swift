@@ -54,6 +54,7 @@
 
 import UseCases
 
+@MainActor
 class StoreViewState {
     func shouldReloadData(machine: StoreViewStateMachine) {
         print("\(#function) is not supported for \(self)")

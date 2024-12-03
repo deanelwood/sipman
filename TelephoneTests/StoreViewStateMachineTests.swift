@@ -25,8 +25,7 @@ final class StoreViewStateMachineTests: XCTestCase, StoreViewStateMachine {
     var state: StoreViewState = StoreViewStateNoProducts()
     private var actions: String!
 
-    override func setUp() {
-        super.setUp()
+    override func setUp() async throws {
         sut = self
         changeState(StoreViewStateNoProducts())
         actions = ""
