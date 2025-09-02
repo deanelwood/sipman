@@ -18,7 +18,7 @@
 
 import Foundation
 
-@objc public protocol Account {
+@objc public protocol Account: Sendable {
     var uuid: String { get }
     var domain: String { get }
 

@@ -20,6 +20,7 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@CallHistoryActor
 final class NotifyingCallHistoryTests: XCTestCase {
     func testNotifiesTargetAfterAdding() {
         let target = CallHistoryEventTargetSpy()

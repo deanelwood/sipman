@@ -20,6 +20,7 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@CallHistoryActor
 final class TruncatingCallHistoryTests: XCTestCase {
     func testCanAddRecords() {
         let sut = TruncatingCallHistory()

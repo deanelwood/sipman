@@ -20,6 +20,7 @@ import XCTest
 import UseCases
 import UseCasesTestDoubles
 
+@CallHistoryActor
 final class CallHistoryRecordGetUseCaseTests: XCTestCase {
     func testCallsUpdateWithRecordWithIdentifierFromHistoryOnExecute() {
         let factory = CallHistoryRecordTestFactory()
@@ -29,21 +30,28 @@ final class CallHistoryRecordGetUseCaseTests: XCTestCase {
         history.add(factory.makeRecord(number: 3))
         history.add(factory.makeRecord(number: 4))
         let result = history.allRecords[2]
-        let output = CallHistoryRecordGetUseCaseOutputSpy()
+        let didCallUpdate = expectation(description: "Calls update on output")
+        var invokedRecord: CallHistoryRecord?
+        let output = CallHistoryRecordGetUseCaseOutputSpy { record in
+            invokedRecord = record
+            didCallUpdate.fulfill()
+        }
         let sut = CallHistoryRecordGetUseCase(identifier: result.identifier, history: history, output: output)
 
         sut.execute()
 
-        XCTAssertTrue(output.didCallUpdate)
-        XCTAssertEqual(output.invokedRecord, result)
+        wait(for: [didCallUpdate], timeout: 1)
+        XCTAssertEqual(invokedRecord, result)
     }
 
     func testDoesNotCallUpdateWhenRecordWithGivenIdentifierIsNotFoundOnExecute() {
-        let output = CallHistoryRecordGetUseCaseOutputSpy()
+        let didNotCallUpdate = expectation(description: "Does not call update on output")
+        didNotCallUpdate.isInverted = true
+        let output = CallHistoryRecordGetUseCaseOutputSpy { _ in didNotCallUpdate.fulfill() }
         let sut = CallHistoryRecordGetUseCase(identifier: "nonexistent", history: TruncatingCallHistory(), output: output)
 
         sut.execute()
 
-        XCTAssertFalse(output.didCallUpdate)
+        wait(for: [didNotCallUpdate], timeout: 1)
     }
 }

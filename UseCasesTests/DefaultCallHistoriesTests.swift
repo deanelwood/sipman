@@ -20,6 +20,7 @@ import XCTest
 @testable import UseCases
 import UseCasesTestDoubles
 
+@CallHistoryActor
 final class DefaultCallHistoriesTests: XCTestCase {
     func testCreatesHistoryOnFirstGet() {
         let history = TruncatingCallHistory()

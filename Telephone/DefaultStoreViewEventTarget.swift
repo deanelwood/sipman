@@ -19,6 +19,7 @@
 import Foundation
 import UseCases
 
+@MainActor
 final class DefaultStoreViewEventTarget {
     private(set) var state: StoreViewState = StoreViewStateNoProducts()
     private var products: [Product] = []
@@ -37,7 +38,7 @@ final class DefaultStoreViewEventTarget {
     }
 }
 
-extension DefaultStoreViewEventTarget: StoreViewStateMachine {
+extension DefaultStoreViewEventTarget: @preconcurrency StoreViewStateMachine {
     func changeState(_ newState: StoreViewState) {
         state = newState
     }

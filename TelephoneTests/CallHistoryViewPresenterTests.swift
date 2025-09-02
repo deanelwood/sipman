@@ -20,15 +20,20 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@MainActor
 final class CallHistoryViewPresenterTests: XCTestCase {
-    @MainActor
     func testShowsRecordsOnRecordsUpdate() {
         let factory = CallHistoryRecordTestFactory()
         let record1 = factory.makeRecord(number: 1)
         let record2 = factory.makeRecord(number: 2)
         let contact1 = makeContact(number: 1)
         let contact2 = makeContact(number: 2)
-        let view = CallHistoryViewSpy()
+        let didCallShow = expectation(description: "Did call show on view")
+        var invokedRecords: [PresentationCallHistoryRecord]?
+        let view = CallHistoryViewSpy { records in
+            invokedRecords = records
+            didCallShow.fulfill()
+        }
         let sut = CallHistoryViewPresenter(
             view: view, dateFormatter: ShortRelativeDateTimeFormatter(), durationFormatter: DurationFormatter()
         )
@@ -42,10 +47,10 @@ final class CallHistoryViewPresenterTests: XCTestCase {
             ]
         )
 
-        XCTAssertEqual(view.invokedRecords, [expected1, expected2])
+        wait(for: [didCallShow], timeout: 1)
+        XCTAssertEqual(invokedRecords, [expected1, expected2])
     }
 
-    @MainActor
     func testContactColorIsSystemRedForMissedCallRecords() {
         let record = CallHistoryRecord(
             uri: URI(user: "any-user", host: "any-host", displayName: "any-name"),
@@ -55,17 +60,22 @@ final class CallHistoryViewPresenterTests: XCTestCase {
             isMissed: true
         )
         let contact = makeContact(number: 1)
-        let view = CallHistoryViewSpy()
+        let didCallShow = expectation(description: "Did call show on view")
+        var invokedRecords: [PresentationCallHistoryRecord]?
+        let view = CallHistoryViewSpy { records in
+            invokedRecords = records
+            didCallShow.fulfill()
+        }
         let sut = CallHistoryViewPresenter(
             view: view, dateFormatter: ShortRelativeDateTimeFormatter(), durationFormatter: DurationFormatter()
         )
 
         sut.update(records: [ContactCallHistoryRecord(origin: record, contact: contact)])
 
-        XCTAssertEqual(view.invokedRecords.first!.contact.color, NSColor.systemRed)
+        wait(for: [didCallShow], timeout: 1)
+        XCTAssertEqual(invokedRecords!.first!.contact.color, NSColor.systemRed)
     }
 
-    @MainActor
     func testTitleIsEmailAddressOrPhoneNumberAndTooltipIsEmptyWhenNameIsEmpty() {
         let factory = CallHistoryRecordTestFactory()
         let record1 = factory.makeRecord(number: 1)
@@ -74,7 +84,12 @@ final class CallHistoryViewPresenterTests: XCTestCase {
         let number = "any-number"
         let contact1 = MatchedContact(name: "", address: .email(address: address, label: "any-label-1"))
         let contact2 = MatchedContact(name: "", address: .phone(number: number, label: "any-label-2"))
-        let view = CallHistoryViewSpy()
+        let didCallShow = expectation(description: "Did call show on view")
+        var invokedRecords: [PresentationCallHistoryRecord]?
+        let view = CallHistoryViewSpy { records in
+            invokedRecords = records
+            didCallShow.fulfill()
+        }
         let sut = CallHistoryViewPresenter(
             view: view, dateFormatter: ShortRelativeDateTimeFormatter(), durationFormatter: DurationFormatter()
         )
@@ -86,10 +101,11 @@ final class CallHistoryViewPresenterTests: XCTestCase {
             ]
         )
 
-        XCTAssertEqual(view.invokedRecords[0].contact.title, address)
-        XCTAssertTrue(view.invokedRecords[0].contact.tooltip.isEmpty)
-        XCTAssertEqual(view.invokedRecords[1].contact.title, number)
-        XCTAssertTrue(view.invokedRecords[1].contact.tooltip.isEmpty)
+        wait(for: [didCallShow], timeout: 1)
+        XCTAssertEqual(invokedRecords![0].contact.title, address)
+        XCTAssertTrue(invokedRecords![0].contact.tooltip.isEmpty)
+        XCTAssertEqual(invokedRecords![1].contact.title, number)
+        XCTAssertTrue(invokedRecords![1].contact.tooltip.isEmpty)
     }
 }
 

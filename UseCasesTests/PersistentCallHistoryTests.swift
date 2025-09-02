@@ -20,6 +20,7 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@CallHistoryActor
 final class PersistentCallHistoryTests: XCTestCase {
     func testPersistsAfterAdding() {
         let storage = MemoryPropertyListStorage()

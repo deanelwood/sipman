@@ -113,9 +113,9 @@ final class CompositionRoot: NSObject {
 
         userAgentStart = UserAgentStartUseCase(agent: userAgent, factory: PurchaseCheckUseCaseFactory(receipt: receipt))
 
-        let storeEventTargets = StoreEventTargets()
-        storeEventTargets.add(storeViewEventTarget)
-        storeEventTargets.add(ObjCStoreEventTargetAdapter(target: storeEventTarget))
+        let storeEventTargets = StoreEventTargets(
+            targets: [storeViewEventTarget, ObjCStoreEventTargetAdapter(target: storeEventTarget)]
+        )
 
         storeEventSource = SKPaymentQueueStoreEventSource(
             queue: SKPaymentQueue.default(),
@@ -201,21 +201,15 @@ final class CompositionRoot: NSObject {
         let contactsBackground = GCDExecutionQueue(queue: background)
 
         accountsEventSource = PreferencesControllerAccountsEventSource(
-            center: NotificationCenter.default,
-            target: EnqueuingAccountsEventTarget(
-                origin: CallHistoriesHistoryRemoveUseCase(histories: callHistories), queue: contactsBackground
-            )
+            center: NotificationCenter.default, target: CallHistoriesHistoryRemoveUseCase(histories: callHistories)
         )
 
         callEventSource = AKSIPCallEventSource(
             center: NotificationCenter.default,
             target: CallEventTargets(
                 targets: [
-                    EnqueuingCallEventTarget(
-                        origin: CallHistoryCallEventTarget(
-                            histories: callHistories, factory: DefaultCallHistoryRecordAddUseCaseFactory()
-                        ),
-                        queue: contactsBackground
+                    CallHistoryCallEventTarget(
+                        histories: callHistories, factory: DefaultCallHistoryRecordAddUseCaseFactory()
                     ),
                     MusicPlayerCallEventTarget(
                         player: SettingsMusicPlayer(
@@ -265,19 +259,12 @@ final class CompositionRoot: NSObject {
                 durationFormatter: DurationFormatter(),
                 storeEventTargets: storeEventTargets,
                 dayChangeEventTargets: dayChangeEventTargets,
-                background: contactsBackground,
                 main: main
-            ),
-            background: contactsBackground,
-            main: main
+            )
         )
 
         callHistoryPurchaseCheckUseCaseFactory = AsyncCallHistoryPurchaseCheckUseCaseFactory(
-            origin: CallHistoryPurchaseCheckUseCaseFactory(
-                histories: callHistories, receipt: receipt, background: contactsBackground, main: main
-            ),
-            background: contactsBackground,
-            main: main
+            origin: CallHistoryPurchaseCheckUseCaseFactory(histories: callHistories, receipt: receipt)
         )
 
         logFileURL = LogFileURL(locations: applicationDataLocations, filename: "Telephone.log")

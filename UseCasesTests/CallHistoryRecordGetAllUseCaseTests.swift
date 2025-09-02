@@ -20,17 +20,20 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@CallHistoryActor
 final class CallHistoryRecordGetAllUseCaseTests: XCTestCase {
     func testCallsUpdateWithRecordsFromHistoryOnExecute() {
         let factory = CallHistoryRecordTestFactory()
         let history = TruncatingCallHistory()
         history.add(factory.makeRecord(number: 1))
         history.add(factory.makeRecord(number: 2))
-        let output = CallHistoryRecordGetAllUseCaseOutputSpy()
+        let didCallUpdate = expectation(description: "Calls update on output")
+        let output = CallHistoryRecordGetAllUseCaseOutputSpy { didCallUpdate.fulfill() }
         let sut = CallHistoryRecordGetAllUseCase(history: history, output: output)
 
         sut.execute()
 
+        wait(for: [didCallUpdate], timeout: 1)
         XCTAssertEqual(output.invokedRecords, history.allRecords)
     }
 }

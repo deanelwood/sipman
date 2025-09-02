@@ -82,9 +82,9 @@ final class StoreViewController: NSViewController {
     }
 
     @IBAction func refreshReceipt(_ sender: NSButton) {
-        makeReceiptRefreshAlert().beginSheetModal(for: view.window!) { response in
-            if response == .alertFirstButtonReturn {
-                self.target.didStartReceiptRefresh()
+        Task {
+            if await makeReceiptRefreshAlert().beginSheetModal(for: view.window!) == .alertFirstButtonReturn {
+                target.didStartReceiptRefresh()
             }
         }
     }

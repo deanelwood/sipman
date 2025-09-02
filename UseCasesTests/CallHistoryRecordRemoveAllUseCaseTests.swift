@@ -20,16 +20,19 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@CallHistoryActor
 final class CallHistoryRecordRemoveAllUseCaseTests: XCTestCase {
     func testRemovesAllRecords() {
         let factory = CallHistoryRecordTestFactory()
-        let history = TruncatingCallHistory()
+        let didCallRemoveAll = expectation(description: "Calls remove all on history")
+        let history = CallHistorySpy(addCallback: {}, removeCallback: {}, removeAllCallback: didCallRemoveAll.fulfill)
         history.add(factory.makeRecord(number: 1))
         history.add(factory.makeRecord(number: 2))
         let sut = CallHistoryRecordRemoveAllUseCase(history: history)
 
         sut.execute()
 
+        wait(for: [didCallRemoveAll], timeout: 1)
         XCTAssertEqual(history.allRecords.count, 0)
     }
 }

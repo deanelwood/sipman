@@ -18,7 +18,7 @@
 
 import Foundation
 
-final class WeakPurchaseCheckUseCaseOutput {
+final actor WeakPurchaseCheckUseCaseOutput {
     private weak var origin: PurchaseCheckUseCaseOutput?
 
     init(origin: PurchaseCheckUseCaseOutput) {
@@ -26,12 +26,12 @@ final class WeakPurchaseCheckUseCaseOutput {
     }
 }
 
-extension WeakPurchaseCheckUseCaseOutput: PurchaseCheckUseCaseOutput {
+nonisolated extension WeakPurchaseCheckUseCaseOutput: PurchaseCheckUseCaseOutput {
     func didCheckPurchase(expiration: Date) {
-        origin?.didCheckPurchase(expiration: expiration)
+        Task { await origin?.didCheckPurchase(expiration: expiration) }
     }
 
     func didFailCheckingPurchase() {
-        origin?.didFailCheckingPurchase()
+        Task { await origin?.didFailCheckingPurchase() }
     }
 }

@@ -32,9 +32,7 @@ extension ReceiptValidatingStoreEventTarget: StoreEventTarget {
     }
 
     public func didPurchase() {
-        receipt.validate { result in
-            self.notifyOriginAboutPurchase(with: result)
-        }
+        receipt.validate(completion: notifyOriginAboutPurchase)
     }
 
     public func didFailPurchasing(error: String) {
@@ -46,9 +44,7 @@ extension ReceiptValidatingStoreEventTarget: StoreEventTarget {
     }
 
     public func didRestorePurchases() {
-        receipt.validate { result in
-            self.notifyOriginAboutRestoration(with: result)
-        }
+        receipt.validate(completion: notifyOriginAboutRestoration)
     }
 
     public func didFailRestoringPurchases(error: String) {
@@ -61,17 +57,17 @@ extension ReceiptValidatingStoreEventTarget: StoreEventTarget {
 
     private func notifyOriginAboutPurchase(with result: ReceiptValidationResult) {
         if case .receiptIsValid = result {
-            origin.didPurchase()
+            Task { await origin.didPurchase() }
         } else {
-            origin.didFailPurchasing(error: result.localizedDescription)
+            Task { await origin.didFailPurchasing(error: result.localizedDescription) }
         }
     }
 
     private func notifyOriginAboutRestoration(with result: ReceiptValidationResult) {
         if case .receiptIsValid = result {
-            origin.didRestorePurchases()
+            Task { await origin.didRestorePurchases() }
         } else {
-            origin.didFailRestoringPurchases(error: result.localizedDescription)
+            Task { await origin.didFailRestoringPurchases(error: result.localizedDescription) }
         }
     }
 }

@@ -20,13 +20,12 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@MainActor
 final class StoreEventTargetsTests: XCTestCase {
     func testCallsDidStartPurchasingProductWithPassedArgumentOnAllTargets() {
         let first = StoreEventTargetSpy()
         let second = StoreEventTargetSpy()
-        let sut = StoreEventTargets()
-        sut.add(first)
-        sut.add(second)
+        let sut = StoreEventTargets(targets: [first, second])
         let identifier = "any"
 
         sut.didStartPurchasingProduct(withIdentifier: identifier)
@@ -40,9 +39,7 @@ final class StoreEventTargetsTests: XCTestCase {
     func testCallsDidPurchaseOnAllTargets() {
         let first = StoreEventTargetSpy()
         let second = StoreEventTargetSpy()
-        let sut = StoreEventTargets()
-        sut.add(first)
-        sut.add(second)
+        let sut = StoreEventTargets(targets: [first, second])
 
         sut.didPurchase()
 
@@ -53,9 +50,7 @@ final class StoreEventTargetsTests: XCTestCase {
     func testCallsDidFailPurchasingWithPassedArgumentOnAllTargets() {
         let first = StoreEventTargetSpy()
         let second = StoreEventTargetSpy()
-        let sut = StoreEventTargets()
-        sut.add(first)
-        sut.add(second)
+        let sut = StoreEventTargets(targets: [first, second])
         let error = "any"
 
         sut.didFailPurchasing(error: error)
@@ -69,9 +64,7 @@ final class StoreEventTargetsTests: XCTestCase {
     func testCallsDidCancelPurchasingOnAllTargets() {
         let first = StoreEventTargetSpy()
         let second = StoreEventTargetSpy()
-        let sut = StoreEventTargets()
-        sut.add(first)
-        sut.add(second)
+        let sut = StoreEventTargets(targets: [first, second])
 
         sut.didCancelPurchasing()
 
@@ -82,9 +75,7 @@ final class StoreEventTargetsTests: XCTestCase {
     func testCallsDidRestorePurchasesOnAllTargets() {
         let first = StoreEventTargetSpy()
         let second = StoreEventTargetSpy()
-        let sut = StoreEventTargets()
-        sut.add(first)
-        sut.add(second)
+        let sut = StoreEventTargets(targets: [first, second])
 
         sut.didRestorePurchases()
 
@@ -95,9 +86,7 @@ final class StoreEventTargetsTests: XCTestCase {
     func testCallsDidFailRestoringPurchasesWithPassedArgumentOnAllTargets() {
         let first = StoreEventTargetSpy()
         let second = StoreEventTargetSpy()
-        let sut = StoreEventTargets()
-        sut.add(first)
-        sut.add(second)
+        let sut = StoreEventTargets(targets: [first, second])
         let error = "any"
 
         sut.didFailRestoringPurchases(error: error)
@@ -111,9 +100,7 @@ final class StoreEventTargetsTests: XCTestCase {
     func testCallsDidCancelRestoringPurchasesOnAllTargets() {
         let first = StoreEventTargetSpy()
         let second = StoreEventTargetSpy()
-        let sut = StoreEventTargets()
-        sut.add(first)
-        sut.add(second)
+        let sut = StoreEventTargets(targets: [first, second])
 
         sut.didCancelRestoringPurchases()
 

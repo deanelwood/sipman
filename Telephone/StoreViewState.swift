@@ -16,7 +16,7 @@
 //  GNU General Public License for more details.
 //
 
-// Given State              Event                           Next State               Action
+// Given State              Event                       Next State               Action
 // ---------------------------------------------------------------------------------------------------------------------
 // NoProducts               ShouldReloadData            Checking                 CheckPurchase
 //

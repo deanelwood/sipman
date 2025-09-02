@@ -20,8 +20,8 @@ import Foundation
 import ReceiptValidation
 import UseCases
 
-final class ReceiptXPCGateway {
-    private let connection: NSXPCConnection
+final class ReceiptXPCGateway: Sendable {
+    private nonisolated(unsafe) let connection: NSXPCConnection
 
     init() {
         connection = NSXPCConnection(serviceName: "com.tlphn.Telephone.ReceiptValidation")
@@ -33,34 +33,22 @@ final class ReceiptXPCGateway {
         connection.invalidate()
     }
 
-    func validateReceipt(_ receipt: Data, completion: @escaping @Sendable (ReceiptValidationResult) -> Void) {
+    func validateReceipt(_ receipt: Data, completion: @escaping (ReceiptValidationResult) -> Void) {
         validation(completion: completion).validateReceipt(receipt) { result, expiration in
-            didValidateReceipt(with: result, expiration: expiration, completion: completion)
+            switch result {
+            case .receiptIsValid:
+                completion(.receiptIsValid(expiration: expiration))
+            case .receiptIsInvalid:
+                completion(.receiptIsInvalid)
+            case .noActivePurchases:
+                completion(.noActivePurchases)
+            }
         }
     }
 
-    private func validation(completion: @escaping @Sendable (ReceiptValidationResult) -> Void) -> ReceiptValidation {
-        return connection.remoteObjectProxyWithErrorHandler { error in
-            didFailReceiptValidation(completion)
-            } as! ReceiptValidation
-    }
-}
-
-private func didValidateReceipt(with result: Result, expiration: Date, completion: @escaping @Sendable (ReceiptValidationResult) -> Void) {
-    Task { @MainActor in handleDidValidateReceiptOnMain(result: result, expiration: expiration, completion: completion) }
-}
-
-private func didFailReceiptValidation(_ completion: @escaping @Sendable (ReceiptValidationResult) -> Void) {
-    Task { @MainActor in completion(.receiptIsInvalid) }
-}
-
-private func handleDidValidateReceiptOnMain(result: Result, expiration: Date, completion: (ReceiptValidationResult) -> Void) {
-    switch result {
-    case .receiptIsValid:
-        completion(.receiptIsValid(expiration: expiration))
-    case .receiptIsInvalid:
-        completion(.receiptIsInvalid)
-    case .noActivePurchases:
-        completion(.noActivePurchases)
+    private func validation(completion: @escaping (ReceiptValidationResult) -> Void) -> ReceiptValidation {
+        return connection.remoteObjectProxyWithErrorHandler { _ in
+            completion(.receiptIsInvalid)
+        } as! ReceiptValidation
     }
 }

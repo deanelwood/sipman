@@ -20,6 +20,7 @@ import XCTest
 import UseCases
 import UseCasesTestDoubles
 
+@MainActor
 final class ReceiptValidatingStoreEventTargetTests: XCTestCase {
 
     // MARK: - Purchase start
@@ -38,31 +39,37 @@ final class ReceiptValidatingStoreEventTargetTests: XCTestCase {
     // MARK: - Purchase finish
 
     func testCallsDidPurchaseWhenReceiptIsValidOnDidPurchase() {
+        let didCallDidPurchase = expectation(description: "Calls did purchase on origin")
         let origin = StoreEventTargetSpy()
+        origin.didPurchaseCallback = didCallDidPurchase.fulfill
         let sut = ReceiptValidatingStoreEventTarget(origin: origin, receipt: ValidReceipt())
 
         sut.didPurchase()
 
-        XCTAssertTrue(origin.didCallDidPurchase)
+        wait(for: [didCallDidPurchase], timeout: 1)
     }
 
     func testCallsDidFailPurchasingWhenReceiptIsNotValidOnDidPurchase() {
+        let didCallDidFailPurchasing = expectation(description: "Calls did fail purchasing on origin")
         let origin = StoreEventTargetSpy()
+        origin.didFailPurchasingCallback = didCallDidFailPurchasing.fulfill
         let sut = ReceiptValidatingStoreEventTarget(origin: origin, receipt: InvalidReceipt())
 
         sut.didPurchase()
 
-        XCTAssertTrue(origin.didCallDidFailPurchasing)
+        wait(for: [didCallDidFailPurchasing], timeout: 1)
         XCTAssertEqual(origin.invokedError, ReceiptValidationResult.receiptIsInvalid.localizedDescription)
     }
 
     func testCallsDidFailPurchasingWhenThereAreNoActivePurchasesOnDidPurchase() {
+        let didCallDidFailPurchasing = expectation(description: "Calls did fail purchasing on origin")
         let origin = StoreEventTargetSpy()
+        origin.didFailPurchasingCallback = didCallDidFailPurchasing.fulfill
         let sut = ReceiptValidatingStoreEventTarget(origin: origin, receipt: NoActivePurchasesReceipt())
 
         sut.didPurchase()
 
-        XCTAssertTrue(origin.didCallDidFailPurchasing)
+        wait(for: [didCallDidFailPurchasing], timeout: 1)
         XCTAssertEqual(origin.invokedError, ReceiptValidationResult.noActivePurchases.localizedDescription)
     }
 
@@ -89,31 +96,37 @@ final class ReceiptValidatingStoreEventTargetTests: XCTestCase {
     // MARK: - Restoration finish
 
     func testCallsDidRestoreWhenReceiptIsValidOnDidRestore() {
+        let didCallDidRestorePurchase = expectation(description: "Calls did restore purchase on origin")
         let origin = StoreEventTargetSpy()
+        origin.didRestorePurchasesCallback = didCallDidRestorePurchase.fulfill
         let sut = ReceiptValidatingStoreEventTarget(origin: origin, receipt: ValidReceipt())
 
         sut.didRestorePurchases()
 
-        XCTAssertTrue(origin.didCallDidRestore)
+        wait(for: [didCallDidRestorePurchase], timeout: 1)
     }
 
     func testCallsDidFailRestoringWhenReceiptIsNotValidOnDidRestore() {
+        let didCallDidFailRestoringPurchase = expectation(description: "Calls did fail restoring purchase on origin")
         let origin = StoreEventTargetSpy()
+        origin.didFailRestoringPurchasesCallback = didCallDidFailRestoringPurchase.fulfill
         let sut = ReceiptValidatingStoreEventTarget(origin: origin, receipt: InvalidReceipt())
 
         sut.didRestorePurchases()
 
-        XCTAssertTrue(origin.didCallDidFailRestoring)
+        wait(for: [didCallDidFailRestoringPurchase], timeout: 1)
         XCTAssertEqual(origin.invokedError, ReceiptValidationResult.receiptIsInvalid.localizedDescription)
     }
 
     func testCallsDidFailRestoringWhenThereAreNoActivePurchasesOnDidPurchase() {
+        let didCallDidFailRestoringPurchase = expectation(description: "Calls did fail restoring purchase on origin")
         let origin = StoreEventTargetSpy()
+        origin.didFailRestoringPurchasesCallback = didCallDidFailRestoringPurchase.fulfill
         let sut = ReceiptValidatingStoreEventTarget(origin: origin, receipt: NoActivePurchasesReceipt())
 
         sut.didRestorePurchases()
 
-        XCTAssertTrue(origin.didCallDidFailRestoring)
+        wait(for: [didCallDidFailRestoringPurchase], timeout: 1)
         XCTAssertEqual(origin.invokedError, ReceiptValidationResult.noActivePurchases.localizedDescription)
     }
 

@@ -1,5 +1,5 @@
 //
-//  EnqueuingAccountsEventTarget.swift
+//  CallHistory.swift
 //  Telephone
 //
 //  Copyright © 2008-2016 Alexey Kuznetsov
@@ -16,20 +16,6 @@
 //  GNU General Public License for more details.
 //
 
-public final class EnqueuingAccountsEventTarget {
-    private let origin: AccountsEventTarget
-    private let queue: ExecutionQueue
-
-    public init(origin: AccountsEventTarget, queue: ExecutionQueue) {
-        self.origin = origin
-        self.queue = queue
-    }
-}
-
-extension EnqueuingAccountsEventTarget: AccountsEventTarget {
-    public func didRemoveAccount(withUUID uuid: String) {
-        queue.add {
-            self.origin.didRemoveAccount(withUUID: uuid)
-        }
-    }
+@globalActor public final actor CallHistoryActor: GlobalActor {
+    public static let shared = CallHistoryActor()
 }

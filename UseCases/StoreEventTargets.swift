@@ -16,10 +16,13 @@
 //  GNU General Public License for more details.
 //
 
+@MainActor
 public final class StoreEventTargets {
-    private var targets: [StoreEventTarget] = []
+    private var targets: [StoreEventTarget]
 
-    public init() {}
+    public init(targets: [StoreEventTarget]) {
+        self.targets = targets
+    }
 
     public func add(_ target: StoreEventTarget) {
         targets.append(target)

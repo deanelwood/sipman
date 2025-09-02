@@ -29,8 +29,10 @@ final class StoreWindowPresenter: NSObject {
     }
 }
 
-extension StoreWindowPresenter: @preconcurrency PurchaseReminderUseCaseOutput {
+nonisolated extension StoreWindowPresenter: PurchaseReminderUseCaseOutput {
     func remindAboutPurchasing() {
-        present()
+        Task {
+            await present()
+        }
     }
 }

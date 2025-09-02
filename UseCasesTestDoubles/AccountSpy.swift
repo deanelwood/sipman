@@ -22,9 +22,9 @@ public final class AccountSpy {
     public let uuid = ""
     public let domain = ""
 
-    public private(set) var didCallMakeCall = false
-    public private(set) var invokedURI: URI?
-    public private(set) var invokedLabel: String?
+    public private(set) nonisolated(unsafe) var didCallMakeCall = false
+    public private(set) nonisolated(unsafe) var invokedURI: URI?
+    public private(set) nonisolated(unsafe) var invokedLabel: String?
 
     public init() {}
 }

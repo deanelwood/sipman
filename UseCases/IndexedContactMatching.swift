@@ -17,7 +17,7 @@
 //
 
 public final class IndexedContactMatching {
-    private lazy var length: Int = { return self.settings.significantPhoneNumberLength }()
+    private lazy var length = settings.significantPhoneNumberLength
 
     private let index: ContactMatchingIndex
     private let settings: ContactMatchingSettings

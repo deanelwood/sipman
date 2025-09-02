@@ -20,6 +20,7 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@CallHistoryActor
 final class ReversedCallHistoryTests: XCTestCase {
     func testReturnsAllRecordsReversed() {
         let factory = CallHistoryRecordTestFactory()

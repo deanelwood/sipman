@@ -1,5 +1,5 @@
 //
-//  EnqueuingCallHistoryCallMakeUseCaseFactory.swift
+//  CallHistoryCallMakeUseCaseFactory.swift
 //  Telephone
 //
 //  Copyright © 2008-2016 Alexey Kuznetsov
@@ -18,36 +18,31 @@
 
 import UseCases
 
-final class EnqueuingCallHistoryCallMakeUseCaseFactory {
+final class DefaultCallHistoryCallMakeUseCaseFactory {
     private let account: Account
     private let history: CallHistory
     private let factory: FallingBackMatchedContactFactory
     private let accountQueue: ExecutionQueue
-    private let historyQueue: ExecutionQueue
 
-    init(account: Account, history: CallHistory, factory: FallingBackMatchedContactFactory, accountQueue: ExecutionQueue, historyQueue: ExecutionQueue) {
+    init(account: Account, history: CallHistory, factory: FallingBackMatchedContactFactory, accountQueue: ExecutionQueue) {
         self.account = account
         self.history = history
         self.factory = factory
-        self.historyQueue = historyQueue
         self.accountQueue = accountQueue
     }
 }
 
-extension EnqueuingCallHistoryCallMakeUseCaseFactory: CallHistoryCallMakeUseCaseFactory {
+extension DefaultCallHistoryCallMakeUseCaseFactory: CallHistoryCallMakeUseCaseFactory {
     func make(identifier: String) -> UseCase {
-        return EnqueuingUseCase(
-            origin: CallHistoryRecordGetUseCase(
-                identifier: identifier,
-                history: history,
-                output: ContactCallHistoryRecordGetUseCase(
-                    factory: factory,
-                    output: EnqueuingContactCallHistoryRecordGetUseCaseOutput(
-                        origin: CallHistoryCallMakeUseCase(account: account), queue: accountQueue
-                    )
+        return CallHistoryRecordGetUseCase(
+            identifier: identifier,
+            history: history,
+            output: ContactCallHistoryRecordGetUseCase(
+                factory: factory,
+                output: EnqueuingContactCallHistoryRecordGetUseCaseOutput(
+                    origin: CallHistoryCallMakeUseCase(account: account), queue: accountQueue
                 )
-            ),
-            queue: historyQueue
+            )
         )
     }
 }

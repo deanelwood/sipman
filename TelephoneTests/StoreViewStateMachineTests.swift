@@ -20,7 +20,7 @@ import Foundation
 import UseCases
 import XCTest
 
-final class StoreViewStateMachineTests: XCTestCase, StoreViewStateMachine {
+final class StoreViewStateMachineTests: XCTestCase, @preconcurrency StoreViewStateMachine {
     private var sut: StoreViewStateMachine!
     var state: StoreViewState = StoreViewStateNoProducts()
     private var actions: String!

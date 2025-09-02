@@ -45,7 +45,7 @@ final class ApplicationUserAttentionRequest {
     }
 }
 
-extension ApplicationUserAttentionRequest: @preconcurrency UserAttentionRequest {
+extension ApplicationUserAttentionRequest: @MainActor UserAttentionRequest {
     func start() {
         if !application.isActive && request == nil {
             request = application.requestUserAttention(.criticalRequest)

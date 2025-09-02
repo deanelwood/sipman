@@ -19,7 +19,6 @@
 import StoreKit
 import UseCases
 
-@MainActor
 final class SKPaymentQueueStoreEventSource: NSObject {
     private let queue: SKPaymentQueue
     private let target: StoreEventTarget
@@ -37,22 +36,16 @@ final class SKPaymentQueueStoreEventSource: NSObject {
 }
 
 extension SKPaymentQueueStoreEventSource: SKPaymentTransactionObserver {
-    nonisolated func paymentQueue(_ queue: SKPaymentQueue, updatedTransactions transactions: [SKPaymentTransaction]) {
-        Task { @MainActor in
-            handleStateChange(of: transactions)
-        }
+    func paymentQueue(_ queue: SKPaymentQueue, updatedTransactions transactions: [SKPaymentTransaction]) {
+        handleStateChange(of: transactions)
     }
 
-    nonisolated func paymentQueueRestoreCompletedTransactionsFinished(_ queue: SKPaymentQueue) {
-        Task { @MainActor in
-            target.didRestorePurchases()
-        }
+    func paymentQueueRestoreCompletedTransactionsFinished(_ queue: SKPaymentQueue) {
+        Task { [target] in await target.didRestorePurchases() }
     }
 
-    nonisolated func paymentQueue(_ queue: SKPaymentQueue, restoreCompletedTransactionsFailedWithError error: Error) {
-        Task { @MainActor in
-            notifyTargetAboutFailedRestoration(error: error)
-        }
+    func paymentQueue(_ queue: SKPaymentQueue, restoreCompletedTransactionsFailedWithError error: Error) {
+        notifyTargetAboutFailedRestoration(error: error)
     }
 
     private func handleStateChange(of transactions: [SKPaymentTransaction]) {
@@ -63,11 +56,15 @@ extension SKPaymentQueueStoreEventSource: SKPaymentTransactionObserver {
     }
 
     private func handlePurchasing(_ transactions: [SKPaymentTransaction]) {
-        transactions.forEach { target.didStartPurchasingProduct(withIdentifier: $0.payment.productIdentifier) }
+        transactions.forEach { transaction in
+            Task { [target] in
+                await target.didStartPurchasingProduct(withIdentifier: transaction.payment.productIdentifier)
+            }
+        }
     }
 
     private func handlePurchased(_ transactions: [SKPaymentTransaction]) {
-        if transactions.count > 0 { target.didPurchase() }
+        if transactions.count > 0 { Task { [target] in await target.didPurchase() } }
         transactions.forEach { queue.finishTransaction($0) }
     }
 
@@ -79,7 +76,7 @@ extension SKPaymentQueueStoreEventSource: SKPaymentTransactionObserver {
     }
 
     private func handleRestored(_ transactions: [SKPaymentTransaction]) {
-        if transactions.count > 0 { target.didRestorePurchases() }
+        if transactions.count > 0 { Task { [target] in await target.didRestorePurchases() } }
         transactions.forEach { queue.finishTransaction($0) }
     }
 
@@ -87,23 +84,23 @@ extension SKPaymentQueueStoreEventSource: SKPaymentTransactionObserver {
         if let error = transaction.error {
             notifyTargetAboutFailedPurchase(error: error)
         } else {
-            target.didFailPurchasing(error: localizedUnknownError())
+            Task { [target] in await target.didFailPurchasing(error: localizedUnknownError()) }
         }
     }
 
     private func notifyTargetAboutFailedPurchase(error: Error) {
         if isCancelled(error) {
-            target.didCancelPurchasing()
+            Task { [target] in await target.didCancelPurchasing() }
         } else {
-            target.didFailPurchasing(error: error.localizedDescription)
+            Task { [target] in await target.didFailPurchasing(error: error.localizedDescription) }
         }
     }
 
     private func notifyTargetAboutFailedRestoration(error: Error) {
         if isCancelled(error) {
-            target.didCancelRestoringPurchases()
+            Task { [target] in await target.didCancelRestoringPurchases() }
         } else {
-            target.didFailRestoringPurchases(error: error.localizedDescription)
+            Task { [target] in await target.didFailRestoringPurchases(error: error.localizedDescription) }
         }
     }
 }

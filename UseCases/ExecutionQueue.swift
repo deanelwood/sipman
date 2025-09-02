@@ -16,6 +16,6 @@
 //  GNU General Public License for more details.
 //
 
-public protocol ExecutionQueue {
+public protocol ExecutionQueue: Sendable {
     func add(_ block: @escaping () -> Void)
 }

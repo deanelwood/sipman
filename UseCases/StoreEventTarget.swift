@@ -16,7 +16,8 @@
 //  GNU General Public License for more details.
 //
 
-public protocol StoreEventTarget: AnyObject {
+@MainActor
+public protocol StoreEventTarget: AnyObject, Sendable {
     func didStartPurchasingProduct(withIdentifier identifier: String)
 
     func didPurchase()

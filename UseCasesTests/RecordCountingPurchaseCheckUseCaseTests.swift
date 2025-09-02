@@ -22,40 +22,58 @@ import XCTest
 
 final class RecordCountingPurchaseCheckUseCaseTests: XCTestCase {
     func testCallsDidCheckPurchaseWhenReceiptIsValidOnUpdate() {
-        let output = RecordCountingPurchaseCheckUseCaseOutputSpy()
+        let didCallDidCheckPurchase = expectation(description: "Calls did check purchse on output")
+        let output = RecordCountingPurchaseCheckUseCaseOutputSpy(
+            didCheckPurchaseCallback: didCallDidCheckPurchase.fulfill, didFailCheckingPurchaseCallback: { _ in }
+        )
         let sut = RecordCountingPurchaseCheckUseCase(
             factory: PurchaseCheckUseCaseFactory(receipt: ValidReceipt()), output: output
         )
 
         sut.update(records: [])
 
-        XCTAssertTrue(output.didCallDidCheckPurchase)
+        wait(for: [didCallDidCheckPurchase], timeout: 1)
     }
 
     func testCallsDidFailCheckingPurchaseWithRecordCountWhenReceiptIsInvalidOnUpdate() {
         let records = makeRecords(count: 5)
-        let output = RecordCountingPurchaseCheckUseCaseOutputSpy()
+        let didCallDidFailCheckingPurchase = expectation(description: "Calls did fail checking purchase on output")
+        var invokedCount: Int?
+        let output = RecordCountingPurchaseCheckUseCaseOutputSpy(
+            didCheckPurchaseCallback: {},
+            didFailCheckingPurchaseCallback: { count in
+                invokedCount = count
+                didCallDidFailCheckingPurchase.fulfill()
+            }
+        )
         let sut = RecordCountingPurchaseCheckUseCase(
             factory: PurchaseCheckUseCaseFactory(receipt: InvalidReceipt()), output: output
         )
 
         sut.update(records: records)
 
-        XCTAssertTrue(output.didCallDidFailCheckingPurchase)
-        XCTAssertEqual(output.invokedCount, records.count)
+        wait(for: [didCallDidFailCheckingPurchase], timeout: 1)
+        XCTAssertEqual(invokedCount, records.count)
     }
 
     func testCallsDidFailCheckingPurchaseWithRecordCountWhenReceiptDoesNotHaveActivePurchasesOnUpdate() {
         let records = makeRecords(count: 6)
-        let output = RecordCountingPurchaseCheckUseCaseOutputSpy()
+        let didCallDidFailCheckingPurchase = expectation(description: "Calls did fail checking purchase on output")
+        var invokedCount: Int?
+        let output = RecordCountingPurchaseCheckUseCaseOutputSpy(
+            didCheckPurchaseCallback: {}, didFailCheckingPurchaseCallback: { count in
+                invokedCount = count
+                didCallDidFailCheckingPurchase.fulfill()
+            }
+        )
         let sut = RecordCountingPurchaseCheckUseCase(
             factory: PurchaseCheckUseCaseFactory(receipt: NoActivePurchasesReceipt()), output: output
         )
 
         sut.update(records: records)
 
-        XCTAssertTrue(output.didCallDidFailCheckingPurchase)
-        XCTAssertEqual(output.invokedCount, records.count)
+        wait(for: [didCallDidFailCheckingPurchase], timeout: 1)
+        XCTAssertEqual(invokedCount, records.count)
     }
 }
 
