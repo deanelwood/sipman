@@ -22,13 +22,11 @@ final class DefaultCallHistoryCallMakeUseCaseFactory {
     private let account: Account
     private let history: CallHistory
     private let factory: FallingBackMatchedContactFactory
-    private let accountQueue: ExecutionQueue
 
-    init(account: Account, history: CallHistory, factory: FallingBackMatchedContactFactory, accountQueue: ExecutionQueue) {
+    init(account: Account, history: CallHistory, factory: FallingBackMatchedContactFactory) {
         self.account = account
         self.history = history
         self.factory = factory
-        self.accountQueue = accountQueue
     }
 }
 
@@ -38,10 +36,7 @@ extension DefaultCallHistoryCallMakeUseCaseFactory: CallHistoryCallMakeUseCaseFa
             identifier: identifier,
             history: history,
             output: ContactCallHistoryRecordGetUseCase(
-                factory: factory,
-                output: EnqueuingContactCallHistoryRecordGetUseCaseOutput(
-                    origin: CallHistoryCallMakeUseCase(account: account), queue: accountQueue
-                )
+                factory: factory, output: CallHistoryCallMakeUseCase(account: account)
             )
         )
     }

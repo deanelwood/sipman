@@ -20,6 +20,7 @@ import UseCases
 import XCTest
 import UseCasesTestDoubles
 
+@ContactsActor
 final class SimpleContactMatchingIndexFactoryTests: XCTestCase {
     func testGetsSignificantPhoneNumberLengthFromSettingsOnMake() {
         let settings = ContactMatchingSettingsSpy()

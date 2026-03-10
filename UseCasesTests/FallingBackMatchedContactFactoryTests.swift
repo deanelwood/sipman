@@ -20,6 +20,7 @@ import XCTest
 import UseCases
 import UseCasesTestDoubles
 
+@ContactsActor
 final class FallingBackMatchedContactFactoryTests: XCTestCase {
     func testResultIsCreatedFromURIWhenMatchIsNotFound() {
         let sut = FallingBackMatchedContactFactory(matching: ContactMatchingStub([:]))

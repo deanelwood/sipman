@@ -16,10 +16,11 @@
 //  GNU General Public License for more details.
 //
 
+@ContactsActor
 public final class FallingBackMatchedContactFactory {
     private let matching: ContactMatching
 
-    public init(matching: ContactMatching) {
+    public nonisolated init(matching: ContactMatching) {
         self.matching = matching
     }
 

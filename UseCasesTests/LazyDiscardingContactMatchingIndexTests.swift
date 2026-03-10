@@ -20,6 +20,7 @@
 import UseCasesTestDoubles
 import XCTest
 
+@ContactsActor
 final class LazyDiscardingContactMatchingIndexTests: XCTestCase {
     func testDoesNotCreateOriginOnCreation() {
         let factory = ContactMatchingIndexFactorySpy()

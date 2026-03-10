@@ -1,5 +1,5 @@
 //
-//  ExecutionQueueSpy.swift
+//  Contacts.swift
 //  Telephone
 //
 //  Copyright © 2008-2016 Alexey Kuznetsov
@@ -16,16 +16,6 @@
 //  GNU General Public License for more details.
 //
 
-import UseCases
-
-public final class ExecutionQueueSpy {
-    public private(set) nonisolated(unsafe) var didCallAdd = false
-
-    public init() {}
-}
-
-extension ExecutionQueueSpy: ExecutionQueue {
-    public func add(_ block: @escaping () -> Void) {
-        didCallAdd = true
-    }
+@globalActor public final actor ContactsActor: GlobalActor {
+    public static let shared = ContactsActor()
 }

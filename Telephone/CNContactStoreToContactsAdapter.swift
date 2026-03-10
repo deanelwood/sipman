@@ -20,7 +20,11 @@
 import UseCases
 
 final class CNContactStoreToContactsAdapter {
-    private lazy var store = CNContactStore()
+    private let store: CNContactStore
+
+    init(store: CNContactStore) {
+        self.store = store
+    }
 }
 
 extension CNContactStoreToContactsAdapter: Contacts {

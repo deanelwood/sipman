@@ -16,12 +16,13 @@
 //  GNU General Public License for more details.
 //
 
+@ContactsActor
 public final class LazyDiscardingContactMatchingIndex {
     private var origin: ContactMatchingIndex!
 
     private let factory: ContactMatchingIndexFactory
 
-    public init(factory: ContactMatchingIndexFactory) {
+    public nonisolated init(factory: ContactMatchingIndexFactory) {
         self.factory = factory
     }
 

@@ -16,7 +16,8 @@
 //  GNU General Public License for more details.
 //
 
-public protocol ContactMatchingIndex {
+@ContactsActor
+public protocol ContactMatchingIndex: Sendable {
     func contact(forPhone phone: ExtractedPhoneNumber) -> MatchedContact?
     func contact(forEmail email: NormalizedLowercasedString) -> MatchedContact?
 }

@@ -16,16 +16,15 @@
 //  GNU General Public License for more details.
 //
 
+@ContactsActor
 public final class IndexedContactMatching {
-    private lazy var length = settings.significantPhoneNumberLength
-
     private let index: ContactMatchingIndex
-    private let settings: ContactMatchingSettings
+    private let significantPhoneNumberLength: Int
     private let domain: String
 
-    public init(index: ContactMatchingIndex, settings: ContactMatchingSettings, domain: String) {
+    public nonisolated init(index: ContactMatchingIndex, significantPhoneNumberLength: Int, domain: String) {
         self.index = index
-        self.settings = settings
+        self.significantPhoneNumberLength = significantPhoneNumberLength
         self.domain = domain
     }
 }
@@ -40,7 +39,7 @@ extension IndexedContactMatching: ContactMatching {
     }
 
     private func phoneNumberMatch(for uri: URI) -> MatchedContact? {
-        return index.contact(forPhone: ExtractedPhoneNumber(uri.user, maxLength: length))
+        return index.contact(forPhone: ExtractedPhoneNumber(uri.user, maxLength: significantPhoneNumberLength))
     }
 
     private func email(for uri: URI) -> String {

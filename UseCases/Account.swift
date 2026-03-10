@@ -22,5 +22,6 @@ import Foundation
     var uuid: String { get }
     var domain: String { get }
 
+    @MainActor
     func makeCall(to uri: URI, label: String)
 }

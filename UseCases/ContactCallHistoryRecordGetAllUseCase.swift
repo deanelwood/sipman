@@ -28,9 +28,12 @@ public final class ContactCallHistoryRecordGetAllUseCase {
 
 extension ContactCallHistoryRecordGetAllUseCase: CallHistoryRecordGetAllUseCaseOutput {
     public func update(records: [CallHistoryRecord]) {
-        output.update(records: records.map(makeContactCallHistoryRecord))
+        Task { @ContactsActor in
+            output.update(records: records.map(makeContactCallHistoryRecord))
+        }
     }
 
+    @ContactsActor
     private func makeContactCallHistoryRecord(record: CallHistoryRecord) -> ContactCallHistoryRecord {
         return ContactCallHistoryRecord(origin: record, contact: factory.make(uri: record.uri))
     }

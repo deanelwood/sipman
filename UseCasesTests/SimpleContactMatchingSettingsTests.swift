@@ -20,6 +20,7 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@ContactsActor
 final class SimpleContactMatchingSettingsTests: XCTestCase {
     func testGetsLengthFromSettingsWithExpectedKey() {
         let settings = SettingsFake()

@@ -198,8 +198,6 @@ final class CompositionRoot: NSObject {
             )
         )
 
-        let contactsBackground = GCDExecutionQueue(queue: background)
-
         accountsEventSource = PreferencesControllerAccountsEventSource(
             center: NotificationCenter.default, target: CallHistoriesHistoryRemoveUseCase(histories: callHistories)
         )
@@ -235,19 +233,16 @@ final class CompositionRoot: NSObject {
         let contactMatchingSettings = SimpleContactMatchingSettings(settings: defaults)
         let contactMatchingIndex = LazyDiscardingContactMatchingIndex(
             factory: SimpleContactMatchingIndexFactory(
-                contacts: CNContactStoreToContactsAdapter(), settings: contactMatchingSettings
+                contacts: CNContactStoreToContactsAdapter(store: CNContactStore()), settings: contactMatchingSettings
             )
         )
 
         contactsChangeEventSource = CNContactStoreContactsChangeEventSource(
-            center: NotificationCenter.default,
-            target: EnqueuingContactsChangeEventTarget(origin: contactMatchingIndex, queue: contactsBackground)
+            center: NotificationCenter.default, target: contactMatchingIndex
         )
 
         let dayChangeEventTargets = DayChangeEventTargets()
         dayChangeEventSource = NSCalendarDayChangeEventSource(center: NotificationCenter.default, target: dayChangeEventTargets)
-
-        let main = GCDExecutionQueue(queue: DispatchQueue.main)
 
         callHistoryViewEventTargetFactory = AsyncCallHistoryViewEventTargetFactory(
             origin: CallHistoryViewEventTargetFactory(
@@ -258,8 +253,7 @@ final class CompositionRoot: NSObject {
                 dateFormatter: ShortRelativeDateTimeFormatter(),
                 durationFormatter: DurationFormatter(),
                 storeEventTargets: storeEventTargets,
-                dayChangeEventTargets: dayChangeEventTargets,
-                main: main
+                dayChangeEventTargets: dayChangeEventTargets
             )
         )
 

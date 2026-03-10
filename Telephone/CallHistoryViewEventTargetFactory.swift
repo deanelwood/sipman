@@ -28,7 +28,6 @@ final class CallHistoryViewEventTargetFactory {
     private let durationFormatter: DateComponentsFormatter
     private let storeEventTargets: StoreEventTargets
     private let dayChangeEventTargets: DayChangeEventTargets
-    private let main: ExecutionQueue
 
     init(
         histories: CallHistories,
@@ -39,7 +38,6 @@ final class CallHistoryViewEventTargetFactory {
         durationFormatter: DateComponentsFormatter,
         storeEventTargets: StoreEventTargets,
         dayChangeEventTargets: DayChangeEventTargets,
-        main: ExecutionQueue
         ) {
         self.histories = histories
         self.index = index
@@ -49,13 +47,16 @@ final class CallHistoryViewEventTargetFactory {
         self.durationFormatter = durationFormatter
         self.storeEventTargets = storeEventTargets
         self.dayChangeEventTargets = dayChangeEventTargets
-        self.main = main
     }
 
     func make(account: Account, view: CallHistoryView, purchaseCheck: UseCase) async -> CallHistoryViewEventTarget {
         let history = await histories.history(withUUID: account.uuid)
         let factory = FallingBackMatchedContactFactory(
-            matching: IndexedContactMatching(index: index, settings: settings, domain: account.domain)
+            matching: IndexedContactMatching(
+                index: index,
+                significantPhoneNumberLength: await settings.significantPhoneNumberLength,
+                domain: account.domain
+            )
         )
         let result = CallHistoryViewEventTarget(
             recordsGet: CallHistoryRecordGetAllUseCase(
@@ -73,9 +74,7 @@ final class CallHistoryViewEventTargetFactory {
             purchaseCheck: purchaseCheck,
             recordRemoveAll: CallHistoryRecordRemoveAllUseCase(history: history),
             recordRemove: DefaultCallHistoryRecordRemoveUseCaseFactory(history: history),
-            callMake: DefaultCallHistoryCallMakeUseCaseFactory(
-                account: account, history: history, factory: factory, accountQueue: main
-            )
+            callMake: DefaultCallHistoryCallMakeUseCaseFactory(account: account, history: history, factory: factory)
         )
         await history.updateTarget(WeakCallHistoryEventTarget(origin: result))
         storeEventTargets.add(WeakStoreEventTarget(origin: result))

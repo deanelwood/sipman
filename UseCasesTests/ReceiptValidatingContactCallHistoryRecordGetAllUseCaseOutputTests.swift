@@ -20,34 +20,41 @@ import UseCases
 import UseCasesTestDoubles
 import XCTest
 
+@ContactsActor
 final class ReceiptValidatingContactCallHistoryRecordGetAllUseCaseOutputTests: XCTestCase {
-    func testCallsUpdateOnOriginWithTheSameArgumentWhenReceiptIsValidOnUpdate() {
-        let origin = ContactCallHistoryRecordGetAllUseCaseOutputSpy()
+    func testCallsUpdateOnOriginWithTheSameArgumentWhenReceiptIsValidOnUpdate() async {
+        let didUpdate = expectation(description: "Calls update on origin")
+        let origin = ContactCallHistoryRecordGetAllUseCaseOutputSpy(callback: didUpdate.fulfill)
         let sut = ReceiptValidatingContactCallHistoryRecordGetAllUseCaseOutput(origin: origin, receipt: ValidReceipt())
         let records = makeFourRecords()
 
         sut.update(records: records)
 
+        await fulfillment(of: [didUpdate], timeout: 1)
         XCTAssertEqual(origin.invokedRecords, records)
     }
 
-    func testCallsUpdateOnOriginWithFirstThreeRecordsWhenReceiptIsInvalid() {
-        let origin = ContactCallHistoryRecordGetAllUseCaseOutputSpy()
+    func testCallsUpdateOnOriginWithFirstThreeRecordsWhenReceiptIsInvalid() async {
+        let didUpdate = expectation(description: "Calls update on origin")
+        let origin = ContactCallHistoryRecordGetAllUseCaseOutputSpy(callback: didUpdate.fulfill)
         let sut = ReceiptValidatingContactCallHistoryRecordGetAllUseCaseOutput(origin: origin, receipt: InvalidReceipt())
         let records = makeFourRecords()
 
         sut.update(records: records)
 
+        await fulfillment(of: [didUpdate], timeout: 1)
         XCTAssertEqual(origin.invokedRecords, Array(records.prefix(3)))
     }
 
-    func testCallsUpdateOnOriginWithFirstThreeRecordsWhenThereAreNoActivePurchases() {
-        let origin = ContactCallHistoryRecordGetAllUseCaseOutputSpy()
+    func testCallsUpdateOnOriginWithFirstThreeRecordsWhenThereAreNoActivePurchases() async {
+        let didUpdate = expectation(description: "Calls update on origin")
+        let origin = ContactCallHistoryRecordGetAllUseCaseOutputSpy(callback: didUpdate.fulfill)
         let sut = ReceiptValidatingContactCallHistoryRecordGetAllUseCaseOutput(origin: origin, receipt: NoActivePurchasesReceipt())
         let records = makeFourRecords()
 
         sut.update(records: records)
 
+        await fulfillment(of: [didUpdate], timeout: 1)
         XCTAssertEqual(origin.invokedRecords, Array(records.prefix(3)))
     }
 }

@@ -20,6 +20,7 @@
 import UseCasesTestDoubles
 import XCTest
 
+@ContactsActor
 final class SimpleContactMatchingIndexTests: XCTestCase {
     func testFindsContactsByPhoneNumberAndEmailAddress() {
         let contact1 = makeContact(number: 1)
