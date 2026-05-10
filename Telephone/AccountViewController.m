@@ -21,10 +21,12 @@
 #import "ActiveAccountViewController.h"
 #import "AKSIPAccount.h"
 #import "AKSIPUserAgent.h"
+#import "PreferencesControllerNotifications.h"
 
 #import "Telephone-Swift.h"
 
 static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
+static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
 
 @interface AccountViewController () <SoftphoneCallTarget>
 
@@ -53,6 +55,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 
 - (void)showSoftphoneAppShell;
 - (void)hideLegacyAccountViews;
+- (AKSIPAccount *)softphoneSIPAccount;
 
 @end
 
@@ -102,9 +105,18 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     self.softphoneCallHistoryStore = [[SoftphoneCallHistoryStore alloc] init];
     self.softphoneMessageStore = [[SoftphoneMessageStore alloc] initWithAccountUUID:self.account.uuid
                                                                      accountAddress:self.account.domain];
+    AKSIPAccount *SIPAccount = [self softphoneSIPAccount];
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     self.softphoneDiagnosticsStore = [[SoftphoneDiagnosticsStore alloc] initWithAccountUUID:self.account.uuid
                                                                                      domain:self.account.domain
-                                                                                 sipAddress:self.account.domain];
+                                                                                 sipAddress:(SIPAccount.SIPAddress ?: self.account.domain)
+                                                                                   username:(SIPAccount.username ?: @"")
+                                                                             passwordStatus:(SIPAccount.username.length > 0 ? @"Stored in Keychain" : @"Not configured")
+                                                                          stunServerAddress:SoftphoneServerAddressString([defaults stringForKey:UserDefaultsKeys.stunServerHost],
+                                                                                                                         [defaults integerForKey:UserDefaultsKeys.stunServerPort])
+                                                                          turnServerAddress:SoftphoneServerAddressString([defaults stringForKey:UserDefaultsKeys.turnServerHost],
+                                                                                                                         [defaults integerForKey:UserDefaultsKeys.turnServerPort])
+                                                                                     usesICE:[defaults boolForKey:UserDefaultsKeys.useICE]];
     self.softphoneActiveCallStore = [[SoftphoneActiveCallStore alloc] init];
 
     [self.callHistoryViewEventTargetFactory makeWithAccount:self.account
@@ -141,7 +153,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 - (void)showSoftphoneAppShell {
     self.softphoneAppShellView = [SoftphoneAppShellViewFactory makeViewWithCallTarget:self
                                                                    accountDisplayName:self.account.domain
-                                                                           sipAddress:self.account.domain
+                                                                           sipAddress:([self softphoneSIPAccount].SIPAddress ?: self.account.domain)
                                                                    callHistoryStore:self.softphoneCallHistoryStore
                                                                        messageStore:self.softphoneMessageStore
                                                                    diagnosticsStore:self.softphoneDiagnosticsStore
@@ -160,6 +172,10 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     self.activeAccountViewHeightConstraint.constant = 0;
     self.horizontalLineHeightConstraint.constant = 0;
     self.bottomViewHeightConstraint.constant = 0;
+}
+
+- (AKSIPAccount *)softphoneSIPAccount {
+    return [(id)self.account isKindOfClass:[AKSIPAccount class]] ? (AKSIPAccount *)self.account : nil;
 }
 
 - (void)updateSoftphoneCallWithIdentifier:(NSString *)identifier
@@ -226,6 +242,28 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
                                                  completion:completion];
 }
 
+- (void)softphoneSaveNetworkSettings:(NSDictionary<NSString *,id> *)settings {
+    NSString *STUNServerHost = [settings[UserDefaultsKeys.stunServerHost] isKindOfClass:[NSString class]] ? settings[UserDefaultsKeys.stunServerHost] : @"";
+    NSInteger STUNServerPort = [settings[UserDefaultsKeys.stunServerPort] integerValue];
+    NSString *TURNServerHost = [settings[UserDefaultsKeys.turnServerHost] isKindOfClass:[NSString class]] ? settings[UserDefaultsKeys.turnServerHost] : @"";
+    NSInteger TURNServerPort = [settings[UserDefaultsKeys.turnServerPort] integerValue];
+    BOOL useICE = [settings[UserDefaultsKeys.useICE] boolValue];
+
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    [defaults setObject:STUNServerHost forKey:UserDefaultsKeys.stunServerHost];
+    [defaults setInteger:STUNServerPort forKey:UserDefaultsKeys.stunServerPort];
+    [defaults setObject:TURNServerHost forKey:UserDefaultsKeys.turnServerHost];
+    [defaults setInteger:TURNServerPort forKey:UserDefaultsKeys.turnServerPort];
+    [defaults setBool:useICE forKey:UserDefaultsKeys.useICE];
+
+    [self.softphoneDiagnosticsStore updateNetworkSettingsWithStunServerAddress:SoftphoneServerAddressString(STUNServerHost, STUNServerPort)
+                                                             turnServerAddress:SoftphoneServerAddressString(TURNServerHost, TURNServerPort)
+                                                                        usesICE:useICE];
+
+    [[NSNotificationCenter defaultCenter] postNotificationName:AKPreferencesControllerDidChangeNetworkSettingsNotification
+                                                        object:self];
+}
+
 @end
 
 static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view) {
@@ -234,4 +272,15 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view) {
     [result addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[view]|" options:0 metrics:nil views:views]];
     [result addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[view]|" options:0 metrics:nil views:views]];
     return result;
+}
+
+static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port) {
+    NSString *trimmedHost = [host stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (trimmedHost.length == 0) {
+        return @"";
+    }
+    if (port > 0 && port <= 65535) {
+        return [[ServiceAddress alloc] initWithHost:trimmedHost port:@(port).stringValue].stringValue;
+    }
+    return [[ServiceAddress alloc] initWithHost:trimmedHost].stringValue;
 }

@@ -67,6 +67,8 @@ private func makeDefaults(for localization: String) -> [String: Any] {
         UserDefaultsKeys.outboundProxyPort: 0,
         UserDefaultsKeys.stunServerHost: "",
         UserDefaultsKeys.stunServerPort: 0,
+        UserDefaultsKeys.turnServerHost: "",
+        UserDefaultsKeys.turnServerPort: 0,
         UserDefaultsKeys.telephoneNumberFormatterSplitsLastFourDigits: false,
         UserDefaultsKeys.transportPort: 0,
         UserDefaultsKeys.useDNSSRV: false,

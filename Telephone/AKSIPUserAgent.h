@@ -107,6 +107,13 @@ typedef void (^AKSIPOptionsPingCompletion)(NSDictionary *result);
 // Default: 3478.
 @property(nonatomic, assign) NSUInteger STUNServerPort;
 
+// TURN server host.
+@property(nonatomic, copy) NSString *TURNServerHost;
+
+// Network port to use with the TURN server.
+// Default: 3478.
+@property(nonatomic, assign) NSUInteger TURNServerPort;
+
 // User agent string.
 @property(nonatomic, copy) NSString *userAgentString;
 

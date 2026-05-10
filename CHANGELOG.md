@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added Account settings for username/password visibility plus editable ICE,
+  STUN, and TURN server configuration backed by PJSIP network settings, and
+  bumped the build number to 179.
 - Added a persistent Settings dark mode toggle, introduced an adaptive SIPMan
   dark palette for the SwiftUI shell, and bumped the build number to 178.
 - Added an in-call Hold/Release control backed by the existing PJSIP re-INVITE

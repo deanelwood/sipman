@@ -38,6 +38,16 @@ final class DefaultAppSettingsTests: XCTestCase {
         XCTAssertEqual(settings.registeredDefaults[UserDefaultsKeys.logLevel] as! Int, 5)
     }
 
+    func testRegistersEmptyTURNServerDefaults() {
+        let settings = SettingsFake()
+        let sut = DefaultAppSettings(settings: settings, localization: "any")
+
+        sut.register()
+
+        XCTAssertEqual(settings.registeredDefaults[UserDefaultsKeys.turnServerHost] as! String, "")
+        XCTAssertEqual(settings.registeredDefaults[UserDefaultsKeys.turnServerPort] as! Int, 0)
+    }
+
     func testFormatTelephoneNumbersIsFalseForGermanLocalization() {
         let settings = SettingsFake()
         let sut = DefaultAppSettings(settings: settings, localization: "de")

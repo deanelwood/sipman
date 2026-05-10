@@ -113,6 +113,8 @@ private let settingsKeys = [
     UserDefaultsKeys.settingsVersion: "Int",
     UserDefaultsKeys.stunServerHost: "String",
     UserDefaultsKeys.stunServerPort: "Int",
+    UserDefaultsKeys.turnServerHost: "String",
+    UserDefaultsKeys.turnServerPort: "Int",
     UserDefaultsKeys.telephoneNumberFormatterSplitsLastFourDigits: "Bool",
     UserDefaultsKeys.transportPort: "Int",
     UserDefaultsKeys.useDNSSRV: "Bool",

@@ -356,6 +356,8 @@ NS_ASSUME_NONNULL_END
     [[self userAgent] setTransportPort:[defaults integerForKey:UserDefaultsKeys.transportPort]];
     [[self userAgent] setSTUNServerHost:[defaults stringForKey:UserDefaultsKeys.stunServerHost]];
     [[self userAgent] setSTUNServerPort:[defaults integerForKey:UserDefaultsKeys.stunServerPort]];
+    [[self userAgent] setTURNServerHost:[defaults stringForKey:UserDefaultsKeys.turnServerHost]];
+    [[self userAgent] setTURNServerPort:[defaults integerForKey:UserDefaultsKeys.turnServerPort]];
     [[self userAgent] setUsesICE:[defaults boolForKey:UserDefaultsKeys.useICE]];
     [[self userAgent] setOutboundProxyHost:[defaults stringForKey:UserDefaultsKeys.outboundProxyHost]];
     [[self userAgent] setOutboundProxyPort:[defaults integerForKey:UserDefaultsKeys.outboundProxyPort]];
@@ -547,6 +549,8 @@ NS_ASSUME_NONNULL_END
     self.userAgent.outboundProxyPort = [defaults integerForKey:UserDefaultsKeys.outboundProxyPort];
     self.userAgent.STUNServerHost = [defaults stringForKey:UserDefaultsKeys.stunServerHost];
     self.userAgent.STUNServerPort = [defaults integerForKey:UserDefaultsKeys.stunServerPort];
+    self.userAgent.TURNServerHost = [defaults stringForKey:UserDefaultsKeys.turnServerHost];
+    self.userAgent.TURNServerPort = [defaults integerForKey:UserDefaultsKeys.turnServerPort];
     self.userAgent.userAgentString = [NSString stringWithFormat:@"%@ %@",
                                       NSBundle.mainBundle.infoDictionary[@"CFBundleName"],
                                       NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"]];

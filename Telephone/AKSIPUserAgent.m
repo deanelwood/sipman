@@ -50,6 +50,7 @@ static const NSInteger kAKSIPUserAgentNameServersMax = 4;
 // User agent defaults.
 static const NSInteger kAKSIPUserAgentDefaultOutboundProxyPort = 5060;
 static const NSInteger kAKSIPUserAgentDefaultSTUNServerPort = 3478;
+static const NSInteger kAKSIPUserAgentDefaultTURNServerPort = 3478;
 static const NSInteger kAKSIPUserAgentDefaultLogLevel = 5;
 static const NSInteger kAKSIPUserAgentDefaultConsoleLogLevel = 0;
 static const BOOL kAKSIPUserAgentDefaultDetectsVoiceActivity = YES;
@@ -388,6 +389,14 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
     }
 }
 
+- (void)setTURNServerPort:(NSUInteger)port {
+    if (port > 0 && port <= 65535) {
+        _TURNServerPort = port;
+    } else {
+        _TURNServerPort = kAKSIPUserAgentDefaultTURNServerPort;
+    }
+}
+
 - (void)setLogFileName:(NSString *)pathToFile {
     if (_logFileName != pathToFile) {
         if ([pathToFile length] > 0) {
@@ -442,6 +451,7 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
 
     [self setOutboundProxyPort:kAKSIPUserAgentDefaultOutboundProxyPort];
     [self setSTUNServerPort:kAKSIPUserAgentDefaultSTUNServerPort];
+    [self setTURNServerPort:kAKSIPUserAgentDefaultTURNServerPort];
     [self setLogLevel:kAKSIPUserAgentDefaultLogLevel];
     [self setConsoleLogLevel:kAKSIPUserAgentDefaultConsoleLogLevel];
     [self setDetectsVoiceActivity:kAKSIPUserAgentDefaultDetectsVoiceActivity];
@@ -580,6 +590,17 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
     SoftphonePJSIPConsoleLogLevel = loggingConfig.console_level;
     mediaConfig.no_vad = ![self detectsVoiceActivity];
     mediaConfig.enable_ice = [self usesICE];
+    if ([[self TURNServerHost] length] > 0) {
+        mediaConfig.enable_ice = PJ_TRUE;
+        mediaConfig.enable_turn = PJ_TRUE;
+        mediaConfig.turn_conn_type = PJ_TURN_TP_UDP;
+        if ([self TURNServerPort] == kAKSIPUserAgentDefaultTURNServerPort) {
+            mediaConfig.turn_server = [[ServiceAddress alloc] initWithHost:self.TURNServerHost].stringValue.pjString;
+        } else {
+            mediaConfig.turn_server = [[ServiceAddress alloc] initWithHost:self.TURNServerHost
+                                                                       port:@(self.TURNServerPort).stringValue].stringValue.pjString;
+        }
+    }
     mediaConfig.snd_auto_close_time = 1;
     mediaConfig.ec_options = PJMEDIA_ECHO_USE_SW_ECHO;
 

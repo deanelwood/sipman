@@ -41,6 +41,8 @@ protocol SoftphoneCallTarget: AnyObject {
         transport: String,
         completion: @escaping ([String: Any]) -> Void
     )
+    @objc(softphoneSaveNetworkSettings:)
+    func softphoneSaveNetworkSettings(_ settings: [String: Any])
 }
 
 @objcMembers
@@ -84,6 +86,9 @@ final class SoftphoneAppShellViewFactory: NSObject {
                 },
                 onSIPPing: { [weak callTarget] destination, transport, completion in
                     callTarget?.softphoneSendSIPOptionsPing(to: destination, transport: transport, completion: completion)
+                },
+                onSaveNetworkSettings: { [weak callTarget] settings in
+                    callTarget?.softphoneSaveNetworkSettings(settings)
                 }
             )
         )
@@ -106,6 +111,7 @@ struct SoftphoneAppShellView: View {
     let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
+    let onSaveNetworkSettings: ([String: Any]) -> Void
 
     @AppStorage(SoftphoneAppearance.userDefaultsKey) private var appearanceModeRawValue = SoftphoneAppearanceMode.light.rawValue
     @State private var selectedItem: SoftphoneNavigationItem = .keypad
@@ -141,7 +147,8 @@ struct SoftphoneAppShellView: View {
                     onToggleMute: onToggleMute,
                     onToggleHold: onToggleHold,
                     onSendDTMFDigit: onSendDTMFDigit,
-                    onSIPPing: onSIPPing
+                    onSIPPing: onSIPPing,
+                    onSaveNetworkSettings: onSaveNetworkSettings
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -375,6 +382,7 @@ private struct SoftphoneMainContent: View {
     let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
+    let onSaveNetworkSettings: ([String: Any]) -> Void
 
     var body: some View {
         Group {
@@ -395,7 +403,11 @@ private struct SoftphoneMainContent: View {
             case .history:
                 SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
             case .settings:
-                SoftphoneSettingsScreen(diagnosticsStore: diagnosticsStore, onSIPPing: onSIPPing)
+                SoftphoneSettingsScreen(
+                    diagnosticsStore: diagnosticsStore,
+                    onSIPPing: onSIPPing,
+                    onSaveNetworkSettings: onSaveNetworkSettings
+                )
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1329,6 +1341,7 @@ private enum SoftphoneSIPPingTransport: String, CaseIterable, Identifiable {
 private struct SoftphoneSettingsScreen: View {
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
+    let onSaveNetworkSettings: ([String: Any]) -> Void
 
     @State private var selectedTab: SoftphoneSettingsTab = .account
 
@@ -1338,7 +1351,10 @@ private struct SoftphoneSettingsScreen: View {
 
             switch selectedTab {
             case .account:
-                SoftphoneAccountSettingsPane(diagnosticsStore: diagnosticsStore)
+                SoftphoneAccountSettingsPane(
+                    diagnosticsStore: diagnosticsStore,
+                    onSaveNetworkSettings: onSaveNetworkSettings
+                )
             case .diagnostics:
                 SoftphoneDiagnosticsSettingsPane(diagnosticsStore: diagnosticsStore)
             case .sipLog:
@@ -1376,21 +1392,119 @@ private struct SoftphoneSettingsTabControl: View {
 
 private struct SoftphoneAccountSettingsPane: View {
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
+    let onSaveNetworkSettings: ([String: Any]) -> Void
+
+    @State private var stunServerAddress = ""
+    @State private var turnServerAddress = ""
+    @State private var usesICE = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SoftphoneSectionHeader(title: "Account", subtitle: "SIP account configuration.")
-            HStack(spacing: 12) {
-                SoftphoneLabeledField(label: "SIP address", value: diagnosticsStore.snapshot.sipAddress)
-                SoftphoneLabeledField(label: "Domain", value: diagnosticsStore.snapshot.domain)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                SoftphoneSectionHeader(title: "Account", subtitle: "SIP account configuration.")
+                HStack(spacing: 12) {
+                    SoftphoneLabeledField(label: "SIP address", value: diagnosticsStore.snapshot.sipAddress)
+                    SoftphoneLabeledField(label: "Domain", value: diagnosticsStore.snapshot.domain)
+                }
+                HStack(spacing: 12) {
+                    SoftphoneLabeledField(label: "Username", value: diagnosticsStore.snapshot.username)
+                    SoftphoneLabeledField(label: "Password", value: diagnosticsStore.snapshot.passwordStatus)
+                }
+                HStack(spacing: 12) {
+                    SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
+                    SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
+                }
+                SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
+
+                SoftphoneNATTraversalSettingsPane(
+                    stunServerAddress: $stunServerAddress,
+                    turnServerAddress: $turnServerAddress,
+                    usesICE: $usesICE,
+                    canSave: hasNetworkSettingsChanges,
+                    onSave: saveNetworkSettings
+                )
+                SoftphoneAppearanceSettingsRow()
             }
-            SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
-            HStack(spacing: 12) {
-                SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
-                SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
-            }
-            SoftphoneAppearanceSettingsRow()
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .onAppear(perform: resetNetworkSettings)
+        .onChange(of: diagnosticsStore.snapshot.stunServerAddress) { _ in resetNetworkSettings() }
+        .onChange(of: diagnosticsStore.snapshot.turnServerAddress) { _ in resetNetworkSettings() }
+        .onChange(of: diagnosticsStore.snapshot.usesICE) { _ in resetNetworkSettings() }
+    }
+
+    private var hasNetworkSettingsChanges: Bool {
+        SoftphoneServerAddress(stunServerAddress).displayValue != diagnosticsStore.snapshot.stunServerAddress ||
+            SoftphoneServerAddress(turnServerAddress).displayValue != diagnosticsStore.snapshot.turnServerAddress ||
+            usesICE != diagnosticsStore.snapshot.usesICE
+    }
+
+    private func resetNetworkSettings() {
+        stunServerAddress = diagnosticsStore.snapshot.stunServerAddress
+        turnServerAddress = diagnosticsStore.snapshot.turnServerAddress
+        usesICE = diagnosticsStore.snapshot.usesICE
+    }
+
+    private func saveNetworkSettings() {
+        let stunAddress = SoftphoneServerAddress(stunServerAddress)
+        let turnAddress = SoftphoneServerAddress(turnServerAddress)
+        let effectiveUsesICE = usesICE || !turnAddress.host.isEmpty
+        onSaveNetworkSettings([
+            UserDefaultsKeys.stunServerHost: stunAddress.host,
+            UserDefaultsKeys.stunServerPort: stunAddress.port,
+            UserDefaultsKeys.turnServerHost: turnAddress.host,
+            UserDefaultsKeys.turnServerPort: turnAddress.port,
+            UserDefaultsKeys.useICE: effectiveUsesICE
+        ])
+    }
+}
+
+private struct SoftphoneNATTraversalSettingsPane: View {
+    @Binding var stunServerAddress: String
+    @Binding var turnServerAddress: String
+    @Binding var usesICE: Bool
+    let canSave: Bool
+    let onSave: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text("NAT traversal")
+                    .font(.system(size: 13, weight: .bold))
+                Text("Optional ICE, STUN, and TURN settings.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(SoftphoneTheme.muted)
+            }
+            HStack(spacing: 12) {
+                SoftphoneEditableField(
+                    label: "STUN server",
+                    placeholder: "stun.example.com:3478",
+                    text: $stunServerAddress
+                )
+                SoftphoneEditableField(
+                    label: "TURN server",
+                    placeholder: "turn.example.com:3478",
+                    text: $turnServerAddress
+                )
+            }
+            HStack(spacing: 12) {
+                Toggle("Use ICE", isOn: $usesICE)
+                    .toggleStyle(.switch)
+                    .font(.system(size: 13, weight: .bold))
+                Spacer()
+                Button {
+                    onSave()
+                } label: {
+                    Label("Save Network", systemImage: "checkmark")
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle(width: 142))
+                .disabled(!canSave)
+                .help("Save NAT traversal settings")
+            }
+        }
+        .padding(14)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 

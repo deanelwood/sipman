@@ -59,13 +59,40 @@ struct SoftphoneSIPPingResultModel: Equatable {
     }
 }
 
+struct SoftphoneServerAddress: Equatable {
+    let host: String
+    let port: Int
+
+    init(host: String, port: Int) {
+        self.host = host.trimmingCharacters(in: .whitespacesAndNewlines)
+        self.port = (1...65535).contains(port) ? port : 0
+    }
+
+    init(_ stringValue: String) {
+        let serviceAddress = ServiceAddress(stringValue.trimmingCharacters(in: .whitespacesAndNewlines))
+        host = serviceAddress.host.trimmingCharacters(in: .whitespacesAndNewlines)
+        port = Int(serviceAddress.port) ?? 0
+    }
+
+    var displayValue: String {
+        guard !host.isEmpty else { return "" }
+        guard port > 0 else { return ServiceAddress(host: host).stringValue }
+        return ServiceAddress(host: host, port: "\(port)").stringValue
+    }
+}
+
 struct SoftphoneDiagnosticsSnapshot: Equatable {
     let accountUUID: String
     let domain: String
     let sipAddress: String
+    let username: String
+    let passwordStatus: String
     let registrationState: SoftphoneRegistrationState
     let transport: String
     let port: String
+    let stunServerAddress: String
+    let turnServerAddress: String
+    let usesICE: Bool
     let lastRegistration: String
     let activeCall: SoftphoneLiveCallDiagnosticsModel?
     let sipLogEntries: [SoftphoneSIPLogEntryModel]
@@ -85,14 +112,28 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
 
     private let callStatsStore = CallStatsStore()
 
-    @objc init(accountUUID: String, domain: String, sipAddress: String) {
+    @objc init(
+        accountUUID: String,
+        domain: String,
+        sipAddress: String,
+        username: String,
+        passwordStatus: String,
+        stunServerAddress: String,
+        turnServerAddress: String,
+        usesICE: Bool
+    ) {
         self.snapshot = SoftphoneDiagnosticsSnapshot(
             accountUUID: accountUUID,
             domain: domain,
             sipAddress: sipAddress,
+            username: username,
+            passwordStatus: passwordStatus,
             registrationState: .offline,
             transport: "Auto",
             port: "Default",
+            stunServerAddress: stunServerAddress,
+            turnServerAddress: turnServerAddress,
+            usesICE: usesICE,
             lastRegistration: "--",
             activeCall: nil,
             sipLogEntries: []
@@ -131,9 +172,33 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             accountUUID: snapshot.accountUUID,
             domain: snapshot.domain,
             sipAddress: snapshot.sipAddress,
+            username: snapshot.username,
+            passwordStatus: snapshot.passwordStatus,
             registrationState: snapshot.registrationState,
             transport: transport,
             port: port,
+            stunServerAddress: snapshot.stunServerAddress,
+            turnServerAddress: snapshot.turnServerAddress,
+            usesICE: snapshot.usesICE,
+            lastRegistration: snapshot.lastRegistration,
+            activeCall: snapshot.activeCall,
+            sipLogEntries: snapshot.sipLogEntries
+        )
+    }
+
+    @objc func updateNetworkSettings(stunServerAddress: String, turnServerAddress: String, usesICE: Bool) {
+        snapshot = SoftphoneDiagnosticsSnapshot(
+            accountUUID: snapshot.accountUUID,
+            domain: snapshot.domain,
+            sipAddress: snapshot.sipAddress,
+            username: snapshot.username,
+            passwordStatus: snapshot.passwordStatus,
+            registrationState: snapshot.registrationState,
+            transport: snapshot.transport,
+            port: snapshot.port,
+            stunServerAddress: stunServerAddress,
+            turnServerAddress: turnServerAddress,
+            usesICE: usesICE,
             lastRegistration: snapshot.lastRegistration,
             activeCall: snapshot.activeCall,
             sipLogEntries: snapshot.sipLogEntries
@@ -209,9 +274,14 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             accountUUID: snapshot.accountUUID,
             domain: snapshot.domain,
             sipAddress: snapshot.sipAddress,
+            username: snapshot.username,
+            passwordStatus: snapshot.passwordStatus,
             registrationState: registrationState,
             transport: snapshot.transport,
             port: snapshot.port,
+            stunServerAddress: snapshot.stunServerAddress,
+            turnServerAddress: snapshot.turnServerAddress,
+            usesICE: snapshot.usesICE,
             lastRegistration: lastRegistration,
             activeCall: snapshot.activeCall,
             sipLogEntries: snapshot.sipLogEntries
@@ -223,9 +293,14 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             accountUUID: snapshot.accountUUID,
             domain: snapshot.domain,
             sipAddress: snapshot.sipAddress,
+            username: snapshot.username,
+            passwordStatus: snapshot.passwordStatus,
             registrationState: snapshot.registrationState,
             transport: snapshot.transport,
             port: snapshot.port,
+            stunServerAddress: snapshot.stunServerAddress,
+            turnServerAddress: snapshot.turnServerAddress,
+            usesICE: snapshot.usesICE,
             lastRegistration: snapshot.lastRegistration,
             activeCall: activeCall,
             sipLogEntries: snapshot.sipLogEntries
@@ -237,9 +312,14 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             accountUUID: snapshot.accountUUID,
             domain: snapshot.domain,
             sipAddress: snapshot.sipAddress,
+            username: snapshot.username,
+            passwordStatus: snapshot.passwordStatus,
             registrationState: snapshot.registrationState,
             transport: snapshot.transport,
             port: snapshot.port,
+            stunServerAddress: snapshot.stunServerAddress,
+            turnServerAddress: snapshot.turnServerAddress,
+            usesICE: snapshot.usesICE,
             lastRegistration: snapshot.lastRegistration,
             activeCall: snapshot.activeCall,
             sipLogEntries: sipLogEntries

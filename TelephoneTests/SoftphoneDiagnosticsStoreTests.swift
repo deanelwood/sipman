@@ -21,19 +21,24 @@ import UseCases
 @MainActor
 final class SoftphoneDiagnosticsStoreTests: XCTestCase {
     func testStartsWithAccountDiagnostics() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
 
         XCTAssertEqual(sut.snapshot.accountUUID, "account-1")
         XCTAssertEqual(sut.snapshot.domain, "example.com")
         XCTAssertEqual(sut.snapshot.sipAddress, "1001@example.com")
+        XCTAssertEqual(sut.snapshot.username, "1001")
+        XCTAssertEqual(sut.snapshot.passwordStatus, "Stored in Keychain")
         XCTAssertEqual(sut.snapshot.registrationState, .offline)
         XCTAssertEqual(sut.snapshot.transport, "Auto")
         XCTAssertEqual(sut.snapshot.port, "Default")
+        XCTAssertEqual(sut.snapshot.stunServerAddress, "stun.example.com:3478")
+        XCTAssertEqual(sut.snapshot.turnServerAddress, "")
+        XCTAssertTrue(sut.snapshot.usesICE)
         XCTAssertEqual(sut.snapshot.sipLogEntries, [])
     }
 
     func testCanMarkRegisteredAndOffline() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
 
         sut.markRegistered()
         XCTAssertEqual(sut.snapshot.registrationState, .registered)
@@ -45,7 +50,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
     }
 
     func testCanUpdateTransport() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
 
         sut.updateTransport("UDP", port: "5060")
 
@@ -54,7 +59,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
     }
 
     func testCanUpdateLiveCallDiagnostics() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
 
         sut.updateActiveCall(
             identifier: "call-1",
@@ -75,7 +80,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
     }
 
     func testCollatesLiveCallPeaks() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
 
         sut.updateActiveCall(
             identifier: "call-1",
@@ -98,7 +103,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
     }
 
     func testCanRemoveLiveCallDiagnostics() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
         sut.updateActiveCall(
             identifier: "call-1",
             remoteParty: "9000",
@@ -113,7 +118,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
     }
 
     func testCanAppendAndClearSIPLogEntries() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
 
         sut.appendSIPLogLine("REGISTER sip:example.com SIP/2.0\n", level: 4)
 
@@ -128,7 +133,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
     }
 
     func testSIPLogEntriesAreRolling() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
 
         for index in 0..<505 {
             sut.appendSIPLogLine("line \(index)", level: 3)
@@ -140,7 +145,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
     }
 
     func testAppendsSIPLogEntriesFromPJSIPNotifications() {
-        let sut = SoftphoneDiagnosticsStore(accountUUID: "account-1", domain: "example.com", sipAddress: "1001@example.com")
+        let sut = makeStore()
 
         NotificationCenter.default.post(
             name: SoftphoneDiagnosticsStore.sipLogNotificationName,
@@ -169,6 +174,40 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
         XCTAssertEqual(sut.detail, "PJSIP event: RX_MSG")
         XCTAssertEqual(sut.rawResponse, "SIP/2.0 200 OK")
         XCTAssertEqual(sut.elapsed, "123 ms")
+    }
+
+    func testCanUpdateNetworkSettings() {
+        let sut = makeStore()
+
+        sut.updateNetworkSettings(
+            stunServerAddress: "stun2.example.com",
+            turnServerAddress: "turn.example.com:3478",
+            usesICE: true
+        )
+
+        XCTAssertEqual(sut.snapshot.stunServerAddress, "stun2.example.com")
+        XCTAssertEqual(sut.snapshot.turnServerAddress, "turn.example.com:3478")
+        XCTAssertTrue(sut.snapshot.usesICE)
+    }
+
+    func testServerAddressNormalizesHostAndPort() {
+        XCTAssertEqual(SoftphoneServerAddress(" stun.example.com:3478 ").host, "stun.example.com")
+        XCTAssertEqual(SoftphoneServerAddress(" stun.example.com:3478 ").port, 3478)
+        XCTAssertEqual(SoftphoneServerAddress("[2001:db8::1]:3478").displayValue, "[2001:db8::1]:3478")
+        XCTAssertEqual(SoftphoneServerAddress(host: "turn.example.com", port: 70000).displayValue, "turn.example.com")
+    }
+
+    private func makeStore() -> SoftphoneDiagnosticsStore {
+        SoftphoneDiagnosticsStore(
+            accountUUID: "account-1",
+            domain: "example.com",
+            sipAddress: "1001@example.com",
+            username: "1001",
+            passwordStatus: "Stored in Keychain",
+            stunServerAddress: "stun.example.com:3478",
+            turnServerAddress: "",
+            usesICE: true
+        )
     }
 
     private func snapshot(metric: String, live: String, numericValue: Double) -> CallStatsSnapshot {

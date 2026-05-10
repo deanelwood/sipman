@@ -24,6 +24,8 @@ class UserDefaultsKeys: NSObject {
     static let accounts = "Accounts"
     static let stunServerHost = "STUNServerHost"
     static let stunServerPort = "STUNServerPort"
+    static let turnServerHost = "TURNServerHost"
+    static let turnServerPort = "TURNServerPort"
     static let logLevel = "LogLevel"
     static let consoleLogLevel = "ConsoleLogLevel"
     static let voiceActivityDetection = "VoiceActivityDetection"
