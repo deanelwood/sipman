@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.7
+- Added a SIP MESSAGE data model for future messaging UI work.
 - Removed the Telephone Pro subscription prompt and unlocked the full
   call history and 30 simultaneous-call limit without a purchase check.
 - Added a shared app test scheme and local test runner script.
