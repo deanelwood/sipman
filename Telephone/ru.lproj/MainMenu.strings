@@ -137,8 +137,5 @@
 /* Class = "NSMenuItem"; title = "Copy Settings"; ObjectID = "koB-sa-kzQ"; */
 "koB-sa-kzQ.title" = "Копировать настройки";
 
-/* Class = "NSMenuItem"; title = "Telephone Pro…"; ObjectID = "rMu-ch-wsu"; */
-"rMu-ch-wsu.title" = "Расширенные возможности…";
-
 /* Class = "NSMenuItem"; title = "Keep on Top"; ObjectID = "vyI-5q-SG2"; */
 "vyI-5q-SG2.title" = "Держать сверху";

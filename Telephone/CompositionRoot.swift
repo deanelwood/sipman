@@ -18,7 +18,6 @@
 
 import Contacts
 import Foundation
-import StoreKit
 import UseCases
 
 @MainActor
@@ -26,14 +25,11 @@ final class CompositionRoot: NSObject {
     @objc let userAgent: AKSIPUserAgent
     @objc let preferencesController: PreferencesController
     @objc let ringtonePlayback: RingtonePlaybackUseCase
-    @objc let storeWindowPresenter: StoreWindowPresenter
-    @objc let purchaseReminder: PurchaseReminderUseCase
     @objc let userAgentStart: UseCase
     @objc let settingsMigration: ProgressiveSettingsMigration
     @objc let orphanLogFileRemoval: OrphanLogFileRemoval
     @objc let workstationSleepStatus: WorkspaceSleepStatus
     @objc let callHistoryViewEventTargetFactory: AsyncCallHistoryViewEventTargetFactory
-    @objc let callHistoryPurchaseCheckUseCaseFactory: AsyncCallHistoryPurchaseCheckUseCaseFactory
     @objc let logFileURL: LogFileURL
     @objc let defaultAppSettings: DefaultAppSettings
     @objc let helpMenuActionTarget: HelpMenuActionTarget
@@ -41,7 +37,6 @@ final class CompositionRoot: NSObject {
     @objc let nameServers: NameServers
     private let defaults: UserDefaults
 
-    private let storeEventSource: SKPaymentQueueStoreEventSource
     private let userAgentEventSource: AKSIPUserAgentEventSource
     private let devicesChangeEventSource: CoreAudioSystemAudioDevicesChangeEventSource
     private let soundIOChangeEventSource: CoreAudioDefaultSystemSoundIOChangeEventSource
@@ -50,7 +45,7 @@ final class CompositionRoot: NSObject {
     private let contactsChangeEventSource: Any
     private let dayChangeEventSource: NSCalendarDayChangeEventSource
 
-    @objc init(preferencesControllerDelegate: PreferencesControllerDelegate, nameServersChangeEventTarget: NameServersChangeEventTarget, storeEventTarget: ObjCStoreEventTarget) {
+    @objc init(preferencesControllerDelegate: PreferencesControllerDelegate, nameServersChangeEventTarget: NameServersChangeEventTarget) {
         userAgent = AKSIPUserAgent.shared()
         defaults = UserDefaults.standard
 
@@ -79,48 +74,8 @@ final class CompositionRoot: NSObject {
             delegate: userAgent
         )
 
-        let productsEventTargets = ProductsEventTargets()
+        userAgentStart = UserAgentStartUseCase(agent: userAgent)
 
-        let storeViewController = StoreViewController(
-            target: NullStoreViewEventTarget(), workspace: NSWorkspace.shared
-        )
-        let products = SKProductsRequestToProductsAdapter(expected: ExpectedProducts(), target: productsEventTargets)
-        let store = SKPaymentQueueToStoreAdapter(queue: SKPaymentQueue.default(), products: products)
-        let receipt = BundleReceipt(bundle: Bundle.main, gateway: ReceiptXPCGateway())
-        let storeViewEventTarget = DefaultStoreViewEventTarget(
-            factory: DefaultStoreUseCaseFactory(
-                products: products,
-                store: store,
-                receipt: receipt,
-                targets: productsEventTargets
-            ),
-            purchaseRestoration: PurchaseRestorationUseCase(store: store),
-            receiptRefresh: ReceiptRefreshUseCase(),
-            presenter: DefaultStoreViewPresenter(output: storeViewController)
-        )
-        storeViewController.updateTarget(storeViewEventTarget)
-
-        storeWindowPresenter = StoreWindowPresenter(controller: StoreWindowController(contentViewController: storeViewController))
-
-        purchaseReminder = PurchaseReminderUseCase(
-            accounts: SettingsAccounts(settings: defaults),
-            receipt: receipt,
-            settings: UserDefaultsPurchaseReminderSettings(defaults: defaults),
-            now: Date(),
-            version: Bundle.main.infoDictionary!["CFBundleShortVersionString"] as! String,
-            output: storeWindowPresenter
-        )
-
-        userAgentStart = UserAgentStartUseCase(agent: userAgent, factory: PurchaseCheckUseCaseFactory(receipt: receipt))
-
-        let storeEventTargets = StoreEventTargets(
-            targets: [storeViewEventTarget, ObjCStoreEventTargetAdapter(target: storeEventTarget)]
-        )
-
-        storeEventSource = SKPaymentQueueStoreEventSource(
-            queue: SKPaymentQueue.default(),
-            target: ReceiptValidatingStoreEventTarget(origin: storeEventTargets, receipt: receipt)
-        )
 
         let userAgentEventsUserAgentSoundIOSelection = UserAgentEventsUserAgentSoundIOSelectionUseCase(
             useCase: UserAgentSoundIOSelectionUseCase(
@@ -249,16 +204,10 @@ final class CompositionRoot: NSObject {
                 histories: callHistories,
                 index: contactMatchingIndex,
                 settings: contactMatchingSettings,
-                receipt: receipt,
                 dateFormatter: ShortRelativeDateTimeFormatter(),
                 durationFormatter: DurationFormatter(),
-                storeEventTargets: storeEventTargets,
                 dayChangeEventTargets: dayChangeEventTargets
             )
-        )
-
-        callHistoryPurchaseCheckUseCaseFactory = AsyncCallHistoryPurchaseCheckUseCaseFactory(
-            origin: CallHistoryPurchaseCheckUseCaseFactory(histories: callHistories, receipt: receipt)
         )
 
         logFileURL = LogFileURL(locations: applicationDataLocations, filename: "Telephone.log")

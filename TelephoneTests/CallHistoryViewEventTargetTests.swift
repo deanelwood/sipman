@@ -29,7 +29,6 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         let get = UseCaseSpy()
         let sut = CallHistoryViewEventTarget(
             recordsGet: get,
-            purchaseCheck: UseCaseSpy(),
             recordRemoveAll: UseCaseSpy(),
             recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
             callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
@@ -40,28 +39,12 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         XCTAssertTrue(get.didCallExecute)
     }
 
-    func testExecutesPurchaseCheckUseCaseOnShouldReloadData() {
-        let purchaseCheck = UseCaseSpy()
-        let sut = CallHistoryViewEventTarget(
-            recordsGet: UseCaseSpy(),
-            purchaseCheck: purchaseCheck,
-            recordRemoveAll: UseCaseSpy(),
-            recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
-            callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
-        )
-
-        sut.shouldReloadData()
-
-        XCTAssertTrue(purchaseCheck.didCallExecute)
-    }
-
     // MARK: - Did update history
 
     func testExecutesCallHistoryRecordGetAllUseCaseOnDidUpdateHistory() {
         let didExecuteRecordsGet = expectation(description: "Calls execute on records get")
         let sut = CallHistoryViewEventTarget(
             recordsGet: UseCaseSpy(callBack: didExecuteRecordsGet.fulfill),
-            purchaseCheck: UseCaseSpy(),
             recordRemoveAll: UseCaseSpy(),
             recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
             callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
@@ -70,85 +53,6 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         sut.didUpdate(TruncatingCallHistory())
 
         wait(for: [didExecuteRecordsGet], timeout: 1)
-    }
-
-    func testExecutesPurchaseCheckUseCaseOnDidUpdateHistory() {
-        let didExecutePurchaseCheck = expectation(description: "Calls execute on purchase check")
-        let sut = CallHistoryViewEventTarget(
-            recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(callBack: didExecutePurchaseCheck.fulfill),
-            recordRemoveAll: UseCaseSpy(),
-            recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
-            callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
-        )
-
-        sut.didUpdate(TruncatingCallHistory())
-
-        wait(for: [didExecutePurchaseCheck], timeout: 1)
-    }
-
-    // MARK: - Did purchase
-
-    func testExecutesCallHistoryRecordGetAllUseCaseOnDidPurchase() {
-        let didExecuteRecordsGet = expectation(description: "Calls execute on records get")
-        let sut = CallHistoryViewEventTarget(
-            recordsGet: UseCaseSpy(callBack: didExecuteRecordsGet.fulfill),
-            purchaseCheck: UseCaseSpy(),
-            recordRemoveAll: UseCaseSpy(),
-            recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
-            callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
-        )
-
-        sut.didPurchase()
-
-        wait(for: [didExecuteRecordsGet], timeout: 1)
-    }
-
-    func testExecutesPurchaseCheckUseCaseOnDidPurchase() {
-        let didExecutePurchaseCheck = expectation(description: "Calls execute on purchase check")
-        let sut = CallHistoryViewEventTarget(
-            recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(callBack: didExecutePurchaseCheck.fulfill),
-            recordRemoveAll: UseCaseSpy(),
-            recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
-            callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
-        )
-
-        sut.didPurchase()
-
-        wait(for: [didExecutePurchaseCheck], timeout: 1)
-    }
-
-    // MARK: - Did restore purchases
-
-    func testExecutesCallHistoryRecordGetAllUseCaseOnDidRestorePurchases() {
-        let didExecuteRecordsGet = expectation(description: "Calls execute on records get")
-        let sut = CallHistoryViewEventTarget(
-            recordsGet: UseCaseSpy(callBack: didExecuteRecordsGet.fulfill),
-            purchaseCheck: UseCaseSpy(),
-            recordRemoveAll: UseCaseSpy(),
-            recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
-            callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
-        )
-
-        sut.didRestorePurchases()
-
-        wait(for: [didExecuteRecordsGet], timeout: 1)
-    }
-
-    func testExecutesPurchaseCheckUseCaseOnDidRestorePurchases() {
-        let didExecutePurchaseCheck = expectation(description: "Calls execute on purchase check")
-        let sut = CallHistoryViewEventTarget(
-            recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(callBack: didExecutePurchaseCheck.fulfill),
-            recordRemoveAll: UseCaseSpy(),
-            recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
-            callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
-        )
-
-        sut.didRestorePurchases()
-
-        wait(for: [didExecutePurchaseCheck], timeout: 1)
     }
 
     // MARK: - Day did change
@@ -157,7 +61,6 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         let didExecuteRecordsGet = expectation(description: "Calls execute on records get")
         let sut = CallHistoryViewEventTarget(
             recordsGet: UseCaseSpy(callBack: didExecuteRecordsGet.fulfill),
-            purchaseCheck: UseCaseSpy(),
             recordRemoveAll: UseCaseSpy(),
             recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
             callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
@@ -168,28 +71,12 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         wait(for: [didExecuteRecordsGet], timeout: 1)
     }
 
-    func testExecutesPurchaseCheckUseCaseOnDayDidChange() {
-        let didExecutePurchaseCheck = expectation(description: "Calls execute on purchase check")
-        let sut = CallHistoryViewEventTarget(
-            recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(callBack: didExecutePurchaseCheck.fulfill),
-            recordRemoveAll: UseCaseSpy(),
-            recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
-            callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
-        )
-
-        sut.dayDidChange()
-
-        wait(for: [didExecutePurchaseCheck], timeout: 1)
-    }
-
     // MARK: - Should remove all records
 
     func testExecutesCallHistoryRecordRemoveAllUseCaseOnShouldRemoveAllRecords() {
         let remove = UseCaseSpy()
         let sut = CallHistoryViewEventTarget(
             recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(),
             recordRemoveAll: remove,
             recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
             callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
@@ -206,7 +93,6 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         let factory = CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
         let sut = CallHistoryViewEventTarget(
             recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(),
             recordRemoveAll: UseCaseSpy(),
             recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
             callMake: factory
@@ -222,7 +108,6 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         let callMake = UseCaseSpy()
         let sut = CallHistoryViewEventTarget(
             recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(),
             recordRemoveAll: UseCaseSpy(),
             recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy()),
             callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: callMake)
@@ -239,7 +124,6 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         let factory = CallHistoryRecordRemoveUseCaseFactorySpy(remove: UseCaseSpy())
         let sut = CallHistoryViewEventTarget(
             recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(),
             recordRemoveAll: UseCaseSpy(),
             recordRemove: factory,
             callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())
@@ -255,7 +139,6 @@ final class CallHistoryViewEventTargetTests: XCTestCase {
         let remove = UseCaseSpy()
         let sut = CallHistoryViewEventTarget(
             recordsGet: UseCaseSpy(),
-            purchaseCheck: UseCaseSpy(),
             recordRemoveAll: UseCaseSpy(),
             recordRemove: CallHistoryRecordRemoveUseCaseFactorySpy(remove: remove),
             callMake: CallHistoryCallMakeUseCaseFactorySpy(callMake: UseCaseSpy())

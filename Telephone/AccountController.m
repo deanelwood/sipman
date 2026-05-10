@@ -181,9 +181,7 @@ static NSString * const kRussian = @"ru";
                          userAgent:(AKSIPUserAgent *)userAgent
                   ringtonePlayback:(id<RingtonePlaybackUseCase>)ringtonePlayback
                        sleepStatus:(WorkspaceSleepStatus *)sleepStatus
- callHistoryViewEventTargetFactory:(AsyncCallHistoryViewEventTargetFactory *)callHistoryViewEventTargetFactory
-       purchaseCheckUseCaseFactory:(AsyncCallHistoryPurchaseCheckUseCaseFactory *)purchaseCheckUseCaseFactory
-              storeWindowPresenter:(StoreWindowPresenter *)storeWindowPresenter{
+ callHistoryViewEventTargetFactory:(AsyncCallHistoryViewEventTargetFactory *)callHistoryViewEventTargetFactory {
 
     self = [super init];
     if (self == nil) {
@@ -201,12 +199,10 @@ static NSString * const kRussian = @"ru";
     _destinationToCall = @"";
 
     _accountViewController
-    = [[AccountViewController alloc] initWithActiveAccountViewController:[[ActiveAccountViewController alloc] initWithAccountController:self]
-                                               callHistoryViewController:[[CallHistoryViewController alloc] init]
-                                       callHistoryViewEventTargetFactory:callHistoryViewEventTargetFactory
-                                             purchaseCheckUseCaseFactory:purchaseCheckUseCaseFactory
-                                                                 account:[[AccountControllerToAccountAdapter alloc] initWithController:self]
-                                                    storeWindowPresenter:storeWindowPresenter];
+	    = [[AccountViewController alloc] initWithActiveAccountViewController:[[ActiveAccountViewController alloc] initWithAccountController:self]
+	                                               callHistoryViewController:[[CallHistoryViewController alloc] init]
+	                                       callHistoryViewEventTargetFactory:callHistoryViewEventTargetFactory
+	                                                                 account:[[AccountControllerToAccountAdapter alloc] initWithController:self]];
     _windowController = [[AccountWindowController alloc] initWithAccountDescription:_accountDescription
                                                                          SIPAddress:_account.SIPAddress
                                                               accountViewController:_accountViewController
