@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added third-party dependency notices for the linked PJSIP, LibreSSL, Opus,
+  and bundled codec libraries, documented distribution license files, and
+  bumped the build number to 171.
 - Added a Settings SIP Log tab with live rolling PJSIP stack output, kept the
   app log file in sync with the live feed, and bumped the build number to 170.
 - Stopped live call timer/stat refreshes from forcing navigation back to the

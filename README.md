@@ -51,6 +51,14 @@ Run an individual shared test scheme:
 
     $ scripts/test.sh --scheme TelephoneTests
 
+## Licensing
+
+SIPMan is GPL-3.0-or-later. See `LICENSE`.
+
+Third-party dependency notices are maintained in `THIRD_PARTY_NOTICES.md`.
+Source and binary distributions should include that file along with
+`COPYING.GPL-2.0`, `COPYING.LGPL-2.1`, and `COPYING.LibreSSL`.
+
 The dependency build can also be run manually.
 
 The commands below build arm64 static libraries for a local Apple
