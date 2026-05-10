@@ -25,14 +25,6 @@ final class HelpMenuActionRedirect: NSObject {
         target?.showLogFile()
     }
 
-    @IBAction func openHomepage(_ sender: NSMenuItem) {
-        target?.openHomepage()
-    }
-
-    @IBAction func openFAQ(_ sender: NSMenuItem) {
-        target?.openFAQ()
-    }
-
     @IBAction func copySettings(_ sender: NSMenuItem) {
         target?.copySettings()
     }

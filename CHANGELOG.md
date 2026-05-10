@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Removed former-author website, FAQ, terms, privacy, subscription
+  management, Credits blurb, and new-file template header references from
+  first-party app surfaces, and bumped the build number to 166.
 - Added a libPhoneNumber-iOS-backed display path for regular phone numbers,
   applied pretty formatting across call, history, and message presentation,
   and bumped the build number to 165.

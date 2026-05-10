@@ -218,10 +218,7 @@ final class CompositionRoot: NSObject {
 
         helpMenuActionTarget = HelpMenuActionTarget(
             logFileURL: logFileURL,
-            homepageURL: URL(string: "https://www.64characters.com/telephone/")!,
-            faqURL: URL(string: "https://www.64characters.com/telephone/faq/")!,
             fileBrowser: NSWorkspace.shared,
-            webBrowser: NSWorkspace.shared,
             clipboard: NSPasteboard.general,
             settings: AppSettings(
                 settings: defaults,

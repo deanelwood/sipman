@@ -26,10 +26,7 @@ final class HelpMenuActionTargetTests: XCTestCase {
         let browser = FileBrowserSpy()
         let sut = HelpMenuActionTarget(
             logFileURL: url,
-            homepageURL: URL(string: "http://homepage.local")!,
-            faqURL: URL(string: "http://faq.local")!,
             fileBrowser: browser,
-            webBrowser: WebBrowserSpy(),
             clipboard: ClipboardSpy(),
             settings: makeSettingsDummy()
         )
@@ -37,42 +34,6 @@ final class HelpMenuActionTargetTests: XCTestCase {
         sut.showLogFile()
 
         XCTAssertEqual(browser.invokedURL, url.urlValue)
-    }
-
-    func testOpensHomepageInWebBrowserOnOpenHomepage() {
-        let url = URL(string: "http://homepage.local")!
-        let browser = WebBrowserSpy()
-        let sut = HelpMenuActionTarget(
-            logFileURL: LogFileURL(locations: ApplicationDataLocationsFake(), filename: "any"),
-            homepageURL: url,
-            faqURL: URL(string: "http://faq.local")!,
-            fileBrowser: FileBrowserSpy(),
-            webBrowser: browser,
-            clipboard: ClipboardSpy(),
-            settings: makeSettingsDummy()
-        )
-
-        sut.openHomepage()
-
-        XCTAssertEqual(browser.invokedURL, url)
-    }
-
-    func testOpensFAQInWebBrowserOnOpenFAQ() {
-        let url = URL(string: "http://faq.local")!
-        let browser = WebBrowserSpy()
-        let sut = HelpMenuActionTarget(
-            logFileURL: LogFileURL(locations: ApplicationDataLocationsFake(), filename: "any"),
-            homepageURL: URL(string: "http://homepage.local")!,
-            faqURL: url,
-            fileBrowser: FileBrowserSpy(),
-            webBrowser: browser,
-            clipboard: ClipboardSpy(),
-            settings: makeSettingsDummy()
-        )
-
-        sut.openFAQ()
-
-        XCTAssertEqual(browser.invokedURL, url)
     }
 
     func testCopiesSettingsToClipboardOnCopySettings() {
@@ -83,10 +44,7 @@ final class HelpMenuActionTargetTests: XCTestCase {
         let appSettings = AppSettings(settings: settings, defaults: [:], accountDefaults: [:])
         let sut = HelpMenuActionTarget(
             logFileURL: LogFileURL(locations: ApplicationDataLocationsFake(), filename: "any"),
-            homepageURL: URL(string: "http://homepage.local")!,
-            faqURL: URL(string: "http://faq.local")!,
             fileBrowser: FileBrowserSpy(),
-            webBrowser: WebBrowserSpy(),
             clipboard: clipboard,
             settings: appSettings
         )
