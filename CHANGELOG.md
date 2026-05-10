@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Made Calling's Keypad/Contacts switch more obvious, added contact-load
+  diagnostics for empty local contact results, and bumped the build number
+  to 180.
 - Added open-source project housekeeping docs for contributing, conduct,
   security reporting, issue templates, and pull request review expectations.
 - Added Account settings for username/password visibility plus editable ICE,

@@ -102,6 +102,15 @@ final class SoftphoneDialPadTests: XCTestCase {
         XCTAssertEqual(sut.rows[1].label, "work")
     }
 
+    func testCallingContactsModelDropsContactsWithoutCallableNumbers() {
+        let sut = SoftphoneCallingContactsModel(contacts: [
+            Contact(name: "No Phone", phones: [], emails: []),
+            Contact(name: "Blank Phone", phones: [Contact.Phone(number: " ", label: "work")], emails: [])
+        ])
+
+        XCTAssertTrue(sut.rows.isEmpty)
+    }
+
     func testCallingContactsModelFiltersByNameLabelAndNumber() {
         let sut = SoftphoneCallingContactsModel(contacts: [
             Contact(name: "Alice", phones: [Contact.Phone(number: "1001", label: "mobile")], emails: []),

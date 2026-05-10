@@ -430,6 +430,15 @@ private enum SoftphoneCallingTab: String, CaseIterable, Identifiable {
             return "Contacts"
         }
     }
+
+    var systemImage: String {
+        switch self {
+        case .keypad:
+            return "circle.grid.3x3.fill"
+        case .contacts:
+            return "person.crop.circle"
+        }
+    }
 }
 
 private enum SoftphoneContactAccessState: Equatable {
@@ -444,6 +453,8 @@ private enum SoftphoneContactAccessState: Equatable {
 private final class SoftphoneContactBrowserStore: ObservableObject {
     @Published private(set) var accessState: SoftphoneContactAccessState = .idle
     @Published private(set) var model = SoftphoneCallingContactsModel(contacts: [])
+    @Published private(set) var loadedContactCount = 0
+    @Published private(set) var loadedPhoneNumberCount = 0
 
     private let store = CNContactStore()
 
@@ -482,11 +493,16 @@ private final class SoftphoneContactBrowserStore: ObservableObject {
         do {
             var contacts: [Contact] = []
             let request = CNContactFetchRequest(keysToFetch: SoftphoneContactBrowserStore.keysToFetch)
+            request.sortOrder = .userDefault
             try store.enumerateContacts(with: request) { contact, _ in
                 contacts.append(Contact(contact))
             }
+            loadedContactCount = contacts.count
+            loadedPhoneNumberCount = contacts.reduce(0) { $0 + $1.phones.count }
             model = SoftphoneCallingContactsModel(contacts: contacts)
         } catch {
+            loadedContactCount = 0
+            loadedPhoneNumberCount = 0
             accessState = .failed(error.localizedDescription)
         }
     }
@@ -512,14 +528,8 @@ private struct SoftphoneCallingScreen: View {
     var body: some View {
         VStack(spacing: 14) {
             if activeCall == nil {
-                Picker("", selection: $selectedTab) {
-                    ForEach(SoftphoneCallingTab.allCases) { tab in
-                        Text(tab.title).tag(tab)
-                    }
-                }
-                .pickerStyle(.segmented)
-                .labelsHidden()
-                .frame(width: 260)
+                SoftphoneCallingTabControl(selectedTab: $selectedTab)
+                    .frame(maxWidth: 360)
             }
 
             Group {
@@ -554,6 +564,37 @@ private struct SoftphoneCallingScreen: View {
                 selectedTab = .keypad
             }
         }
+    }
+}
+
+private struct SoftphoneCallingTabControl: View {
+    @Binding var selectedTab: SoftphoneCallingTab
+
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(SoftphoneCallingTab.allCases) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    Label(tab.title, systemImage: tab.systemImage)
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundStyle(selectedTab == tab ? SoftphoneTheme.text : SoftphoneTheme.muted)
+                        .frame(maxWidth: .infinity)
+                        .frame(height: 42)
+                        .background(selectedTab == tab ? SoftphoneTheme.selectedControlBackground : Color.clear)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                                .stroke(selectedTab == tab ? SoftphoneTheme.blue.opacity(0.34) : Color.clear, lineWidth: 1)
+                        )
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Show \(tab.title.lowercased())")
+            }
+        }
+        .padding(4)
+        .background(SoftphoneTheme.fieldBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -597,9 +638,19 @@ private struct SoftphoneContactsScreen: View {
                 .background(SoftphoneTheme.rowBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         case .denied:
-            SoftphoneEmptyState(title: "Contacts unavailable", subtitle: "Enable Contacts access for SIPMan in System Settings.")
-                .background(SoftphoneTheme.rowBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            VStack(spacing: 14) {
+                SoftphoneEmptyState(title: "Contacts unavailable", subtitle: "Enable Contacts access for SIPMan in System Settings.")
+                    .frame(maxHeight: 140)
+                Button {
+                    openContactsPrivacySettings()
+                } label: {
+                    Label("Open Settings", systemImage: "gear")
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle(width: 170))
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(SoftphoneTheme.rowBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         case .failed(let message):
             SoftphoneEmptyState(title: "Contacts failed", subtitle: message)
                 .background(SoftphoneTheme.rowBackground)
@@ -607,7 +658,7 @@ private struct SoftphoneContactsScreen: View {
         case .authorized:
             let rows = contactStore.model.rows(matching: query)
             if rows.isEmpty {
-                SoftphoneEmptyState(title: "No contacts", subtitle: query.isEmpty ? "Contacts with phone numbers will appear here." : "No contacts match this search.")
+                SoftphoneEmptyState(title: emptyContactsTitle, subtitle: emptyContactsSubtitle)
                     .background(SoftphoneTheme.rowBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             } else {
@@ -623,6 +674,33 @@ private struct SoftphoneContactsScreen: View {
                 }
             }
         }
+    }
+
+    private var emptyContactsTitle: String {
+        query.isEmpty ? "No phone numbers" : "No contacts"
+    }
+
+    private var emptyContactsSubtitle: String {
+        if !query.isEmpty {
+            return "No contacts match this search."
+        }
+
+        if contactStore.loadedContactCount == 0 {
+            return "SIPMan has Contacts access, but macOS returned no contacts."
+        }
+
+        if contactStore.loadedPhoneNumberCount == 0 {
+            return "Loaded \(contactStore.loadedContactCount) contacts, but none had phone numbers."
+        }
+
+        return "Loaded \(contactStore.loadedContactCount) contacts and \(contactStore.loadedPhoneNumberCount) phone numbers, but none were callable."
+    }
+
+    private func openContactsPrivacySettings() {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts") else {
+            return
+        }
+        NSWorkspace.shared.open(url)
     }
 }
 
