@@ -47,6 +47,25 @@ struct SoftphoneCallHistoryRowModel: Equatable, Identifiable {
     }
 }
 
+enum SoftphoneCallHistoryFilter: String, CaseIterable, Identifiable {
+    case all
+    case inbound
+    case outbound
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "All"
+        case .inbound:
+            return "Inbound"
+        case .outbound:
+            return "Outbound"
+        }
+    }
+}
+
 @MainActor
 @objc
 final class SoftphoneCallHistoryStore: NSObject, ObservableObject {
@@ -54,6 +73,17 @@ final class SoftphoneCallHistoryStore: NSObject, ObservableObject {
 
     @objc override init() {
         super.init()
+    }
+
+    func rows(matching filter: SoftphoneCallHistoryFilter) -> [SoftphoneCallHistoryRowModel] {
+        switch filter {
+        case .all:
+            return rows
+        case .inbound:
+            return rows.filter(\.isIncoming)
+        case .outbound:
+            return rows.filter { !$0.isIncoming }
+        }
     }
 }
 

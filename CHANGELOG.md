@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Wired the History All, Inbound, and Outbound filters to the call-history
+  row source, and bumped the build number to 161.
 - Tightened the SwiftUI sidebar width and navigation spacing to give the
   main softphone content more room, and bumped the build number to 160.
 - Moved the Messages search field into the top status row beside the

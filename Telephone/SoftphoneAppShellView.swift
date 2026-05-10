@@ -888,6 +888,8 @@ private struct SoftphoneHistoryScreen: View {
     @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
     let onPickRecord: (String) -> Void
 
+    @State private var selectedFilter: SoftphoneCallHistoryFilter = .all
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -899,15 +901,15 @@ private struct SoftphoneHistoryScreen: View {
                         .foregroundStyle(SoftphoneTheme.muted)
                 }
                 Spacer()
-                SoftphoneSegmentedPlaceholder()
+                SoftphoneHistoryFilterControl(selectedFilter: $selectedFilter)
             }
             Divider()
-            if callHistoryStore.rows.isEmpty {
-                SoftphoneEmptyState(title: "No recent calls", subtitle: "Completed and missed calls will appear here.")
+            if filteredRows.isEmpty {
+                SoftphoneEmptyState(title: emptyStateTitle, subtitle: emptyStateSubtitle)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 6) {
-                        ForEach(callHistoryStore.rows) { row in
+                        ForEach(filteredRows) { row in
                             SoftphoneCallHistoryRow(row: row) {
                                 onPickRecord(row.id)
                             }
@@ -918,6 +920,18 @@ private struct SoftphoneHistoryScreen: View {
             }
             Spacer()
         }
+    }
+
+    private var filteredRows: [SoftphoneCallHistoryRowModel] {
+        callHistoryStore.rows(matching: selectedFilter)
+    }
+
+    private var emptyStateTitle: String {
+        selectedFilter == .all ? "No recent calls" : "No \(selectedFilter.title.lowercased()) calls"
+    }
+
+    private var emptyStateSubtitle: String {
+        selectedFilter == .all ? "Completed and missed calls will appear here." : "Calls matching this filter will appear here."
     }
 }
 
@@ -1096,12 +1110,21 @@ private struct SoftphoneAvatar: View {
     }
 }
 
-private struct SoftphoneSegmentedPlaceholder: View {
+private struct SoftphoneHistoryFilterControl: View {
+    @Binding var selectedFilter: SoftphoneCallHistoryFilter
+
     var body: some View {
         HStack(spacing: 3) {
-            Text("All").softphoneSegment(isSelected: true)
-            Text("Inbound").softphoneSegment(isSelected: false)
-            Text("Outbound").softphoneSegment(isSelected: false)
+            ForEach(SoftphoneCallHistoryFilter.allCases) { filter in
+                Button {
+                    selectedFilter = filter
+                } label: {
+                    Text(filter.title)
+                        .softphoneSegment(isSelected: selectedFilter == filter)
+                }
+                .buttonStyle(.plain)
+                .help("Show \(filter.title.lowercased()) calls")
+            }
         }
         .padding(4)
         .background(SoftphoneTheme.fieldBackground)
