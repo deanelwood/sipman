@@ -31,13 +31,14 @@ protocol SoftphoneCallTarget: AnyObject {
 @objcMembers
 final class SoftphoneAppShellViewFactory: NSObject {
     @MainActor
-    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:callHistoryStore:messageStore:)
+    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:callHistoryStore:messageStore:diagnosticsStore:)
     static func makeView(
         callTarget: SoftphoneCallTarget,
         accountDisplayName: String,
         sipAddress: String,
         callHistoryStore: SoftphoneCallHistoryStore,
-        messageStore: SoftphoneMessageStore
+        messageStore: SoftphoneMessageStore,
+        diagnosticsStore: SoftphoneDiagnosticsStore
     ) -> NSView {
         let view = NSHostingView(
             rootView: SoftphoneAppShellView(
@@ -45,6 +46,7 @@ final class SoftphoneAppShellViewFactory: NSObject {
                 sipAddress: sipAddress,
                 callHistoryStore: callHistoryStore,
                 messageStore: messageStore,
+                diagnosticsStore: diagnosticsStore,
                 onCall: { [weak callTarget] destination in
                     callTarget?.softphoneMakeCall(to: destination)
                 },
@@ -63,6 +65,7 @@ struct SoftphoneAppShellView: View {
     let sipAddress: String
     @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
     @ObservedObject var messageStore: SoftphoneMessageStore
+    @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
 
@@ -79,7 +82,7 @@ struct SoftphoneAppShellView: View {
             Divider()
             VStack(spacing: 0) {
                 SoftphoneTopStatusBar(
-                    registrationState: .offline,
+                    registrationState: diagnosticsStore.snapshot.registrationState,
                     accountDisplayName: accountDisplayName,
                     sipAddress: sipAddress
                 )
@@ -89,6 +92,7 @@ struct SoftphoneAppShellView: View {
                     dialPad: $dialPad,
                     callHistoryStore: callHistoryStore,
                     messageStore: messageStore,
+                    diagnosticsStore: diagnosticsStore,
                     onCall: onCall,
                     onPickCallHistoryRecord: onPickCallHistoryRecord
                 )
@@ -135,25 +139,7 @@ enum SoftphoneNavigationItem: String, CaseIterable, Identifiable {
     }
 }
 
-enum SoftphoneRegistrationState {
-    case registered
-    case registering
-    case failed
-    case offline
-
-    var title: String {
-        switch self {
-        case .registered:
-            return "Registered"
-        case .registering:
-            return "Registering"
-        case .failed:
-            return "Registration failed"
-        case .offline:
-            return "Offline"
-        }
-    }
-
+private extension SoftphoneRegistrationState {
     var color: Color {
         switch self {
         case .registered:
@@ -313,6 +299,7 @@ private struct SoftphoneMainContent: View {
     @Binding var dialPad: SoftphoneDialPad
     @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
     @ObservedObject var messageStore: SoftphoneMessageStore
+    @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
 
@@ -326,7 +313,7 @@ private struct SoftphoneMainContent: View {
             case .history:
                 SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
             case .settings:
-                SoftphoneSettingsPlaceholder()
+                SoftphoneSettingsScreen(diagnosticsStore: diagnosticsStore)
             }
         }
         .padding(22)
@@ -491,17 +478,19 @@ private struct SoftphoneHistoryScreen: View {
     }
 }
 
-private struct SoftphoneSettingsPlaceholder: View {
+private struct SoftphoneSettingsScreen: View {
+    @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
+
     var body: some View {
         HStack(alignment: .top, spacing: 18) {
             VStack(alignment: .leading, spacing: 14) {
                 SoftphoneSectionHeader(title: "Account", subtitle: "SIP account configuration.")
-                SoftphoneLabeledField(label: "Username", value: "")
-                SoftphoneLabeledField(label: "Password", value: "", isSecure: true)
-                SoftphoneLabeledField(label: "Domain", value: "")
+                SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
+                SoftphoneLabeledField(label: "SIP address", value: diagnosticsStore.snapshot.sipAddress)
+                SoftphoneLabeledField(label: "Domain", value: diagnosticsStore.snapshot.domain)
                 HStack {
-                    SoftphoneLabeledField(label: "Transport", value: "UDP")
-                    SoftphoneLabeledField(label: "Port", value: "5060")
+                    SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
+                    SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
                 }
                 Spacer()
             }
@@ -509,9 +498,12 @@ private struct SoftphoneSettingsPlaceholder: View {
             VStack(alignment: .leading, spacing: 14) {
                 SoftphoneSectionHeader(title: "Diagnostics", subtitle: "Registration and SIP troubleshooting.")
                 HStack(spacing: 8) {
-                    SoftphoneDiagnosticTile(label: "Registration", value: "Offline")
-                    SoftphoneDiagnosticTile(label: "Last registered", value: "--")
-                    SoftphoneDiagnosticTile(label: "Transport", value: "UDP - 5060")
+                    SoftphoneDiagnosticTile(label: "Registration", value: diagnosticsStore.snapshot.registrationState.title)
+                    SoftphoneDiagnosticTile(label: "Last registered", value: diagnosticsStore.snapshot.lastRegistration)
+                    SoftphoneDiagnosticTile(
+                        label: "Transport",
+                        value: "\(diagnosticsStore.snapshot.transport) - \(diagnosticsStore.snapshot.port)"
+                    )
                 }
                 SoftphoneLogPlaceholder()
                 Spacer()

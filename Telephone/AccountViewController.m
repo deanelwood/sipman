@@ -34,6 +34,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 @property(nonatomic) CallHistoryViewEventTarget *callHistoryViewEventTarget;
 @property(nonatomic) SoftphoneCallHistoryStore *softphoneCallHistoryStore;
 @property(nonatomic) SoftphoneMessageStore *softphoneMessageStore;
+@property(nonatomic) SoftphoneDiagnosticsStore *softphoneDiagnosticsStore;
 
 @property(nonatomic, weak) IBOutlet NSView *activeAccountView;
 @property(nonatomic, weak) IBOutlet NSView *callHistoryView;
@@ -92,6 +93,9 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     self.softphoneCallHistoryStore = [[SoftphoneCallHistoryStore alloc] init];
     self.softphoneMessageStore = [[SoftphoneMessageStore alloc] initWithAccountUUID:self.account.uuid
                                                                      accountAddress:self.account.domain];
+    self.softphoneDiagnosticsStore = [[SoftphoneDiagnosticsStore alloc] initWithAccountUUID:self.account.uuid
+                                                                                     domain:self.account.domain
+                                                                                 sipAddress:self.account.domain];
 
     [self.callHistoryViewEventTargetFactory makeWithAccount:self.account
                                                        view:self.softphoneCallHistoryStore
@@ -110,11 +114,13 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
         self.activeAccountViewHeightConstraint.animator.constant = self.originalActiveAccountViewHeight;
         self.horizontalLineHeightConstraint.animator.constant = self.originalHorizontalLineHeight;
     } completionHandler:^{
+        [self.softphoneDiagnosticsStore markRegistered];
         [self.activeAccountViewController allowCallDestinationInput];
     }];
 }
 
 - (void)showInactiveStateAnimated:(BOOL)animated {
+    [self.softphoneDiagnosticsStore markOffline];
     [self.activeAccountViewController disallowCallDestinationInput];
     if (animated) {
         self.activeAccountViewHeightConstraint.animator.constant = 0;
@@ -136,7 +142,8 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
                                                                    accountDisplayName:self.account.domain
                                                                            sipAddress:self.account.domain
                                                                    callHistoryStore:self.softphoneCallHistoryStore
-                                                                       messageStore:self.softphoneMessageStore];
+                                                                       messageStore:self.softphoneMessageStore
+                                                                   diagnosticsStore:self.softphoneDiagnosticsStore];
     [self.view addSubview:self.softphoneAppShellView];
     [self.view addConstraints:FullSizeConstraintsForView(self.softphoneAppShellView)];
 }
