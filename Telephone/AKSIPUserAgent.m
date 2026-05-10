@@ -50,7 +50,7 @@ static const NSInteger kAKSIPUserAgentNameServersMax = 4;
 // User agent defaults.
 static const NSInteger kAKSIPUserAgentDefaultOutboundProxyPort = 5060;
 static const NSInteger kAKSIPUserAgentDefaultSTUNServerPort = 3478;
-static const NSInteger kAKSIPUserAgentDefaultLogLevel = 3;
+static const NSInteger kAKSIPUserAgentDefaultLogLevel = 5;
 static const NSInteger kAKSIPUserAgentDefaultConsoleLogLevel = 0;
 static const BOOL kAKSIPUserAgentDefaultDetectsVoiceActivity = YES;
 static const BOOL kAKSIPUserAgentDefaultUsesICE = NO;
@@ -571,7 +571,10 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
 
     SoftphoneOpenPJSIPLogFile([self logFileName]);
 
-    loggingConfig.level = (unsigned)[self logLevel];
+    // PJSIP emits full incoming/outgoing SIP messages at verbose level 5.
+    // Keep the callback at that level so the in-app live SIP log is useful,
+    // while leaving console output controlled separately below.
+    loggingConfig.level = (unsigned)MAX([self logLevel], 5);
     loggingConfig.console_level = (unsigned)[self consoleLogLevel];
     loggingConfig.cb = &SoftphonePJSIPLogCallback;
     SoftphonePJSIPConsoleLogLevel = loggingConfig.console_level;

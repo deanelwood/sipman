@@ -551,7 +551,9 @@ NS_ASSUME_NONNULL_END
                                       NSBundle.mainBundle.infoDictionary[@"CFBundleName"],
                                       NSBundle.mainBundle.infoDictionary[@"CFBundleShortVersionString"]];
     self.userAgent.logFileName = self.compositionRoot.logFileURL.pathValue;
-    self.userAgent.logLevel = [defaults integerForKey:UserDefaultsKeys.logLevel];
+    // SIPMan's live SIP log needs PJSIP message logs, which are emitted at
+    // level 5. Console logging stays governed by ConsoleLogLevel below.
+    self.userAgent.logLevel = MAX([defaults integerForKey:UserDefaultsKeys.logLevel], 5);
     self.userAgent.consoleLogLevel = [defaults integerForKey:UserDefaultsKeys.consoleLogLevel];
     self.userAgent.detectsVoiceActivity = [defaults boolForKey:UserDefaultsKeys.voiceActivityDetection];
     self.userAgent.usesICE = [defaults boolForKey:UserDefaultsKeys.useICE];

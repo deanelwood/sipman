@@ -29,6 +29,15 @@ final class DefaultAppSettingsTests: XCTestCase {
         XCTAssertFalse(settings.registeredDefaults.isEmpty)
     }
 
+    func testRegistersVerboseLogLevelForLiveSIPLog() {
+        let settings = SettingsFake()
+        let sut = DefaultAppSettings(settings: settings, localization: "any")
+
+        sut.register()
+
+        XCTAssertEqual(settings.registeredDefaults[UserDefaultsKeys.logLevel] as! Int, 5)
+    }
+
     func testFormatTelephoneNumbersIsFalseForGermanLocalization() {
         let settings = SettingsFake()
         let sut = DefaultAppSettings(settings: settings, localization: "de")

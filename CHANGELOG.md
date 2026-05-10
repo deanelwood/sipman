@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Raised PJSIP logging used by the live SIP Log tab to level 5 so SIP packet
+  lines are captured for new and existing installs, and bumped the build number
+  to 175.
 - Allowed the SIP Ping tool to send OPTIONS probes without requiring the
   selected account to be registered, and bumped the build number to 174.
 - Made the Settings Diagnostics pane vertically scrollable so long live-call
