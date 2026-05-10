@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Moved CodeQL Swift dependency bootstrap before CodeQL initialization so the
+  scanner traces the app build rather than the third-party C dependency build.
 - Made the third-party bootstrap script pass explicit configure host triples for
   single-architecture dependency builds so CI/CodeQL runner architecture
   detection stays aligned with the requested build architecture.
