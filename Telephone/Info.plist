@@ -50,7 +50,7 @@
 	<key>NSAppleEventsUsageDescription</key>
 	<string>This can be used to pause music playback during phone calls.</string>
 	<key>NSContactsUsageDescription</key>
-	<string>Details from your contacts can be used for displaying names and phone labels and for phone number autocomplete.</string>
+	<string>Details from your contacts can be used to show local contacts and place calls from SIPMan.</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>© 2016–2022 64 Characters</string>
 	<key>NSMainNibFile</key>

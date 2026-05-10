@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Renamed the Keypad navigation item to Calling, added Keypad and Contacts
+  modes for idle calling, kept the in-call DTMF keypad direct, refreshed
+  Contacts permission copy, and bumped the build number to 176.
 - Raised PJSIP logging used by the live SIP Log tab to level 5 so SIP packet
   lines are captured for new and existing installs, and bumped the build number
   to 175.

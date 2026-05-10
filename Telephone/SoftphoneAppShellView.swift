@@ -16,6 +16,7 @@
 //
 
 import AppKit
+import Contacts
 import SwiftUI
 import UseCases
 
@@ -161,7 +162,7 @@ enum SoftphoneNavigationItem: String, CaseIterable, Identifiable {
     var title: String {
         switch self {
         case .keypad:
-            return "Keypad"
+            return "Calling"
         case .messages:
             return "Messages"
         case .history:
@@ -174,7 +175,7 @@ enum SoftphoneNavigationItem: String, CaseIterable, Identifiable {
     var systemImageName: String {
         switch self {
         case .keypad:
-            return "circle.grid.3x3.fill"
+            return "phone.fill"
         case .messages:
             return "message.fill"
         case .history:
@@ -352,6 +353,7 @@ private struct SoftphoneMainContent: View {
     @ObservedObject var messageStore: SoftphoneMessageStore
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
     @ObservedObject var activeCallStore: SoftphoneActiveCallStore
+    @StateObject private var contactBrowserStore = SoftphoneContactBrowserStore()
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
     let onHangUp: (String) -> Void
@@ -363,9 +365,10 @@ private struct SoftphoneMainContent: View {
         Group {
             switch selectedItem {
             case .keypad:
-                SoftphoneKeypadScreen(
+                SoftphoneCallingScreen(
                     dialPad: $dialPad,
                     activeCall: activeCallStore.primaryCall,
+                    contactStore: contactBrowserStore,
                     onCall: onCall,
                     onHangUp: onHangUp,
                     onToggleMute: onToggleMute,
@@ -382,6 +385,321 @@ private struct SoftphoneMainContent: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(22)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private enum SoftphoneCallingTab: String, CaseIterable, Identifiable {
+    case keypad
+    case contacts
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .keypad:
+            return "Keypad"
+        case .contacts:
+            return "Contacts"
+        }
+    }
+}
+
+private enum SoftphoneContactAccessState: Equatable {
+    case idle
+    case requesting
+    case authorized
+    case denied
+    case failed(String)
+}
+
+@MainActor
+private final class SoftphoneContactBrowserStore: ObservableObject {
+    @Published private(set) var accessState: SoftphoneContactAccessState = .idle
+    @Published private(set) var model = SoftphoneCallingContactsModel(contacts: [])
+
+    private let store = CNContactStore()
+
+    func refreshIfAuthorized() {
+        switch CNContactStore.authorizationStatus(for: .contacts) {
+        case .authorized:
+            accessState = .authorized
+            loadContacts()
+        case .denied, .restricted:
+            accessState = .denied
+        case .notDetermined:
+            accessState = .idle
+        @unknown default:
+            accessState = .failed("Contacts are not available on this Mac.")
+        }
+    }
+
+    func requestAccess() {
+        accessState = .requesting
+        store.requestAccess(for: .contacts) { [weak self] granted, error in
+            Task { @MainActor in
+                guard let self else { return }
+                if granted {
+                    self.accessState = .authorized
+                    self.loadContacts()
+                } else if let error {
+                    self.accessState = .failed(error.localizedDescription)
+                } else {
+                    self.accessState = .denied
+                }
+            }
+        }
+    }
+
+    private func loadContacts() {
+        do {
+            var contacts: [Contact] = []
+            let request = CNContactFetchRequest(keysToFetch: SoftphoneContactBrowserStore.keysToFetch)
+            try store.enumerateContacts(with: request) { contact, _ in
+                contacts.append(Contact(contact))
+            }
+            model = SoftphoneCallingContactsModel(contacts: contacts)
+        } catch {
+            accessState = .failed(error.localizedDescription)
+        }
+    }
+
+    private static let keysToFetch: [CNKeyDescriptor] = [
+        CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
+        CNContactPhoneNumbersKey as CNKeyDescriptor
+    ]
+}
+
+private struct SoftphoneCallingScreen: View {
+    @Binding var dialPad: SoftphoneDialPad
+    let activeCall: SoftphoneActiveCallModel?
+    @ObservedObject var contactStore: SoftphoneContactBrowserStore
+    let onCall: (String) -> Void
+    let onHangUp: (String) -> Void
+    let onToggleMute: (String) -> Void
+    let onSendDTMFDigit: (String, String) -> Void
+
+    @State private var selectedTab: SoftphoneCallingTab = .keypad
+
+    var body: some View {
+        VStack(spacing: 14) {
+            if activeCall == nil {
+                Picker("", selection: $selectedTab) {
+                    ForEach(SoftphoneCallingTab.allCases) { tab in
+                        Text(tab.title).tag(tab)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .frame(width: 260)
+            }
+
+            Group {
+                if let activeCall {
+                    SoftphoneKeypadScreen(
+                        dialPad: $dialPad,
+                        activeCall: activeCall,
+                        onCall: onCall,
+                        onHangUp: onHangUp,
+                        onToggleMute: onToggleMute,
+                        onSendDTMFDigit: onSendDTMFDigit
+                    )
+                } else if selectedTab == .contacts {
+                    SoftphoneContactsScreen(contactStore: contactStore, onCall: onCall)
+                } else {
+                    SoftphoneKeypadScreen(
+                        dialPad: $dialPad,
+                        activeCall: nil,
+                        onCall: onCall,
+                        onHangUp: onHangUp,
+                        onToggleMute: onToggleMute,
+                        onSendDTMFDigit: onSendDTMFDigit
+                    )
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .onChange(of: activeCall?.id) { id in
+            if id != nil {
+                selectedTab = .keypad
+            }
+        }
+    }
+}
+
+private struct SoftphoneContactsScreen: View {
+    @ObservedObject var contactStore: SoftphoneContactBrowserStore
+    let onCall: (String) -> Void
+
+    @State private var query = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                SoftphoneSearchTextField(text: $query, placeholder: "Search contacts")
+                Button {
+                    contactStore.refreshIfAuthorized()
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                        .frame(width: 34, height: 34)
+                }
+                .buttonStyle(.plain)
+                .help("Refresh contacts")
+                .disabled(contactStore.accessState != .authorized)
+            }
+
+            content
+        }
+        .frame(maxWidth: 620)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            contactStore.refreshIfAuthorized()
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch contactStore.accessState {
+        case .idle:
+            SoftphoneContactsAccessPrompt(onRequestAccess: contactStore.requestAccess)
+        case .requesting:
+            SoftphoneEmptyState(title: "Requesting contacts", subtitle: "Waiting for macOS permission.")
+                .background(SoftphoneTheme.rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        case .denied:
+            SoftphoneEmptyState(title: "Contacts unavailable", subtitle: "Enable Contacts access for SIPMan in System Settings.")
+                .background(SoftphoneTheme.rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        case .failed(let message):
+            SoftphoneEmptyState(title: "Contacts failed", subtitle: message)
+                .background(SoftphoneTheme.rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        case .authorized:
+            let rows = contactStore.model.rows(matching: query)
+            if rows.isEmpty {
+                SoftphoneEmptyState(title: "No contacts", subtitle: query.isEmpty ? "Contacts with phone numbers will appear here." : "No contacts match this search.")
+                    .background(SoftphoneTheme.rowBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(rows) { row in
+                            SoftphoneContactRow(row: row) {
+                                onCall(row.number)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+}
+
+private struct SoftphoneContactsAccessPrompt: View {
+    let onRequestAccess: () -> Void
+
+    var body: some View {
+        VStack(spacing: 14) {
+            Image(systemName: "person.crop.circle.badge.plus")
+                .font(.system(size: 28, weight: .semibold))
+                .foregroundStyle(SoftphoneTheme.muted)
+            Text("Use local contacts")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SoftphoneTheme.text)
+            Button {
+                onRequestAccess()
+            } label: {
+                Label("Allow Contacts", systemImage: "person.crop.circle")
+            }
+            .buttonStyle(SoftphoneSecondaryButtonStyle(width: 170))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct SoftphoneContactRow: View {
+    let row: SoftphoneCallingContactRowModel
+    let onCall: () -> Void
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "person.crop.circle.fill")
+                .font(.system(size: 24))
+                .foregroundStyle(SoftphoneTheme.muted)
+                .frame(width: 34, height: 34)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(row.name)
+                    .font(.system(size: 14, weight: .bold))
+                    .foregroundStyle(SoftphoneTheme.text)
+                    .lineLimit(1)
+                HStack(spacing: 6) {
+                    Text(row.label)
+                    Text(row.displayNumber)
+                }
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(SoftphoneTheme.muted)
+                .lineLimit(1)
+            }
+
+            Spacer()
+
+            Button {
+                onCall()
+            } label: {
+                Image(systemName: "phone.fill")
+                    .foregroundStyle(.white)
+                    .frame(width: 42, height: 32)
+                    .background(SoftphoneTheme.green)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+            .buttonStyle(.plain)
+            .help("Call \(row.displayNumber)")
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 58)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct SoftphoneSearchTextField: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+
+    func makeNSView(context: Context) -> NSSearchField {
+        let field = NSSearchField()
+        field.placeholderString = placeholder
+        field.delegate = context.coordinator
+        field.sendsSearchStringImmediately = true
+        field.bezelStyle = .roundedBezel
+        return field
+    }
+
+    func updateNSView(_ nsView: NSSearchField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+        nsView.placeholderString = placeholder
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    final class Coordinator: NSObject, NSSearchFieldDelegate {
+        @Binding var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSSearchField else { return }
+            text = field.stringValue
+        }
     }
 }
 

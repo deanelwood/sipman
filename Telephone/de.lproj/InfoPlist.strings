@@ -3,5 +3,5 @@
 CFBundleName				= "SIPMan";
 CFBundleDisplayName			= "SIPMan";
 NSAppleEventsUsageDescription = "Das kann benutzt werden, um die Musikwiedergabe während der Telefonate zu pausieren.";
-NSContactsUsageDescription  = "Ihre Kontakte können benutzt werden, um Namen und Etiketten anzuzeigen und Telefonnummern automatisch zu vervollständigen.";
+NSContactsUsageDescription  = "Ihre Kontakte können verwendet werden, um lokale Kontakte anzuzeigen und Anrufe aus SIPMan zu starten.";
 NSMicrophoneUsageDescription = "Das Mikrofon wird für Telefongespräche benutzt.";

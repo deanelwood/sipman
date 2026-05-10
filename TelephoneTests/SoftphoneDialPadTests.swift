@@ -16,6 +16,7 @@
 //
 
 import XCTest
+import UseCases
 
 final class SoftphoneDialPadTests: XCTestCase {
     func testStartsWithoutCallableDestination() {
@@ -79,5 +80,36 @@ final class SoftphoneDialPadTests: XCTestCase {
         XCTAssertNil(SoftphoneKeypadKeyboardAction(characters: "a", keyCode: 0))
         XCTAssertNil(SoftphoneKeypadKeyboardAction(characters: "12", keyCode: 0))
         XCTAssertNil(SoftphoneKeypadKeyboardAction(characters: nil, keyCode: 0))
+    }
+
+    func testCallingContactsModelFlattensPhoneContacts() {
+        let sut = SoftphoneCallingContactsModel(contacts: [
+            Contact(
+                name: "Jane Smith",
+                phones: [
+                    Contact.Phone(number: "020 7946 0018", label: "work"),
+                    Contact.Phone(number: "", label: "mobile")
+                ],
+                emails: []
+            ),
+            Contact(name: "", phones: [Contact.Phone(number: "5550100", label: "")], emails: [])
+        ])
+
+        XCTAssertEqual(sut.rows.count, 2)
+        XCTAssertEqual(sut.rows[0].label, "phone")
+        XCTAssertEqual(sut.rows[0].number, "5550100")
+        XCTAssertEqual(sut.rows[1].name, "Jane Smith")
+        XCTAssertEqual(sut.rows[1].label, "work")
+    }
+
+    func testCallingContactsModelFiltersByNameLabelAndNumber() {
+        let sut = SoftphoneCallingContactsModel(contacts: [
+            Contact(name: "Alice", phones: [Contact.Phone(number: "1001", label: "mobile")], emails: []),
+            Contact(name: "Bob", phones: [Contact.Phone(number: "2002", label: "office")], emails: [])
+        ])
+
+        XCTAssertEqual(sut.rows(matching: "alice").map(\.name), ["Alice"])
+        XCTAssertEqual(sut.rows(matching: "office").map(\.name), ["Bob"])
+        XCTAssertEqual(sut.rows(matching: "1001").map(\.name), ["Alice"])
     }
 }

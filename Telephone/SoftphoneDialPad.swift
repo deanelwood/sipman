@@ -15,6 +15,9 @@
 //  GNU General Public License for more details.
 //
 
+import Foundation
+import UseCases
+
 struct SoftphoneDialPad: Equatable {
     private(set) var destination = ""
 
@@ -63,4 +66,53 @@ enum SoftphoneKeypadKeyboardAction: Equatable {
     }
 
     private static let acceptedCharacters = Set("0123456789*#+")
+}
+
+struct SoftphoneCallingContactRowModel: Equatable, Identifiable {
+    let id: String
+    let name: String
+    let label: String
+    let number: String
+    let displayNumber: String
+}
+
+struct SoftphoneCallingContactsModel: Equatable {
+    let rows: [SoftphoneCallingContactRowModel]
+
+    init(contacts: [Contact]) {
+        rows = contacts.flatMap(Self.rows).sorted {
+            let nameComparison = $0.name.localizedCaseInsensitiveCompare($1.name)
+            if nameComparison != .orderedSame {
+                return nameComparison == .orderedAscending
+            }
+            return $0.displayNumber.localizedCaseInsensitiveCompare($1.displayNumber) == .orderedAscending
+        }
+    }
+
+    func rows(matching query: String) -> [SoftphoneCallingContactRowModel] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedQuery.isEmpty else { return rows }
+        return rows.filter {
+            $0.name.localizedCaseInsensitiveContains(trimmedQuery) ||
+            $0.label.localizedCaseInsensitiveContains(trimmedQuery) ||
+            $0.number.localizedCaseInsensitiveContains(trimmedQuery) ||
+            $0.displayNumber.localizedCaseInsensitiveContains(trimmedQuery)
+        }
+    }
+
+    private static func rows(for contact: Contact) -> [SoftphoneCallingContactRowModel] {
+        contact.phones.compactMap { phone in
+            let number = phone.number.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !number.isEmpty else { return nil }
+            let displayNumber = number.ak_prettyFormattedPhoneNumber
+            let name = contact.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            return SoftphoneCallingContactRowModel(
+                id: "\(name)|\(phone.label)|\(number)",
+                name: name.isEmpty ? displayNumber : name,
+                label: phone.label.isEmpty ? "phone" : phone.label,
+                number: number,
+                displayNumber: displayNumber
+            )
+        }
+    }
 }
