@@ -456,14 +456,23 @@ private final class SoftphoneContactBrowserStore: ObservableObject {
     @Published private(set) var model = SoftphoneCallingContactsModel(contacts: [])
     @Published private(set) var loadedContactCount = 0
     @Published private(set) var loadedPhoneNumberCount = 0
+    @Published private(set) var hasLoadedContacts = false
+    @Published private(set) var isSyncingContacts = false
 
     private let store = CNContactStore()
+    private var syncTask: Task<Void, Never>?
 
-    func refreshIfAuthorized() {
+    deinit {
+        syncTask?.cancel()
+    }
+
+    func refreshIfAuthorized(force: Bool = false) {
         switch CNContactStore.authorizationStatus(for: .contacts) {
         case .authorized:
             accessState = .authorized
-            loadContacts()
+            if force || !hasLoadedContacts {
+                loadContacts()
+            }
         case .denied, .restricted:
             accessState = .denied
         case .notDetermined:
@@ -480,6 +489,7 @@ private final class SoftphoneContactBrowserStore: ObservableObject {
                 guard let self else { return }
                 if granted {
                     self.accessState = .authorized
+                    self.hasLoadedContacts = false
                     self.loadContacts()
                 } else if let error {
                     self.accessState = .failed(error.localizedDescription)
@@ -491,28 +501,120 @@ private final class SoftphoneContactBrowserStore: ObservableObject {
     }
 
     private func loadContacts() {
-        do {
-            var contacts: [Contact] = []
-            let request = CNContactFetchRequest(keysToFetch: SoftphoneContactBrowserStore.keysToFetch)
-            request.sortOrder = .userDefault
-            try store.enumerateContacts(with: request) { contact, _ in
-                contacts.append(Contact(contact))
+        guard !isSyncingContacts else { return }
+
+        isSyncingContacts = true
+        syncTask = Task { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                do {
+                    return SoftphoneContactSyncResult.success(try SoftphoneContactBrowserStore.fetchContacts())
+                } catch {
+                    return .failure(error.localizedDescription)
+                }
+            }.value
+
+            guard let self, !Task.isCancelled else { return }
+
+            self.isSyncingContacts = false
+            switch result {
+            case .success(let fetchedContacts):
+                self.loadedContactCount = fetchedContacts.loadedContactCount
+                self.loadedPhoneNumberCount = fetchedContacts.loadedPhoneNumberCount
+                self.model = SoftphoneCallingContactsModel(contacts: fetchedContacts.contacts.map(\.contact))
+                self.hasLoadedContacts = true
+                self.accessState = .authorized
+            case .failure(let message):
+                self.loadedContactCount = 0
+                self.loadedPhoneNumberCount = 0
+                self.hasLoadedContacts = false
+                self.accessState = .failed(message)
             }
-            loadedContactCount = contacts.count
-            loadedPhoneNumberCount = contacts.reduce(0) { $0 + $1.phones.count }
-            model = SoftphoneCallingContactsModel(contacts: contacts)
-        } catch {
-            loadedContactCount = 0
-            loadedPhoneNumberCount = 0
-            accessState = .failed(error.localizedDescription)
         }
     }
 
-    private static let keysToFetch: [CNKeyDescriptor] = [
-        CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
-        CNContactEmailAddressesKey as CNKeyDescriptor,
-        CNContactPhoneNumbersKey as CNKeyDescriptor
-    ]
+    private nonisolated static func fetchContacts() throws -> SoftphoneFetchedContacts {
+        let store = CNContactStore()
+        var contacts: [SoftphoneContactSnapshot] = []
+        let request = CNContactFetchRequest(keysToFetch: keysToFetch())
+        request.sortOrder = .userDefault
+        try store.enumerateContacts(with: request) { contact, _ in
+            contacts.append(SoftphoneContactSnapshot(contact))
+        }
+        return SoftphoneFetchedContacts(contacts: contacts)
+    }
+
+    private nonisolated static func keysToFetch() -> [CNKeyDescriptor] {
+        [
+            CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
+            CNContactEmailAddressesKey as CNKeyDescriptor,
+            CNContactPhoneNumbersKey as CNKeyDescriptor
+        ]
+    }
+}
+
+private enum SoftphoneContactSyncResult: Sendable {
+    case success(SoftphoneFetchedContacts)
+    case failure(String)
+}
+
+private struct SoftphoneFetchedContacts: Sendable {
+    let contacts: [SoftphoneContactSnapshot]
+    let loadedContactCount: Int
+    let loadedPhoneNumberCount: Int
+
+    init(contacts: [SoftphoneContactSnapshot]) {
+        self.contacts = contacts
+        loadedContactCount = contacts.count
+        loadedPhoneNumberCount = contacts.reduce(0) { $0 + $1.phones.count }
+    }
+}
+
+private struct SoftphoneContactSnapshot: Sendable {
+    let name: String
+    let phones: [Phone]
+    let emails: [Email]
+
+    init(_ contact: CNContact) {
+        name = CNContactFormatter.string(from: contact, style: .fullName) ?? ""
+        phones = contact.phoneNumbers.map(Phone.init)
+        emails = contact.emailAddresses.map(Email.init)
+    }
+
+    var contact: Contact {
+        Contact(
+            name: name,
+            phones: phones.map(\.contactPhone),
+            emails: emails.map(\.contactEmail)
+        )
+    }
+
+    struct Phone: Sendable {
+        let number: String
+        let label: String
+
+        init(_ phone: CNLabeledValue<CNPhoneNumber>) {
+            number = phone.value.stringValue
+            label = CNLabeledValue<CNPhoneNumber>.localizedString(forLabel: phone.label ?? "")
+        }
+
+        var contactPhone: Contact.Phone {
+            Contact.Phone(number: number, label: label)
+        }
+    }
+
+    struct Email: Sendable {
+        let address: String
+        let label: String
+
+        init(_ email: CNLabeledValue<NSString>) {
+            address = email.value as String
+            label = CNLabeledValue<NSString>.localizedString(forLabel: email.label ?? "")
+        }
+
+        var contactEmail: Contact.Email {
+            Contact.Email(address: address, label: label)
+        }
+    }
 }
 
 private struct SoftphoneCallingScreen: View {
@@ -611,14 +713,26 @@ private struct SoftphoneContactsScreen: View {
             HStack(spacing: 10) {
                 SoftphoneSearchTextField(text: $query, placeholder: "Search contacts")
                 Button {
-                    contactStore.refreshIfAuthorized()
+                    contactStore.refreshIfAuthorized(force: true)
                 } label: {
-                    Image(systemName: "arrow.clockwise")
-                        .frame(width: 34, height: 34)
+                    if contactStore.isSyncingContacts {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(width: 34, height: 34)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .frame(width: 34, height: 34)
+                    }
                 }
                 .buttonStyle(.plain)
                 .help("Refresh contacts")
-                .disabled(contactStore.accessState != .authorized)
+                .disabled(contactStore.accessState != .authorized || contactStore.isSyncingContacts)
+            }
+
+            if contactStore.isSyncingContacts && contactStore.hasLoadedContacts {
+                Label("Syncing contacts", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(SoftphoneTheme.muted)
             }
 
             content
@@ -659,7 +773,9 @@ private struct SoftphoneContactsScreen: View {
                 .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         case .authorized:
             let rows = contactStore.model.rows(matching: query)
-            if rows.isEmpty {
+            if contactStore.isSyncingContacts && !contactStore.hasLoadedContacts {
+                SoftphoneContactsSyncingView()
+            } else if rows.isEmpty {
                 SoftphoneEmptyState(title: emptyContactsTitle, subtitle: emptyContactsSubtitle)
                     .background(SoftphoneTheme.rowBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
@@ -723,6 +839,24 @@ private struct SoftphoneContactsAccessPrompt: View {
                 Label("Allow Contacts", systemImage: "person.crop.circle")
             }
             .buttonStyle(SoftphoneSecondaryButtonStyle(width: 170))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct SoftphoneContactsSyncingView: View {
+    var body: some View {
+        VStack(spacing: 14) {
+            ProgressView()
+                .controlSize(.large)
+            Text("Syncing contacts")
+                .font(.system(size: 17, weight: .bold))
+                .foregroundStyle(SoftphoneTheme.text)
+            Text("Reading local contacts from macOS.")
+                .font(.system(size: 12))
+                .foregroundStyle(SoftphoneTheme.muted)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(SoftphoneTheme.rowBackground)

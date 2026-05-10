@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Cached the Calling Contacts model after the first sync, moved contact loading
+  off the immediate UI path, added first-run syncing feedback, and bumped the
+  build number to 183.
 - Applied the dark mode toggle to SIPMan's AppKit window appearance so the
   adaptive SwiftUI palette updates immediately, and bumped the build number
   to 182.
