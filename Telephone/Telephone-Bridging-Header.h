@@ -10,6 +10,7 @@
 #import "AccountControllers.h"
 #import "AppController.h"
 #import "AKABRecord+Querying.h"
+#import "AKTelephoneNumberFormatter.h"
 #import "AKSIPAccount.h"
 #import "AKSIPCall.h"
 #import "AKSIPCallNotifications.h"

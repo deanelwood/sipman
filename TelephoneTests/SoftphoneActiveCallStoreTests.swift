@@ -42,6 +42,22 @@ final class SoftphoneActiveCallStoreTests: XCTestCase {
         XCTAssertEqual(sut.primaryCall?.quality, .waiting)
     }
 
+    func testPrettyFormatsRegularPhoneNumbersForActiveCallPresentation() {
+        let sut = SoftphoneActiveCallStore()
+
+        sut.upsertCall(
+            identifier: "call-1",
+            remoteParty: "+14155552671",
+            status: "Connected",
+            duration: "00:08",
+            isMuted: false,
+            isOnHold: false,
+            statsSnapshot: nil
+        )
+
+        XCTAssertEqual(sut.primaryCall?.remoteParty, "+1 415-555-2671")
+    }
+
     func testCollatesStatsPeaksForCall() {
         let sut = SoftphoneActiveCallStore()
 

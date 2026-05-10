@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added a libPhoneNumber-iOS-backed display path for regular phone numbers,
+  applied pretty formatting across call, history, and message presentation,
+  and bumped the build number to 165.
 - Updated account window titles to show `SIPman - username` without the
   SIP domain, and bumped the build number to 164.
 - Removed the legacy availability toolbar from account windows, and bumped

@@ -107,6 +107,26 @@ final class CallHistoryViewPresenterTests: XCTestCase {
         XCTAssertEqual(invokedRecords![1].contact.title, number)
         XCTAssertTrue(invokedRecords![1].contact.tooltip.isEmpty)
     }
+
+    func testPhoneContactsUsePrettyFormattedPhoneNumbers() {
+        let record = CallHistoryRecordTestFactory().makeRecord(number: 1)
+        let contact = MatchedContact(name: "", address: .phone(number: "+14155552671", label: "mobile"))
+        let didCallShow = expectation(description: "Did call show on view")
+        var invokedRecords: [PresentationCallHistoryRecord]?
+        let view = CallHistoryViewSpy { records in
+            invokedRecords = records
+            didCallShow.fulfill()
+        }
+        let sut = CallHistoryViewPresenter(
+            view: view, dateFormatter: ShortRelativeDateTimeFormatter(), durationFormatter: DurationFormatter()
+        )
+
+        sut.update(records: [ContactCallHistoryRecord(origin: record, contact: contact)])
+
+        wait(for: [didCallShow], timeout: 1)
+        XCTAssertEqual(invokedRecords?.first?.contact.title, "+1 415-555-2671")
+        XCTAssertEqual(invokedRecords?.first?.contact.address, "+1 415-555-2671")
+    }
 }
 
 private func makeContact(number: Int) -> MatchedContact {

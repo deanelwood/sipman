@@ -18,10 +18,155 @@
 
 #import "AKTelephoneNumberFormatter.h"
 
+static NSInteger const AKPhoneNumberFormatInternational = 1;
+static NSInteger const AKPhoneNumberFormatNational = 2;
 
 @implementation AKTelephoneNumberFormatter
 
 - (NSString *)stringForObjectValue:(id)anObject {
+    if (![anObject isKindOfClass:[NSString class]]) {
+        return nil;
+    }
+
+    NSString *libPhoneNumberValue = [self libPhoneNumberFormattedStringForString:anObject];
+    if ([libPhoneNumberValue length] > 0) {
+        return libPhoneNumberValue;
+    }
+
+    return [self legacyStringForObjectValue:anObject];
+}
+
+- (NSString *)libPhoneNumberFormattedStringForString:(NSString *)string {
+    NSString *trimmedString = [string stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if (![self canFormatWithLibPhoneNumber:trimmedString]) {
+        return nil;
+    }
+
+    Class utilClass = NSClassFromString(@"NBPhoneNumberUtil");
+    if (utilClass == nil) {
+        return nil;
+    }
+
+    id util = [self libPhoneNumberUtilWithClass:utilClass];
+    if (util == nil) {
+        return nil;
+    }
+
+    id phoneNumber = [self libPhoneNumberFromString:trimmedString util:util];
+    if (phoneNumber == nil) {
+        return nil;
+    }
+
+    return [self formattedLibPhoneNumber:phoneNumber
+                                    util:util
+                            numberFormat:[trimmedString hasPrefix:@"+"] ? AKPhoneNumberFormatInternational : AKPhoneNumberFormatNational];
+}
+
+- (BOOL)canFormatWithLibPhoneNumber:(NSString *)string {
+    if ([string rangeOfString:@"@"].location != NSNotFound ||
+        [string rangeOfCharacterFromSet:NSCharacterSet.letterCharacterSet].location != NSNotFound ||
+        [string rangeOfCharacterFromSet:[NSCharacterSet characterSetWithCharactersInString:@"*#"]].location != NSNotFound) {
+        return NO;
+    }
+
+    NSString *digits = [self digitsOnlyFromString:string];
+    return [digits length] >= 6 && [digits length] <= 15;
+}
+
+- (NSString *)digitsOnlyFromString:(NSString *)string {
+    NSCharacterSet *digitCharacterSet = NSCharacterSet.decimalDigitCharacterSet;
+    NSMutableString *digits = [[NSMutableString alloc] init];
+    NSScanner *scanner = [NSScanner scannerWithString:string];
+    NSString *scannedDigits;
+
+    while (![scanner isAtEnd]) {
+        [scanner scanUpToCharactersFromSet:digitCharacterSet intoString:NULL];
+        if ([scanner scanCharactersFromSet:digitCharacterSet intoString:&scannedDigits]) {
+            [digits appendString:scannedDigits];
+        }
+    }
+
+    return [digits copy];
+}
+
+- (id)libPhoneNumberUtilWithClass:(Class)utilClass {
+    SEL sharedInstanceSelector = NSSelectorFromString(@"sharedInstance");
+    if ([utilClass respondsToSelector:sharedInstanceSelector]) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+        id sharedInstance = [utilClass performSelector:sharedInstanceSelector];
+#pragma clang diagnostic pop
+        if (sharedInstance != nil) {
+            return sharedInstance;
+        }
+    }
+    return [[utilClass alloc] init];
+}
+
+- (id)libPhoneNumberFromString:(NSString *)string util:(id)util {
+    SEL parseSelector = NSSelectorFromString(@"parse:defaultRegion:error:");
+    if (![util respondsToSelector:parseSelector]) {
+        return nil;
+    }
+
+    NSMethodSignature *signature = [util methodSignatureForSelector:parseSelector];
+    if (signature == nil) {
+        return nil;
+    }
+
+    NSString *region = [self defaultRegionCode];
+    NSError *__autoreleasing error = nil;
+    __unsafe_unretained id unsafePhoneNumber = nil;
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+    [invocation setTarget:util];
+    [invocation setSelector:parseSelector];
+    [invocation setArgument:&string atIndex:2];
+    [invocation setArgument:&region atIndex:3];
+    [invocation setArgument:&error atIndex:4];
+    [invocation invoke];
+    [invocation getReturnValue:&unsafePhoneNumber];
+
+    id phoneNumber = unsafePhoneNumber;
+    return error == nil ? phoneNumber : nil;
+}
+
+- (NSString *)formattedLibPhoneNumber:(id)phoneNumber util:(id)util numberFormat:(NSInteger)numberFormat {
+    SEL formatSelector = NSSelectorFromString(@"format:numberFormat:error:");
+    if (![util respondsToSelector:formatSelector]) {
+        return nil;
+    }
+
+    NSMethodSignature *signature = [util methodSignatureForSelector:formatSelector];
+    if (signature == nil) {
+        return nil;
+    }
+
+    NSError *__autoreleasing error = nil;
+    __unsafe_unretained NSString *unsafeFormattedString = nil;
+    NSInvocation *invocation = [NSInvocation invocationWithMethodSignature:signature];
+    [invocation setTarget:util];
+    [invocation setSelector:formatSelector];
+    [invocation setArgument:&phoneNumber atIndex:2];
+    [invocation setArgument:&numberFormat atIndex:3];
+    [invocation setArgument:&error atIndex:4];
+    [invocation invoke];
+    [invocation getReturnValue:&unsafeFormattedString];
+
+    NSString *formattedString = unsafeFormattedString;
+    return error == nil ? formattedString : nil;
+}
+
+- (NSString *)defaultRegionCode {
+    NSString *regionCode;
+    if (@available(macOS 13.0, *)) {
+        regionCode = [[NSLocale currentLocale] regionCode];
+    } else {
+        regionCode = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
+    }
+    return [regionCode length] > 0 ? [regionCode uppercaseString] : @"US";
+}
+
+- (NSString *)legacyStringForObjectValue:(id)anObject {
     if (![anObject isKindOfClass:[NSString class]]) {
         return nil;
     }
@@ -192,15 +337,15 @@
                 break;
         }
     } else if ([[NSPredicate predicateWithFormat:@"SELF MATCHES '\\\\+(1|7)\\\\d{10}'"] evaluateWithObject:anObject]) {
-        if ([self splitsLastFourDigits]) {        // +# (###) ###-##-##
-            theString = [NSString stringWithFormat:@"%@ (%@) %@-%@-%@",
+        if ([self splitsLastFourDigits]) {        // +# ###-###-##-##
+            theString = [NSString stringWithFormat:@"%@ %@-%@-%@-%@",
                          [anObject substringWithRange:NSMakeRange(0, 2)],
                          [anObject substringWithRange:NSMakeRange(2, 3)],
                          [anObject substringWithRange:NSMakeRange(5, 3)],
                          [anObject substringWithRange:NSMakeRange(8, 2)],
                          [anObject substringWithRange:NSMakeRange(10, 2)]];
-        } else {                                  // +# (###) ###-####
-            theString = [NSString stringWithFormat:@"%@ (%@) %@-%@",
+        } else {                                  // +# ###-###-####
+            theString = [NSString stringWithFormat:@"%@ %@-%@-%@",
                          [anObject substringWithRange:NSMakeRange(0, 2)],
                          [anObject substringWithRange:NSMakeRange(2, 3)],
                          [anObject substringWithRange:NSMakeRange(5, 3)],

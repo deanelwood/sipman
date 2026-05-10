@@ -65,10 +65,11 @@ extension PresentationContact {
     convenience init(contact: MatchedContact, color: NSColor) {
         switch contact.address {
         case let .phone(number, label):
+            let formattedNumber = number.ak_prettyFormattedPhoneNumber
             if contact.name.isEmpty {
-                self.init(title: number, tooltip: "", label: label, color: color, address: number)
+                self.init(title: formattedNumber, tooltip: "", label: label, color: color, address: formattedNumber)
             } else {
-                self.init(title: contact.name, tooltip: number, label: label, color: color, address: number)
+                self.init(title: contact.name, tooltip: formattedNumber, label: label, color: color, address: formattedNumber)
             }
         case let .email(address, label):
             if contact.name.isEmpty {
@@ -77,5 +78,11 @@ extension PresentationContact {
                 self.init(title: contact.name, tooltip: address, label: label, color: color, address: address)
             }
         }
+    }
+}
+
+extension String {
+    var ak_prettyFormattedPhoneNumber: String {
+        AKTelephoneNumberFormatter().string(for: self) ?? self
     }
 }

@@ -125,9 +125,9 @@ final class SoftphoneMessageStore: NSObject, ObservableObject {
     private func title(for record: SIPMessageRecord) -> String {
         switch record.direction {
         case .incoming:
-            return record.sender
+            return record.sender.ak_prettyFormattedPhoneNumber
         case .outgoing:
-            return record.recipients.joined(separator: ", ")
+            return record.recipients.map(\.ak_prettyFormattedPhoneNumber).joined(separator: ", ")
         }
     }
 }

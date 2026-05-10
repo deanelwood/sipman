@@ -20,7 +20,9 @@
 
 
 // Instances of AKTelephoneNumberFormatter create formatted telephone numbers from strings of contiguous digits, and
-// convert strings with non-contiguous digits to strings that consist of contiguous digits only.
+// convert strings with non-contiguous digits to strings that consist of contiguous digits only. If libPhoneNumber-iOS
+// is linked into the app, display formatting is delegated to NBPhoneNumberUtil and falls back to the legacy formatter
+// when the library cannot parse a value.
 @interface AKTelephoneNumberFormatter : NSFormatter
 
 // A Boolean value that determines whether the receiver should separate last two digits when formatting a telephone

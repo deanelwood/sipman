@@ -61,7 +61,7 @@ final class SoftphoneActiveCallStore: NSObject, ObservableObject {
         let statsSnapshot = collatedStatsSnapshot(from: statsSnapshot, identifier: identifier)
         let model = SoftphoneActiveCallModel(
             id: identifier,
-            remoteParty: remoteParty.isEmpty ? "Unknown caller" : remoteParty,
+            remoteParty: remoteParty.isEmpty ? "Unknown caller" : remoteParty.ak_prettyFormattedPhoneNumber,
             status: status.isEmpty ? "Connecting" : status,
             duration: duration,
             isMuted: isMuted,

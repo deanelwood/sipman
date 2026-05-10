@@ -3,6 +3,7 @@
 //
 
 #import "AKNSString+Scanning.h"
+#import "AKTelephoneNumberFormatter.h"
 #import "AKSIPCallNotifications.h"
 #import "AKSIPUserAgentNotifications.h"
 #import "PreferencesControllerNotifications.h"

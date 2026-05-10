@@ -36,6 +36,21 @@ final class SoftphoneMessageStoreTests: XCTestCase {
         XCTAssertEqual(sut.conversations.first?.preview, "Newer")
     }
 
+    func testPrettyFormatsRegularPhoneNumbersInConversationRows() {
+        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001")
+        let record = incoming(
+            identifier: "message-1",
+            accountUUID: "account-1",
+            sender: "+14155552671",
+            body: "Hello",
+            seconds: 1
+        )
+
+        sut.show(records: [record])
+
+        XCTAssertEqual(sut.conversations.first?.title, "+1 415-555-2671")
+    }
+
     func testSelectingConversationShowsMessagesInDateOrder() {
         let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001")
         let first = incoming(identifier: "first", accountUUID: "account-1", sender: "2002", body: "First", seconds: 1)
