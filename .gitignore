@@ -10,4 +10,5 @@ ThirdParty/Opus
 ThirdParty/LibreSSL/*
 !ThirdParty/LibreSSL/patches
 ThirdParty/PJSIP/*
+!ThirdParty/PJSIP/config_site.h
 !ThirdParty/PJSIP/patches

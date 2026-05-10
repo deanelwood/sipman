@@ -5,6 +5,13 @@ physical phone anywhere you have a decent network connection.
 
 ## Building
 
+The third-party libraries are installed into `ThirdParty/`. Those
+build products are intentionally ignored by Git.
+
+The commands below build arm64 static libraries for a local Apple
+Silicon Debug build. For a redistributable universal build, add
+`-arch x86_64` to the `CFLAGS` and `CXXFLAGS` values as needed.
+
 ### Opus
 
 Opus codec is optional.
@@ -17,7 +24,7 @@ Download:
 
 Build and install:
 
-    $ ./configure --prefix=/path/to/Telephone/ThirdParty/Opus --disable-shared CFLAGS='-arch arm64 -arch x86_64 -Os -mmacosx-version-min=13.5'
+    $ ./configure --prefix=/path/to/Telephone/ThirdParty/Opus --disable-shared CFLAGS='-arch arm64 -Os -mmacosx-version-min=13.5'
     $ make
     $ make install
 
@@ -33,7 +40,7 @@ Download:
 
 Build and install:
 
-    $ ./configure --prefix=/path/to/Telephone/ThirdParty/LibreSSL --disable-shared CFLAGS='-arch arm64 -arch x86_64 -Os -mmacosx-version-min=13.5'
+    $ ./configure --prefix=/path/to/Telephone/ThirdParty/LibreSSL --disable-shared CFLAGS='-arch arm64 -Os -mmacosx-version-min=13.5'
     $ make
     $ make install
 
@@ -45,15 +52,9 @@ Download:
     $ tar xzvf pjproject-2.10.tar.gz
     $ cd pjproject-2.10
 
-Create `pjlib/include/pj/config_site.h`:
+Install Telephone's PJSIP configuration:
 
-    #define PJSIP_DONT_SWITCH_TO_TCP 1
-    #define PJSUA_MAX_ACC 32
-    #define PJMEDIA_RTP_PT_TELEPHONE_EVENTS 101
-    #define PJ_DNS_MAX_IP_IN_A_REC 32
-    #define PJ_DNS_SRV_MAX_ADDR 32
-    #define PJSIP_MAX_RESOLVED_ADDRESSES 32
-    #define PJ_HAS_IPV6 1
+    $ cp /path/to/Telephone/ThirdParty/PJSIP/config_site.h pjlib/include/pj/config_site.h
 
 Patch:
 
@@ -63,12 +64,14 @@ Patch:
 
 Build and install (remove `--with-opus` option if you don’t need Opus):
 
-    $ ./configure --prefix=/path/to/Telephone/ThirdParty/PJSIP --with-opus=/path/to/Telephone/ThirdParty/Opus --with-ssl=/path/to/Telephone/ThirdParty/LibreSSL --disable-video --disable-libyuv --disable-libwebrtc --host=arm-apple-darwin CFLAGS='-arch arm64 -arch x86_64 -Os -DNDEBUG -mmacosx-version-min=13.5' CXXFLAGS='-arch arm64 -arch x86_64 -Os -DNDEBUG -mmacosx-version-min=13.5'
+    $ ./configure --prefix=/path/to/Telephone/ThirdParty/PJSIP --with-opus=/path/to/Telephone/ThirdParty/Opus --with-ssl=/path/to/Telephone/ThirdParty/LibreSSL --disable-video --disable-libyuv --disable-libwebrtc --host=arm-apple-darwin CFLAGS='-arch arm64 -Os -DNDEBUG -mmacosx-version-min=13.5' CXXFLAGS='-arch arm64 -Os -DNDEBUG -mmacosx-version-min=13.5'
+    $ make dep
     $ make lib
     $ make install
 
-    
-Build Telephone.
+Build Telephone:
+
+    $ xcodebuild -project Telephone.xcodeproj -scheme Telephone -configuration Debug -derivedDataPath /tmp/telephone-deriveddata CODE_SIGNING_ALLOWED=NO build
 
 ## Contribution
 
