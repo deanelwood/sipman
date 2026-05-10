@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added a PJSIP endpoint observer for inbound and outbound SIP packets so the
+  Live SIP Log pane receives real stack traffic, and bumped the build number
+  to 184.
 - Moved CodeQL Swift dependency bootstrap before CodeQL initialization so the
   scanner traces the app build rather than the third-party C dependency build.
 - Made the third-party bootstrap script pass explicit configure host triples for

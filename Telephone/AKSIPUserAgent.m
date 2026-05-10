@@ -30,6 +30,8 @@
 
 #import <pthread.h>
 #import <stdio.h>
+#import <stdlib.h>
+#import <string.h>
 
 #define THIS_FILE "AKSIPUserAgent.m"
 
@@ -70,6 +72,29 @@ static NSString * const SoftphoneSIPPingStatusFailed = @"Failed";
 static pthread_mutex_t SoftphonePJSIPLogFileMutex = PTHREAD_MUTEX_INITIALIZER;
 static FILE *SoftphonePJSIPLogFile = NULL;
 static unsigned SoftphonePJSIPConsoleLogLevel = 0;
+
+static void SoftphonePublishSIPLogLine(int level, const char *data, int len);
+static pj_bool_t SoftphoneSIPLogModuleOnRXRequest(pjsip_rx_data *rdata);
+static pj_bool_t SoftphoneSIPLogModuleOnRXResponse(pjsip_rx_data *rdata);
+static pj_status_t SoftphoneSIPLogModuleOnTXRequest(pjsip_tx_data *tdata);
+static pj_status_t SoftphoneSIPLogModuleOnTXResponse(pjsip_tx_data *tdata);
+
+static pjsip_module SoftphoneSIPLogModule = {
+    NULL,
+    NULL,
+    { "mod-sipman-sip-log", 18 },
+    -1,
+    PJSIP_MOD_PRIORITY_TRANSPORT_LAYER + 1,
+    NULL,
+    NULL,
+    NULL,
+    NULL,
+    &SoftphoneSIPLogModuleOnRXRequest,
+    &SoftphoneSIPLogModuleOnRXResponse,
+    &SoftphoneSIPLogModuleOnTXRequest,
+    &SoftphoneSIPLogModuleOnTXResponse,
+    NULL
+};
 
 @interface AKSIPOptionsPingToken : NSObject
 
@@ -126,7 +151,7 @@ static void SoftphoneWritePJSIPLogFile(const char *data, int len) {
     pthread_mutex_unlock(&SoftphonePJSIPLogFileMutex);
 }
 
-static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
+static void SoftphonePublishSIPLogLine(int level, const char *data, int len) {
     if (data == NULL || len <= 0) {
         return;
     }
@@ -160,6 +185,69 @@ static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
             }];
         });
     }
+}
+
+static void SoftphonePublishSIPMessage(const char *direction, const char *data, int len) {
+    if (data == NULL || len <= 0) {
+        return;
+    }
+
+    int prefixLength = (int)strlen(direction);
+    char *bytes = malloc((size_t)(prefixLength + len + 1));
+    if (bytes == NULL) {
+        return;
+    }
+    memcpy(bytes, direction, (size_t)prefixLength);
+    memcpy(bytes + prefixLength, data, (size_t)len);
+    bytes[prefixLength + len] = '\n';
+
+    SoftphonePublishSIPLogLine(5, bytes, prefixLength + len + 1);
+    free(bytes);
+}
+
+static void SoftphonePublishSIPTXMessage(const char *direction, pjsip_tx_data *tdata) {
+    if (tdata == NULL || tdata->msg == NULL) {
+        return;
+    }
+
+    if (tdata->buf.start != NULL && tdata->buf.cur > tdata->buf.start) {
+        SoftphonePublishSIPMessage(direction, tdata->buf.start, (int)(tdata->buf.cur - tdata->buf.start));
+        return;
+    }
+
+    char buffer[PJSIP_MAX_PKT_LEN];
+    pj_ssize_t length = pjsip_msg_print(tdata->msg, buffer, sizeof(buffer));
+    if (length > 0) {
+        SoftphonePublishSIPMessage(direction, buffer, (int)length);
+    }
+}
+
+static pj_bool_t SoftphoneSIPLogModuleOnRXRequest(pjsip_rx_data *rdata) {
+    if (rdata != NULL && rdata->msg_info.msg_buf != NULL && rdata->msg_info.len > 0) {
+        SoftphonePublishSIPMessage("<<< ", rdata->msg_info.msg_buf, rdata->msg_info.len);
+    }
+    return PJ_FALSE;
+}
+
+static pj_bool_t SoftphoneSIPLogModuleOnRXResponse(pjsip_rx_data *rdata) {
+    if (rdata != NULL && rdata->msg_info.msg_buf != NULL && rdata->msg_info.len > 0) {
+        SoftphonePublishSIPMessage("<<< ", rdata->msg_info.msg_buf, rdata->msg_info.len);
+    }
+    return PJ_FALSE;
+}
+
+static pj_status_t SoftphoneSIPLogModuleOnTXRequest(pjsip_tx_data *tdata) {
+    SoftphonePublishSIPTXMessage(">>> ", tdata);
+    return PJ_SUCCESS;
+}
+
+static pj_status_t SoftphoneSIPLogModuleOnTXResponse(pjsip_tx_data *tdata) {
+    SoftphonePublishSIPTXMessage(">>> ", tdata);
+    return PJ_SUCCESS;
+}
+
+static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
+    SoftphonePublishSIPLogLine(level, data, len);
 }
 
 
@@ -627,6 +715,12 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
         [self thread_stop];
         [self thread_callOnMain:completion withFlag:NO];
         return;
+    }
+
+    SoftphoneSIPLogModule.id = -1;
+    status = pjsip_endpt_register_module(pjsua_get_pjsip_endpt(), &SoftphoneSIPLogModule);
+    if (status != PJ_SUCCESS) {
+        NSLog(@"Error registering SIPMan SIP log module");
     }
 
     // Create ringback tones.
