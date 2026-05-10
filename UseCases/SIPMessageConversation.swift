@@ -15,28 +15,83 @@
 //  GNU General Public License for more details.
 //
 
-public struct SIPMessageConversation: Sendable {
-    public let identifier: String
-    public let accountUUID: String
-    public let remote: URI
+import CryptoKit
+import Foundation
 
-    public init(accountUUID: String, remote: URI) {
-        self.identifier = SIPMessageConversation.identifier(accountUUID: accountUUID, remote: remote)
-        self.accountUUID = accountUUID
-        self.remote = remote
+public struct SIPMessageConversation: Sendable {
+    public let conversationId: String
+    public let sender: String
+    public let recipients: [String]
+    public let normalizedParticipants: [String]
+    public let canonicalParticipantsValue: String
+
+    public var identifier: String {
+        return conversationId
     }
 
-    public static func identifier(accountUUID: String, remote: URI) -> String {
-        return "\(accountUUID)|\(remoteAddress(remote))|\(remote.transport.stringValue)"
+    public init(sender: String, recipient: String) {
+        self.init(sender: sender, recipients: [recipient])
+    }
+
+    public init(sender: String, recipients: [String]) {
+        self.sender = sender
+        self.recipients = recipients
+        self.normalizedParticipants = SIPMessageConversation.normalizedParticipants(
+            sender: sender,
+            recipients: recipients
+        )
+        self.canonicalParticipantsValue = normalizedParticipants.joined()
+        self.conversationId = stableHash(canonicalParticipantsValue)
+    }
+
+    public static func conversationId(sender: String, recipient: String) -> String {
+        return conversationId(sender: sender, recipients: [recipient])
+    }
+
+    public static func conversationId(sender: String, recipients: [String]) -> String {
+        return SIPMessageConversation(sender: sender, recipients: recipients).conversationId
+    }
+
+    public static func normalizedParticipant(_ value: String) -> String {
+        return String(value.filter(isASCIIDigit))
+    }
+
+    public static func normalizedParticipants(sender: String, recipients: [String]) -> [String] {
+        return ([sender] + recipients)
+            .map(normalizedParticipant)
+            .filter { !$0.isEmpty }
+            .sorted(by: numericallyPrecedes)
     }
 }
 
 extension SIPMessageConversation: Equatable {
     public static func ==(lhs: SIPMessageConversation, rhs: SIPMessageConversation) -> Bool {
-        return lhs.identifier == rhs.identifier
+        return lhs.conversationId == rhs.conversationId
     }
 }
 
-private func remoteAddress(_ remote: URI) -> String {
-    return remote.user.isEmpty ? remote.address.stringValue : "\(remote.user)@\(remote.address)"
+private func isASCIIDigit(_ character: Character) -> Bool {
+    return character >= "0" && character <= "9"
+}
+
+private func numericallyPrecedes(_ lhs: String, _ rhs: String) -> Bool {
+    let normalizedLHS = trimmingLeadingZeroes(lhs)
+    let normalizedRHS = trimmingLeadingZeroes(rhs)
+
+    if normalizedLHS.count != normalizedRHS.count {
+        return normalizedLHS.count < normalizedRHS.count
+    }
+    if normalizedLHS != normalizedRHS {
+        return normalizedLHS < normalizedRHS
+    }
+    return lhs < rhs
+}
+
+private func trimmingLeadingZeroes(_ value: String) -> String {
+    let result = value.drop { $0 == "0" }
+    return result.isEmpty ? "0" : String(result)
+}
+
+private func stableHash(_ value: String) -> String {
+    return SHA256.hash(data: Data(value.utf8)).map { String(format: "%02x", $0) }.joined()
 }

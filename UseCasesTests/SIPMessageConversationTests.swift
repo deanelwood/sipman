@@ -19,38 +19,66 @@ import UseCases
 import XCTest
 
 final class SIPMessageConversationTests: XCTestCase {
-    func testIdentifierContainsAccountRemoteAddressAndTransport() {
-        let sut = SIPMessageConversation(
-            accountUUID: "account-uuid",
-            remote: URI(
-                user: "alice",
-                address: ServiceAddress(host: "example.com", port: "5061"),
-                displayName: "Alice",
-                transport: .tls
-            )
+    func testNormalizedParticipantRemovesWhitespaceAndNonDigits() {
+        XCTAssertEqual(
+            SIPMessageConversation.normalizedParticipant(" +44 (0) 7700-900123 ext. 45 "),
+            "440770090012345"
         )
-
-        XCTAssertEqual(sut.identifier, "account-uuid|alice@example.com:5061|tls")
     }
 
-    func testIdentifierOmitsAtSignWhenRemoteUserIsEmpty() {
-        let sut = SIPMessageConversation(
-            accountUUID: "account-uuid",
-            remote: URI(address: ServiceAddress(host: "example.com"), transport: .udp)
+    func testNormalizedParticipantsIncludesSenderAndRecipientsInNumericOrder() {
+        let result = SIPMessageConversation.normalizedParticipants(
+            sender: "+44 7700 900123",
+            recipients: ["(020) 7946-0018", "555.0100"]
         )
 
-        XCTAssertEqual(sut.identifier, "account-uuid|example.com|udp")
+        XCTAssertEqual(result, ["5550100", "02079460018", "447700900123"])
     }
 
-    func testEqualityUsesIdentifier() {
-        let lhs = SIPMessageConversation(
-            accountUUID: "account-uuid",
-            remote: URI(user: "alice", host: "example.com", displayName: "Alice")
+    func testCanonicalParticipantsValueConcatenatesNormalizedParticipants() {
+        let sut = SIPMessageConversation(
+            sender: "+44 7700 900123",
+            recipients: ["(020) 7946-0018", "555.0100"]
         )
-        let rhs = SIPMessageConversation(
-            accountUUID: "account-uuid",
-            remote: URI(user: "alice", host: "example.com", displayName: "Alice Smith")
+
+        XCTAssertEqual(sut.canonicalParticipantsValue, "555010002079460018447700900123")
+    }
+
+    func testConversationIdIsStableSHA256HashOfCanonicalParticipantsValue() {
+        let sut = SIPMessageConversation(
+            sender: "+44 7700 900123",
+            recipients: ["(020) 7946-0018", "555.0100"]
         )
+
+        XCTAssertEqual(
+            sut.conversationId,
+            "6f4465cce07c4541b8f9e3005103982f9f280e82b5f78c03fbc33385969d2d0d"
+        )
+    }
+
+    func testIdentifierIsConversationId() {
+        let sut = SIPMessageConversation(sender: "123", recipient: "456")
+
+        XCTAssertEqual(sut.identifier, sut.conversationId)
+    }
+
+    func testConversationIdIsIndependentOfSenderRecipientDirection() {
+        let lhs = SIPMessageConversation(sender: "+44 7700 900123", recipient: "(020) 7946-0018")
+        let rhs = SIPMessageConversation(sender: "(020) 7946-0018", recipient: "+44 7700 900123")
+
+        XCTAssertEqual(lhs.conversationId, rhs.conversationId)
+    }
+
+    func testConversationIdIsIndependentOfRecipientOrder() {
+        let lhs = SIPMessageConversation(sender: "+44 7700 900123", recipients: ["(020) 7946-0018", "555.0100"])
+        let rhs = SIPMessageConversation(sender: "555.0100", recipients: ["+44 7700 900123", "(020) 7946-0018"])
+
+        XCTAssertEqual(lhs.conversationId, rhs.conversationId)
+    }
+
+    func testEqualityUsesConversationId() {
+        let lhs = SIPMessageConversation(sender: "+44 7700 900123", recipients: ["(020) 7946-0018", "555.0100"])
+        let rhs = SIPMessageConversation(sender: "555.0100", recipients: ["+44 7700 900123", "(020) 7946-0018"])
 
         XCTAssertEqual(lhs, rhs)
     }

@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added stable SIP MESSAGE conversation IDs generated from normalized
+  sender and recipient participants.
 - Added a SIP MESSAGE data model for future messaging UI work.
 - Removed the Telephone Pro subscription prompt and unlocked the full
   call history and 30 simultaneous-call limit without a purchase check.

@@ -33,21 +33,27 @@ public enum SIPMessageDeliveryState: Equatable, Sendable {
 public struct SIPMessageRecord: Equatable, Sendable {
     public let identifier: String
     public let accountUUID: String
-    public let remote: URI
+    public let sender: String
+    public let recipients: [String]
     public let content: SIPMessageContent
     public let date: Date
     public let direction: SIPMessageDirection
     public let deliveryState: SIPMessageDeliveryState
     public let transportIdentifier: String?
 
+    public var conversationId: String {
+        return conversation.conversationId
+    }
+
     public var conversation: SIPMessageConversation {
-        return SIPMessageConversation(accountUUID: accountUUID, remote: remote)
+        return SIPMessageConversation(sender: sender, recipients: recipients)
     }
 
     public init(
         identifier: String = UUID().uuidString,
         accountUUID: String,
-        remote: URI,
+        sender: String,
+        recipients: [String],
         content: SIPMessageContent,
         date: Date,
         direction: SIPMessageDirection,
@@ -56,7 +62,8 @@ public struct SIPMessageRecord: Equatable, Sendable {
     ) {
         self.identifier = identifier
         self.accountUUID = accountUUID
-        self.remote = remote
+        self.sender = sender
+        self.recipients = recipients
         self.content = content
         self.date = date
         self.direction = direction
@@ -67,7 +74,28 @@ public struct SIPMessageRecord: Equatable, Sendable {
     public static func incoming(
         identifier: String = UUID().uuidString,
         accountUUID: String,
-        remote: URI,
+        sender: String,
+        recipient: String,
+        content: SIPMessageContent,
+        date: Date,
+        transportIdentifier: String? = nil
+    ) -> SIPMessageRecord {
+        return incoming(
+            identifier: identifier,
+            accountUUID: accountUUID,
+            sender: sender,
+            recipients: [recipient],
+            content: content,
+            date: date,
+            transportIdentifier: transportIdentifier
+        )
+    }
+
+    public static func incoming(
+        identifier: String = UUID().uuidString,
+        accountUUID: String,
+        sender: String,
+        recipients: [String],
         content: SIPMessageContent,
         date: Date,
         transportIdentifier: String? = nil
@@ -75,7 +103,8 @@ public struct SIPMessageRecord: Equatable, Sendable {
         return SIPMessageRecord(
             identifier: identifier,
             accountUUID: accountUUID,
-            remote: remote,
+            sender: sender,
+            recipients: recipients,
             content: content,
             date: date,
             direction: .incoming,
@@ -87,7 +116,28 @@ public struct SIPMessageRecord: Equatable, Sendable {
     public static func outgoing(
         identifier: String = UUID().uuidString,
         accountUUID: String,
-        remote: URI,
+        sender: String,
+        recipient: String,
+        content: SIPMessageContent,
+        date: Date,
+        transportIdentifier: String? = nil
+    ) -> SIPMessageRecord {
+        return outgoing(
+            identifier: identifier,
+            accountUUID: accountUUID,
+            sender: sender,
+            recipients: [recipient],
+            content: content,
+            date: date,
+            transportIdentifier: transportIdentifier
+        )
+    }
+
+    public static func outgoing(
+        identifier: String = UUID().uuidString,
+        accountUUID: String,
+        sender: String,
+        recipients: [String],
         content: SIPMessageContent,
         date: Date,
         transportIdentifier: String? = nil
@@ -95,7 +145,8 @@ public struct SIPMessageRecord: Equatable, Sendable {
         return SIPMessageRecord(
             identifier: identifier,
             accountUUID: accountUUID,
-            remote: remote,
+            sender: sender,
+            recipients: recipients,
             content: content,
             date: date,
             direction: .outgoing,
@@ -108,7 +159,8 @@ public struct SIPMessageRecord: Equatable, Sendable {
         return SIPMessageRecord(
             identifier: identifier,
             accountUUID: accountUUID,
-            remote: remote,
+            sender: sender,
+            recipients: recipients,
             content: content,
             date: date,
             direction: direction,

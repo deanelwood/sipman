@@ -20,14 +20,14 @@ import XCTest
 
 final class SIPMessageRecordTests: XCTestCase {
     func testStoresMessageValues() {
-        let remote = URI(user: "alice", host: "example.com", displayName: "Alice")
         let content = SIPMessageContent(body: "Hello")
         let date = Date()
 
         let sut = SIPMessageRecord(
             identifier: "message-id",
             accountUUID: "account-uuid",
-            remote: remote,
+            sender: "+44 7700 900123",
+            recipients: ["(020) 7946-0018"],
             content: content,
             date: date,
             direction: .outgoing,
@@ -37,7 +37,8 @@ final class SIPMessageRecordTests: XCTestCase {
 
         XCTAssertEqual(sut.identifier, "message-id")
         XCTAssertEqual(sut.accountUUID, "account-uuid")
-        XCTAssertEqual(sut.remote, remote)
+        XCTAssertEqual(sut.sender, "+44 7700 900123")
+        XCTAssertEqual(sut.recipients, ["(020) 7946-0018"])
         XCTAssertEqual(sut.content, content)
         XCTAssertEqual(sut.date, date)
         XCTAssertEqual(sut.direction, .outgoing)
@@ -49,7 +50,8 @@ final class SIPMessageRecordTests: XCTestCase {
         let sut = SIPMessageRecord.incoming(
             identifier: "message-id",
             accountUUID: "account-uuid",
-            remote: URI(user: "alice", host: "example.com", displayName: ""),
+            sender: "+44 7700 900123",
+            recipient: "(020) 7946-0018",
             content: SIPMessageContent(body: "Hello"),
             date: Date(),
             transportIdentifier: "call-id"
@@ -64,7 +66,8 @@ final class SIPMessageRecordTests: XCTestCase {
         let sut = SIPMessageRecord.outgoing(
             identifier: "message-id",
             accountUUID: "account-uuid",
-            remote: URI(user: "alice", host: "example.com", displayName: ""),
+            sender: "+44 7700 900123",
+            recipient: "(020) 7946-0018",
             content: SIPMessageContent(body: "Hello"),
             date: Date()
         )
@@ -73,23 +76,42 @@ final class SIPMessageRecordTests: XCTestCase {
         XCTAssertEqual(sut.deliveryState, .pending)
     }
 
-    func testConversationIsDerivedFromAccountAndRemote() {
+    func testOutgoingMessageCanHaveMultipleRecipients() {
         let sut = SIPMessageRecord.outgoing(
             identifier: "message-id",
             accountUUID: "account-uuid",
-            remote: URI(user: "alice", host: "example.com", displayName: "Alice"),
+            sender: "+44 7700 900123",
+            recipients: ["(020) 7946-0018", "555.0100"],
             content: SIPMessageContent(body: "Hello"),
             date: Date()
         )
 
-        XCTAssertEqual(sut.conversation.identifier, "account-uuid|alice@example.com|udp")
+        XCTAssertEqual(sut.recipients, ["(020) 7946-0018", "555.0100"])
+        XCTAssertEqual(sut.conversation.normalizedParticipants, ["5550100", "02079460018", "447700900123"])
+    }
+
+    func testConversationIsDerivedFromSenderAndRecipients() {
+        let sut = SIPMessageRecord.outgoing(
+            identifier: "message-id",
+            accountUUID: "account-uuid",
+            sender: "+44 7700 900123",
+            recipients: ["(020) 7946-0018", "555.0100"],
+            content: SIPMessageContent(body: "Hello"),
+            date: Date()
+        )
+
+        XCTAssertEqual(
+            sut.conversationId,
+            "6f4465cce07c4541b8f9e3005103982f9f280e82b5f78c03fbc33385969d2d0d"
+        )
     }
 
     func testUpdatingDeliveryStatePreservesMessageIdentityAndContent() {
         let sut = SIPMessageRecord.outgoing(
             identifier: "message-id",
             accountUUID: "account-uuid",
-            remote: URI(user: "alice", host: "example.com", displayName: ""),
+            sender: "+44 7700 900123",
+            recipient: "(020) 7946-0018",
             content: SIPMessageContent(body: "Hello"),
             date: Date(),
             transportIdentifier: "call-id"
@@ -99,7 +121,8 @@ final class SIPMessageRecordTests: XCTestCase {
 
         XCTAssertEqual(result.identifier, sut.identifier)
         XCTAssertEqual(result.accountUUID, sut.accountUUID)
-        XCTAssertEqual(result.remote, sut.remote)
+        XCTAssertEqual(result.sender, sut.sender)
+        XCTAssertEqual(result.recipients, sut.recipients)
         XCTAssertEqual(result.content, sut.content)
         XCTAssertEqual(result.date, sut.date)
         XCTAssertEqual(result.direction, sut.direction)
