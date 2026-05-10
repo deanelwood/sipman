@@ -1,0 +1,73 @@
+name: CodeQL
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+  schedule:
+    - cron: "27 4 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+
+jobs:
+  analyze:
+    name: Analyze ${{ matrix.language }}
+    runs-on: macos-15
+    timeout-minutes: 90
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: c-cpp
+            build-mode: none
+          - language: swift
+            build-mode: manual
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache SIPMan dependencies
+        if: matrix.language == 'swift'
+        uses: actions/cache@v4
+        with:
+          path: |
+            .sipman-deps
+            ThirdParty/Opus
+            ThirdParty/LibreSSL/bin
+            ThirdParty/LibreSSL/include
+            ThirdParty/LibreSSL/lib
+            ThirdParty/LibreSSL/share
+            ThirdParty/PJSIP/bin
+            ThirdParty/PJSIP/include
+            ThirdParty/PJSIP/lib
+            ThirdParty/PJSIP/share
+          key: sipman-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/bootstrap-third-party.sh', 'ThirdParty/PJSIP/config_site.h', 'ThirdParty/PJSIP/patches/**') }}
+          restore-keys: |
+            sipman-deps-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v4
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Bootstrap third-party dependencies
+        if: matrix.language == 'swift'
+        run: scripts/bootstrap-third-party.sh --work-dir "$GITHUB_WORKSPACE/.sipman-deps"
+
+      - name: Build SIPMan
+        if: matrix.language == 'swift'
+        run: scripts/build-app.sh --unsigned --derived-data "$RUNNER_TEMP/sipman-deriveddata"
+
+      - name: Analyze
+        uses: github/codeql-action/analyze@v4
+        with:
+          category: "/language:${{ matrix.language }}"
