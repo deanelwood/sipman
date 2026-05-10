@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added a UI-ready recent-call history item model and adapter for inbound,
+  outbound, and missed calls.
 - Added an in-call stats model, quality evaluator, stats store, and
   PJSIP-backed `AKSIPCall` stats sampler.
 - Added PJSIP in-call stats documentation for the desktop app effort.
