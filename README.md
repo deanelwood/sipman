@@ -3,6 +3,16 @@ calls over the Internet or your company network. If your phone line
 supports SIP protocol, you can use it on your Mac instead of a
 physical phone anywhere you have a decent network connection.
 
+## Softphone Interface
+
+The account window hosts the new SwiftUI softphone shell. It keeps the
+main workflow focused on keypad dialing, SIP MESSAGE conversations,
+call history, account diagnostics, and a compact active-call panel.
+
+The active-call panel appears only while a call is in progress and can
+expand to show PJSIP media/debug stats collected from the active audio
+stream.
+
 ## Building
 
 The third-party libraries are installed into `ThirdParty/`. Those

@@ -1,6 +1,7 @@
 # Changelog
 
 ## 1.7
+- Documented the SwiftUI softphone shell and active-call stats panel.
 - Added an active-call panel with collapsible PJSIP debug stats in the
   SwiftUI softphone shell.
 - Added a SwiftUI settings and diagnostics store for account registration,
