@@ -19,6 +19,7 @@
 #import "AccountWindowController.h"
 
 #import "AccountViewController.h"
+#import "CallController.h"
 
 #import "Telephone-Swift.h"
 
@@ -122,6 +123,63 @@
 
 - (void)makeCallToDestination:(NSString *)destination {
     [self.accountViewController makeCallToDestination:destination];
+}
+
+- (void)updateSoftphoneCallWithController:(CallController *)callController {
+    [self.accountViewController updateSoftphoneCallWithIdentifier:callController.identifier
+                                                      remoteParty:[self remotePartyForCallController:callController]
+                                                           status:[self statusForCallController:callController]
+                                                         duration:[self durationForCallController:callController]
+                                                          isMuted:callController.call.isMicrophoneMuted
+                                                         isOnHold:[self isCallControllerOnHold:callController]
+                                                    statsSnapshot:[callController.call callStatsSnapshot]];
+}
+
+- (void)removeSoftphoneCallWithController:(CallController *)callController {
+    [self.accountViewController removeSoftphoneCallWithIdentifier:callController.identifier];
+}
+
+- (NSString *)remotePartyForCallController:(CallController *)callController {
+    if (callController.displayedName.length > 0) {
+        return callController.displayedName;
+    }
+    if (callController.title.length > 0) {
+        return callController.title;
+    }
+    return @"Unknown caller";
+}
+
+- (NSString *)statusForCallController:(CallController *)callController {
+    if ([self isDurationStatus:callController.status]) {
+        return NSLocalizedString(@"connected", @"Connected call status text.");
+    }
+    return callController.status ?: @"";
+}
+
+- (NSString *)durationForCallController:(CallController *)callController {
+    if (callController.callStartTime <= 0 || !callController.isCallActive) {
+        return @"";
+    }
+
+    NSTimeInterval now = [NSDate timeIntervalSinceReferenceDate];
+    NSInteger seconds = (NSInteger)(now - callController.callStartTime);
+    if (seconds < 0) {
+        seconds = 0;
+    }
+
+    if (seconds < 3600) {
+        return [NSString stringWithFormat:@"%02ld:%02ld", (seconds / 60) % 60, seconds % 60];
+    }
+    return [NSString stringWithFormat:@"%02ld:%02ld:%02ld", (seconds / 3600) % 24, (seconds / 60) % 60, seconds % 60];
+}
+
+- (BOOL)isDurationStatus:(NSString *)status {
+    NSCharacterSet *characters = [NSCharacterSet characterSetWithCharactersInString:@"0123456789:"];
+    return status.length > 0 && [status rangeOfCharacterFromSet:[characters invertedSet]].location == NSNotFound;
+}
+
+- (BOOL)isCallControllerOnHold:(CallController *)callController {
+    return callController.isCallOnHold || callController.call.isOnLocalHold || callController.call.isOnRemoteHold;
 }
 
 - (IBAction)changeAccountState:(NSPopUpButton *)sender {

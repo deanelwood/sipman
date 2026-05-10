@@ -22,6 +22,7 @@
 
 @protocol CallControllerDelegate <NSObject>
 
+- (void)callControllerDidChangePresentation:(CallController *)callController;
 - (void)callControllerWillClose:(CallController *)callController;
 
 @end

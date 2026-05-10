@@ -56,6 +56,7 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
 
 // Closes call window.
 - (void)closeCallWindow;
+- (void)notifyDelegatePresentationDidChange;
 
 @end
 
@@ -78,6 +79,35 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
             self.window.styleMask |= NSWindowStyleMaskClosable;
             [_activeCallViewController allowHangUp];
         }
+        [self notifyDelegatePresentationDidChange];
+    }
+}
+
+- (void)setDisplayedName:(NSString *)displayedName {
+    if (![_displayedName isEqualToString:displayedName]) {
+        _displayedName = [displayedName copy];
+        [self notifyDelegatePresentationDidChange];
+    }
+}
+
+- (void)setStatus:(NSString *)status {
+    if (![_status isEqualToString:status]) {
+        _status = [status copy];
+        [self notifyDelegatePresentationDidChange];
+    }
+}
+
+- (void)setCallActive:(BOOL)callActive {
+    if (_callActive != callActive) {
+        _callActive = callActive;
+        [self notifyDelegatePresentationDidChange];
+    }
+}
+
+- (void)setCallOnHold:(BOOL)callOnHold {
+    if (_callOnHold != callOnHold) {
+        _callOnHold = callOnHold;
+        [self notifyDelegatePresentationDidChange];
     }
 }
 
@@ -350,6 +380,10 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
     if ([[self window] isVisible]) {
         [[self window] performClose:self];
     }
+}
+
+- (void)notifyDelegatePresentationDidChange {
+    [self.delegate callControllerDidChangePresentation:self];
 }
 
 - (void)prepareForCall {

@@ -20,6 +20,7 @@
 
 @class ActiveAccountViewController, CallHistoryViewController;
 @class AsyncCallHistoryViewEventTargetFactory;
+@class CallStatsSnapshot;
 @protocol Account;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -37,6 +38,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)showInactiveStateAnimated:(BOOL)animated;
 
 - (void)makeCallToDestination:(NSString *)destination;
+- (void)updateSoftphoneCallWithIdentifier:(NSString *)identifier
+                              remoteParty:(NSString *)remoteParty
+                                   status:(NSString *)status
+                                 duration:(NSString *)duration
+                                  isMuted:(BOOL)isMuted
+                                 isOnHold:(BOOL)isOnHold
+                            statsSnapshot:(nullable CallStatsSnapshot *)statsSnapshot;
+- (void)removeSoftphoneCallWithIdentifier:(NSString *)identifier;
 
 @end
 

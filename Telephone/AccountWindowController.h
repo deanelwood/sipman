@@ -18,7 +18,7 @@
 
 @import Cocoa;
 
-@class AccountViewController;
+@class AccountViewController, CallController;
 @protocol AccountWindowControllerDelegate;
 
 NS_ASSUME_NONNULL_BEGIN
@@ -44,6 +44,8 @@ typedef NS_ENUM(NSInteger, AccountWindowControllerAccountState) {
 - (void)showConnectingState;
 
 - (void)makeCallToDestination:(NSString *)destination;
+- (void)updateSoftphoneCallWithController:(CallController *)callController;
+- (void)removeSoftphoneCallWithController:(CallController *)callController;
 
 - (void)showAlert:(NSAlert *)alert;
 - (void)beginSheet:(NSWindow *)sheet;

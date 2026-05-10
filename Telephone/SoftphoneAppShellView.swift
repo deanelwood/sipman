@@ -18,6 +18,7 @@
 
 import AppKit
 import SwiftUI
+import UseCases
 
 @objc
 @MainActor
@@ -31,14 +32,15 @@ protocol SoftphoneCallTarget: AnyObject {
 @objcMembers
 final class SoftphoneAppShellViewFactory: NSObject {
     @MainActor
-    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:callHistoryStore:messageStore:diagnosticsStore:)
+    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:callHistoryStore:messageStore:diagnosticsStore:activeCallStore:)
     static func makeView(
         callTarget: SoftphoneCallTarget,
         accountDisplayName: String,
         sipAddress: String,
         callHistoryStore: SoftphoneCallHistoryStore,
         messageStore: SoftphoneMessageStore,
-        diagnosticsStore: SoftphoneDiagnosticsStore
+        diagnosticsStore: SoftphoneDiagnosticsStore,
+        activeCallStore: SoftphoneActiveCallStore
     ) -> NSView {
         let view = NSHostingView(
             rootView: SoftphoneAppShellView(
@@ -47,6 +49,7 @@ final class SoftphoneAppShellViewFactory: NSObject {
                 callHistoryStore: callHistoryStore,
                 messageStore: messageStore,
                 diagnosticsStore: diagnosticsStore,
+                activeCallStore: activeCallStore,
                 onCall: { [weak callTarget] destination in
                     callTarget?.softphoneMakeCall(to: destination)
                 },
@@ -66,6 +69,7 @@ struct SoftphoneAppShellView: View {
     @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
     @ObservedObject var messageStore: SoftphoneMessageStore
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
+    @ObservedObject var activeCallStore: SoftphoneActiveCallStore
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
 
@@ -93,6 +97,7 @@ struct SoftphoneAppShellView: View {
                     callHistoryStore: callHistoryStore,
                     messageStore: messageStore,
                     diagnosticsStore: diagnosticsStore,
+                    activeCallStore: activeCallStore,
                     onCall: onCall,
                     onPickCallHistoryRecord: onPickCallHistoryRecord
                 )
@@ -149,6 +154,38 @@ private extension SoftphoneRegistrationState {
         case .failed:
             return SoftphoneTheme.red
         case .offline:
+            return SoftphoneTheme.muted
+        }
+    }
+}
+
+private extension CallStatsQuality {
+    var title: String {
+        switch self {
+        case .waiting:
+            return "Stats pending"
+        case .good:
+            return "Good"
+        case .fair:
+            return "Fair"
+        case .poor:
+            return "Poor"
+        @unknown default:
+            return "Unknown"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .waiting:
+            return SoftphoneTheme.placeholder
+        case .good:
+            return SoftphoneTheme.green
+        case .fair:
+            return SoftphoneTheme.amber
+        case .poor:
+            return SoftphoneTheme.red
+        @unknown default:
             return SoftphoneTheme.muted
         }
     }
@@ -300,24 +337,165 @@ private struct SoftphoneMainContent: View {
     @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
     @ObservedObject var messageStore: SoftphoneMessageStore
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
+    @ObservedObject var activeCallStore: SoftphoneActiveCallStore
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
 
     var body: some View {
-        Group {
-            switch selectedItem {
-            case .keypad:
-                SoftphoneKeypadScreen(dialPad: $dialPad, onCall: onCall)
-            case .messages:
-                SoftphoneMessagesScreen(messageStore: messageStore)
-            case .history:
-                SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
-            case .settings:
-                SoftphoneSettingsScreen(diagnosticsStore: diagnosticsStore)
+        VStack(spacing: 16) {
+            if let activeCall = activeCallStore.primaryCall {
+                SoftphoneActiveCallPanel(call: activeCall)
             }
+
+            Group {
+                switch selectedItem {
+                case .keypad:
+                    SoftphoneKeypadScreen(dialPad: $dialPad, onCall: onCall)
+                case .messages:
+                    SoftphoneMessagesScreen(messageStore: messageStore)
+                case .history:
+                    SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
+                case .settings:
+                    SoftphoneSettingsScreen(diagnosticsStore: diagnosticsStore)
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .padding(22)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct SoftphoneActiveCallPanel: View {
+    let call: SoftphoneActiveCallModel
+
+    @State private var showsStats = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 14) {
+                Image(systemName: "phone.fill")
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: 34, height: 34)
+                    .background(SoftphoneTheme.green)
+                    .clipShape(Circle())
+
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(call.remoteParty)
+                        .font(.system(size: 17, weight: .bold))
+                        .lineLimit(1)
+                    Text(call.status)
+                        .font(.system(size: 13, weight: .semibold))
+                        .foregroundStyle(SoftphoneTheme.muted)
+                }
+
+                Spacer()
+
+                if !call.duration.isEmpty {
+                    SoftphonePill {
+                        Image(systemName: "timer")
+                        Text(call.duration)
+                    }
+                }
+
+                SoftphoneQualityPill(quality: call.quality)
+
+                if call.isMuted {
+                    SoftphoneStatusIcon(systemName: "mic.slash.fill", help: "Muted")
+                }
+
+                if call.isOnHold {
+                    SoftphoneStatusIcon(systemName: "pause.fill", help: "On hold")
+                }
+
+                if !call.statsRows.isEmpty {
+                    Button {
+                        showsStats.toggle()
+                    } label: {
+                        Image(systemName: showsStats ? "chart.bar.xaxis" : "chart.bar")
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.plain)
+                    .help(showsStats ? "Hide call stats" : "Show call stats")
+                }
+            }
+
+            if showsStats {
+                SoftphoneCallStatsTable(rows: call.statsRows)
+            }
+        }
+        .padding(14)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct SoftphoneStatusIcon: View {
+    let systemName: String
+    let help: String
+
+    var body: some View {
+        Image(systemName: systemName)
+            .font(.system(size: 13, weight: .bold))
+            .foregroundStyle(SoftphoneTheme.muted)
+            .frame(width: 30, height: 30)
+            .background(SoftphoneTheme.fieldBackground)
+            .clipShape(Circle())
+            .help(help)
+    }
+}
+
+private struct SoftphoneQualityPill: View {
+    let quality: CallStatsQuality
+
+    var body: some View {
+        SoftphonePill {
+            Circle()
+                .fill(quality.color)
+                .frame(width: 8, height: 8)
+            Text(quality.title)
+        }
+    }
+}
+
+private struct SoftphoneCallStatsTable: View {
+    let rows: [SoftphoneCallStatsRowModel]
+
+    var body: some View {
+        VStack(spacing: 0) {
+            SoftphoneCallStatsRow(metric: "Metric", live: "Live", peak: "Peak", isHeader: true)
+            ForEach(rows) { row in
+                Divider()
+                SoftphoneCallStatsRow(metric: row.metric, live: row.live, peak: row.peak, isHeader: false)
+            }
+        }
+        .background(SoftphoneTheme.fieldBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+    }
+}
+
+private struct SoftphoneCallStatsRow: View {
+    let metric: String
+    let live: String
+    let peak: String
+    let isHeader: Bool
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Text(metric)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Text(live)
+                .frame(width: 150, alignment: .leading)
+            Text(peak)
+                .frame(width: 150, alignment: .leading)
+        }
+        .font(.system(size: 12, weight: isHeader ? .bold : .regular, design: .monospaced))
+        .foregroundStyle(isHeader ? SoftphoneTheme.text : SoftphoneTheme.muted)
+        .lineLimit(1)
+        .truncationMode(.middle)
+        .padding(.horizontal, 12)
+        .frame(height: 30)
     }
 }
 

@@ -35,6 +35,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 @property(nonatomic) SoftphoneCallHistoryStore *softphoneCallHistoryStore;
 @property(nonatomic) SoftphoneMessageStore *softphoneMessageStore;
 @property(nonatomic) SoftphoneDiagnosticsStore *softphoneDiagnosticsStore;
+@property(nonatomic) SoftphoneActiveCallStore *softphoneActiveCallStore;
 
 @property(nonatomic, weak) IBOutlet NSView *activeAccountView;
 @property(nonatomic, weak) IBOutlet NSView *callHistoryView;
@@ -96,6 +97,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     self.softphoneDiagnosticsStore = [[SoftphoneDiagnosticsStore alloc] initWithAccountUUID:self.account.uuid
                                                                                      domain:self.account.domain
                                                                                  sipAddress:self.account.domain];
+    self.softphoneActiveCallStore = [[SoftphoneActiveCallStore alloc] init];
 
     [self.callHistoryViewEventTargetFactory makeWithAccount:self.account
                                                        view:self.softphoneCallHistoryStore
@@ -143,9 +145,32 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
                                                                            sipAddress:self.account.domain
                                                                    callHistoryStore:self.softphoneCallHistoryStore
                                                                        messageStore:self.softphoneMessageStore
-                                                                   diagnosticsStore:self.softphoneDiagnosticsStore];
+                                                                   diagnosticsStore:self.softphoneDiagnosticsStore
+                                                                    activeCallStore:self.softphoneActiveCallStore];
     [self.view addSubview:self.softphoneAppShellView];
     [self.view addConstraints:FullSizeConstraintsForView(self.softphoneAppShellView)];
+}
+
+- (void)updateSoftphoneCallWithIdentifier:(NSString *)identifier
+                              remoteParty:(NSString *)remoteParty
+                                   status:(NSString *)status
+                                 duration:(NSString *)duration
+                                  isMuted:(BOOL)isMuted
+                                 isOnHold:(BOOL)isOnHold
+                            statsSnapshot:(CallStatsSnapshot *)statsSnapshot {
+    (void)self.view;
+    [self.softphoneActiveCallStore upsertCallWithIdentifier:identifier
+                                                remoteParty:remoteParty
+                                                     status:status
+                                                   duration:duration
+                                                    isMuted:isMuted
+                                                   isOnHold:isOnHold
+                                              statsSnapshot:statsSnapshot];
+}
+
+- (void)removeSoftphoneCallWithIdentifier:(NSString *)identifier {
+    (void)self.view;
+    [self.softphoneActiveCallStore removeCallWithIdentifier:identifier];
 }
 
 - (void)softphoneMakeCallTo:(NSString *)destination {

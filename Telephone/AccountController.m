@@ -872,7 +872,12 @@ static NSString * const kRussian = @"ru";
 
 #pragma mark - CallControllerDelegate
 
+- (void)callControllerDidChangePresentation:(CallController *)callController {
+    [self.windowController updateSoftphoneCallWithController:callController];
+}
+
 - (void)callControllerWillClose:(CallController *)callController {
+    [self.windowController removeSoftphoneCallWithController:callController];
     [self.callControllers removeObject:callController];
     [(AppController *)[NSApp delegate] updateDockTileBadgeLabel];
 }
