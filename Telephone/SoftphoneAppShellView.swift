@@ -32,6 +32,12 @@ protocol SoftphoneCallTarget: AnyObject {
     func softphoneToggleMuteForCall(withIdentifier identifier: String)
     @objc(softphoneSendDTMFDigit:forCallWithIdentifier:)
     func softphoneSendDTMFDigit(_ digit: String, forCallWithIdentifier identifier: String)
+    @objc(softphoneSendSIPOptionsPingTo:transport:completion:)
+    func softphoneSendSIPOptionsPing(
+        to destination: String,
+        transport: String,
+        completion: @escaping ([String: Any]) -> Void
+    )
 }
 
 @objcMembers
@@ -69,6 +75,9 @@ final class SoftphoneAppShellViewFactory: NSObject {
                 },
                 onSendDTMFDigit: { [weak callTarget] digit, identifier in
                     callTarget?.softphoneSendDTMFDigit(digit, forCallWithIdentifier: identifier)
+                },
+                onSIPPing: { [weak callTarget] destination, transport, completion in
+                    callTarget?.softphoneSendSIPOptionsPing(to: destination, transport: transport, completion: completion)
                 }
             )
         )
@@ -89,6 +98,7 @@ struct SoftphoneAppShellView: View {
     let onHangUp: (String) -> Void
     let onToggleMute: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
+    let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
 
     @State private var selectedItem: SoftphoneNavigationItem = .keypad
     @State private var isSidebarCollapsed = false
@@ -121,7 +131,8 @@ struct SoftphoneAppShellView: View {
                     onPickCallHistoryRecord: onPickCallHistoryRecord,
                     onHangUp: onHangUp,
                     onToggleMute: onToggleMute,
-                    onSendDTMFDigit: onSendDTMFDigit
+                    onSendDTMFDigit: onSendDTMFDigit,
+                    onSIPPing: onSIPPing
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -346,6 +357,7 @@ private struct SoftphoneMainContent: View {
     let onHangUp: (String) -> Void
     let onToggleMute: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
+    let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
 
     var body: some View {
         Group {
@@ -364,7 +376,7 @@ private struct SoftphoneMainContent: View {
             case .history:
                 SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
             case .settings:
-                SoftphoneSettingsScreen(diagnosticsStore: diagnosticsStore)
+                SoftphoneSettingsScreen(diagnosticsStore: diagnosticsStore, onSIPPing: onSIPPing)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -936,6 +948,7 @@ private enum SoftphoneSettingsTab: String, CaseIterable, Identifiable {
     case account
     case diagnostics
     case sipLog
+    case tools
 
     var id: String { rawValue }
 
@@ -947,12 +960,25 @@ private enum SoftphoneSettingsTab: String, CaseIterable, Identifiable {
             return "Diagnostics"
         case .sipLog:
             return "SIP Log"
+        case .tools:
+            return "Tools"
         }
     }
 }
 
+private enum SoftphoneSIPPingTransport: String, CaseIterable, Identifiable {
+    case udp = "udp"
+    case tcp = "tcp"
+    case tls = "tls"
+
+    var id: String { rawValue }
+
+    var title: String { rawValue.uppercased() }
+}
+
 private struct SoftphoneSettingsScreen: View {
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
+    let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
 
     @State private var selectedTab: SoftphoneSettingsTab = .account
 
@@ -967,6 +993,8 @@ private struct SoftphoneSettingsScreen: View {
                 SoftphoneDiagnosticsSettingsPane(diagnosticsStore: diagnosticsStore)
             case .sipLog:
                 SoftphoneSIPLogSettingsPane(diagnosticsStore: diagnosticsStore)
+            case .tools:
+                SoftphoneToolsSettingsPane(onSIPPing: onSIPPing)
             }
 
             Spacer()
@@ -1030,6 +1058,158 @@ private struct SoftphoneDiagnosticsSettingsPane: View {
                 )
             }
             SoftphoneLiveCallDiagnosticsPane(activeCall: diagnosticsStore.snapshot.activeCall)
+        }
+    }
+}
+
+private struct SoftphoneToolsSettingsPane: View {
+    let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
+
+    @State private var destination = ""
+    @State private var selectedTransport: SoftphoneSIPPingTransport = .udp
+    @State private var isRunning = false
+    @State private var result: SoftphoneSIPPingResultModel?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SoftphoneSectionHeader(title: "Tools", subtitle: "One-off SIP probes for field diagnostics.")
+
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 12) {
+                    SoftphoneEditableField(
+                        label: "SIP target",
+                        placeholder: "user@domain",
+                        text: $destination
+                    )
+                    .frame(minWidth: 260)
+
+                    SoftphoneTransportPicker(selectedTransport: $selectedTransport)
+                        .frame(width: 190)
+                }
+
+                HStack {
+                    Button {
+                        sendPing()
+                    } label: {
+                        Label(isRunning ? "Pinging" : "Send OPTIONS", systemImage: "dot.radiowaves.left.and.right")
+                    }
+                    .buttonStyle(SoftphoneSecondaryButtonStyle(width: 156))
+                    .disabled(!canSend)
+                    .help("Send a SIP OPTIONS ping")
+
+                    Spacer()
+                }
+
+                if let result {
+                    SoftphoneSIPPingResultPanel(result: result)
+                } else {
+                    SoftphoneEmptyState(title: "No SIP ping yet", subtitle: "Send OPTIONS to capture a response or timeout.")
+                }
+            }
+            .padding(14)
+            .background(SoftphoneTheme.rowBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        }
+    }
+
+    private var canSend: Bool {
+        !destination.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !isRunning
+    }
+
+    private func sendPing() {
+        let target = destination.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !target.isEmpty else { return }
+        isRunning = true
+        result = nil
+        onSIPPing(target, selectedTransport.rawValue) { dictionary in
+            result = SoftphoneSIPPingResultModel(dictionary: dictionary)
+            isRunning = false
+        }
+    }
+}
+
+private struct SoftphoneEditableField: View {
+    let label: String
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(label)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(SoftphoneTheme.muted)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14, weight: .semibold))
+                .padding(.horizontal, 13)
+                .frame(height: 46)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        }
+    }
+}
+
+private struct SoftphoneTransportPicker: View {
+    @Binding var selectedTransport: SoftphoneSIPPingTransport
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("Transport")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(SoftphoneTheme.muted)
+            HStack(spacing: 3) {
+                ForEach(SoftphoneSIPPingTransport.allCases) { transport in
+                    Button {
+                        selectedTransport = transport
+                    } label: {
+                        Text(transport.title)
+                            .softphoneSegment(isSelected: selectedTransport == transport)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Use \(transport.title)")
+                }
+            }
+            .padding(4)
+            .frame(height: 46)
+            .background(SoftphoneTheme.fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+        }
+    }
+}
+
+private struct SoftphoneSIPPingResultPanel: View {
+    let result: SoftphoneSIPPingResultModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                SoftphoneDiagnosticTile(label: "Status", value: result.status)
+                SoftphoneDiagnosticTile(label: "Transport", value: result.transport.uppercased())
+                SoftphoneDiagnosticTile(label: "Elapsed", value: result.elapsed)
+            }
+            SoftphoneLabeledField(label: "Target", value: result.target)
+            SoftphoneLabeledField(label: "Summary", value: result.summary)
+            if !result.detail.isEmpty {
+                SoftphoneLabeledField(label: "Detail", value: result.detail)
+            }
+            if !result.rawResponse.isEmpty {
+                VStack(alignment: .leading, spacing: 7) {
+                    Text("Response")
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundStyle(SoftphoneTheme.muted)
+                    ScrollView {
+                        Text(result.rawResponse)
+                            .font(.system(size: 11, design: .monospaced))
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                    }
+                    .frame(minHeight: 130, maxHeight: 220)
+                    .background(SoftphoneTheme.fieldBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                }
+            }
         }
     }
 }

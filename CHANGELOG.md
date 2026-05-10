@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added a Settings Tools tab with a SIP Ping tool that sends PJSIP-backed
+  SIP OPTIONS probes over UDP, TCP, or TLS, captures responses/timeouts, and
+  bumped the build number to 172.
 - Reworked the README around SIPMan's field-engineering audience, core SIP
   softphone workflows, diagnostics focus, repository layout, and build/test
   guidance.

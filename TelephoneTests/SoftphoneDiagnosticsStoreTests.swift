@@ -151,6 +151,26 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
         XCTAssertEqual(sut.snapshot.sipLogEntries.map(\.message), ["SIP/2.0 200 OK"])
     }
 
+    func testSIPPingResultModelMapsPJSIPBridgeDictionary() {
+        let sut = SoftphoneSIPPingResultModel(dictionary: [
+            "target": "sip:9000@example.com;transport=tcp",
+            "transport": "tcp",
+            "status": "Response",
+            "summary": "200 OK",
+            "detail": "PJSIP event: RX_MSG",
+            "rawResponse": "SIP/2.0 200 OK",
+            "elapsedMilliseconds": NSNumber(value: 123.4)
+        ])
+
+        XCTAssertEqual(sut.target, "sip:9000@example.com;transport=tcp")
+        XCTAssertEqual(sut.transport, "tcp")
+        XCTAssertEqual(sut.status, "Response")
+        XCTAssertEqual(sut.summary, "200 OK")
+        XCTAssertEqual(sut.detail, "PJSIP event: RX_MSG")
+        XCTAssertEqual(sut.rawResponse, "SIP/2.0 200 OK")
+        XCTAssertEqual(sut.elapsed, "123 ms")
+    }
+
     private func snapshot(metric: String, live: String, numericValue: Double) -> CallStatsSnapshot {
         return CallStatsSnapshot(
             sampledAt: Date(),

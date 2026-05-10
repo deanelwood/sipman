@@ -19,6 +19,8 @@
 #import "AccountViewController.h"
 
 #import "ActiveAccountViewController.h"
+#import "AKSIPAccount.h"
+#import "AKSIPUserAgent.h"
 
 #import "Telephone-Swift.h"
 
@@ -208,6 +210,16 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 
 - (void)softphoneSendDTMFDigit:(NSString *)digit forCallWithIdentifier:(NSString *)identifier {
     [self.callControlTarget sendDTMFDigits:digit forCallWithIdentifier:identifier];
+}
+
+- (void)softphoneSendSIPOptionsPingTo:(NSString *)destination
+                            transport:(NSString *)transport
+                            completion:(void (^)(NSDictionary<NSString *,id> * _Nonnull))completion {
+    AKSIPAccount *account = [(id)self.account isKindOfClass:[AKSIPAccount class]] ? (AKSIPAccount *)self.account : nil;
+    [[AKSIPUserAgent sharedUserAgent] sendSIPOptionsPingTo:destination
+                                                  transport:transport
+                                                    account:account
+                                                 completion:completion];
 }
 
 @end

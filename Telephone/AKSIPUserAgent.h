@@ -54,6 +54,7 @@ typedef struct _AKSIPUserAgentCallData {
 extern const NSInteger kAKSIPUserAgentInvalidIdentifier;
 
 @class AKSIPAccount, AKSIPCall, AKSIPURIParser;
+typedef void (^AKSIPOptionsPingCompletion)(NSDictionary *result);
 
 // The AKSIPUserAgent class implements SIP User Agent functionality. You can use it to create, configure, and start user
 // agent, add and remove accounts, and set sound devices for input and output. You need to restart the user agent after
@@ -199,5 +200,12 @@ extern const NSInteger kAKSIPUserAgentInvalidIdentifier;
 
 // Returns a string that describes given SIP response code from RFC 3261.
 - (NSString *)stringForSIPResponseCode:(NSInteger)responseCode;
+
+// Sends an out-of-dialog SIP OPTIONS request through PJSIP and reports the
+// final response, transport error, or a 5 second UI timeout.
+- (void)sendSIPOptionsPingTo:(NSString *)destination
+                   transport:(NSString *)transport
+                      account:(AKSIPAccount *)account
+                   completion:(AKSIPOptionsPingCompletion)completion;
 
 @end

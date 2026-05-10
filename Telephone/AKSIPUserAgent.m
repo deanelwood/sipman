@@ -62,10 +62,28 @@ static const BOOL kAKSIPUserAgentDefaultLocksCodec = YES;
 static NSString * const SoftphoneSIPLogLineNotification = @"SoftphoneSIPLogLineNotification";
 static NSString * const SoftphoneSIPLogLevelKey = @"level";
 static NSString * const SoftphoneSIPLogMessageKey = @"message";
+static NSString * const SoftphoneSIPPingStatusResponse = @"Response";
+static NSString * const SoftphoneSIPPingStatusTimeout = @"Timeout";
+static NSString * const SoftphoneSIPPingStatusFailed = @"Failed";
 
 static pthread_mutex_t SoftphonePJSIPLogFileMutex = PTHREAD_MUTEX_INITIALIZER;
 static FILE *SoftphonePJSIPLogFile = NULL;
 static unsigned SoftphonePJSIPConsoleLogLevel = 0;
+
+@interface AKSIPOptionsPingToken : NSObject
+
+@property(nonatomic, copy) NSString *target;
+@property(nonatomic, copy) NSString *transport;
+@property(nonatomic) NSDate *startedAt;
+@property(nonatomic, copy) AKSIPOptionsPingCompletion completion;
+@property(nonatomic) BOOL completed;
+@property(nonatomic, weak) AKSIPUserAgent *userAgent;
+@property(nonatomic, weak) AKSIPAccount *account;
+
+@end
+
+@implementation AKSIPOptionsPingToken
+@end
 
 // PJSIP allows only one application log callback, so this callback tees the
 // stack output to every place SIPMan needs it: the existing file, console, and
@@ -152,6 +170,7 @@ static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
 @property(nonatomic) pj_pool_t *pool;
 
 @property(nonatomic, readonly) NSMutableArray *accounts;
+@property(nonatomic, readonly) NSMutableSet<AKSIPOptionsPingToken *> *sipOptionsPingTokens;
 
 // Ringback slot.
 @property(nonatomic, assign) pjsua_conf_port_id ringbackSlot;
@@ -179,6 +198,97 @@ static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
 - (NSUInteger)priorityForCodec:(NSString *)identifier;
 
 @end
+
+static NSString *SoftphonePJSIPErrorString(pj_status_t status) {
+    char buffer[PJ_ERR_MSG_SIZE];
+    pj_strerror(status, buffer, sizeof(buffer));
+    return [NSString stringWithCString:buffer encoding:NSUTF8StringEncoding] ?: [NSString stringWithFormat:@"PJSIP status %d", status];
+}
+
+static NSDictionary *SoftphoneSIPPingResult(AKSIPOptionsPingToken *token,
+                                            NSString *status,
+                                            NSString *summary,
+                                            NSString *detail,
+                                            NSString *rawResponse) {
+    NSTimeInterval elapsed = [[NSDate date] timeIntervalSinceDate:token.startedAt] * 1000.0;
+    return @{
+        @"target": token.target ?: @"",
+        @"transport": token.transport ?: @"",
+        @"status": status ?: @"",
+        @"summary": summary ?: @"",
+        @"detail": detail ?: @"",
+        @"rawResponse": rawResponse ?: @"",
+        @"elapsedMilliseconds": @(elapsed)
+    };
+}
+
+static NSString *SoftphoneSIPOptionsTarget(NSString *destination, NSString *transport) {
+    NSString *trimmed = [destination stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+    NSString *lowercaseTarget = [trimmed lowercaseString];
+    NSString *target = ([lowercaseTarget hasPrefix:@"sip:"] || [lowercaseTarget hasPrefix:@"sips:"]) ? trimmed : [@"sip:" stringByAppendingString:trimmed];
+    NSString *lowercaseTransport = [[transport lowercaseString] isEqualToString:@"tcp"] || [[transport lowercaseString] isEqualToString:@"tls"] ? [transport lowercaseString] : @"udp";
+
+    if (![lowercaseTransport isEqualToString:@"udp"] && [[target lowercaseString] rangeOfString:@";transport="].location == NSNotFound) {
+        target = [target stringByAppendingFormat:@";transport=%@", lowercaseTransport];
+    }
+    return target;
+}
+
+static NSString *SoftphoneSIPOptionsRawResponse(pjsip_event *event) {
+    if (event == NULL ||
+        event->type != PJSIP_EVENT_TSX_STATE ||
+        event->body.tsx_state.type != PJSIP_EVENT_RX_MSG ||
+        event->body.tsx_state.src.rdata == NULL) {
+        return @"";
+    }
+
+    pjsip_rx_data *rdata = event->body.tsx_state.src.rdata;
+    if (rdata->pkt_info.len <= 0) {
+        return @"";
+    }
+
+    return [[NSString alloc] initWithBytes:rdata->pkt_info.packet
+                                    length:(NSUInteger)rdata->pkt_info.len
+                                  encoding:NSUTF8StringEncoding] ?: @"";
+}
+
+static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) {
+    AKSIPOptionsPingToken *token = (__bridge AKSIPOptionsPingToken *)rawToken;
+    pjsip_transaction *tsx = NULL;
+    if (event != NULL && event->type == PJSIP_EVENT_TSX_STATE) {
+        tsx = event->body.tsx_state.tsx;
+    }
+
+    NSString *summary = @"SIP OPTIONS transaction completed.";
+    NSString *detail = @"";
+    NSString *status = SoftphoneSIPPingStatusResponse;
+    if (tsx != NULL && tsx->status_code > 0) {
+        NSString *reason = [NSString stringWithPJString:tsx->status_text];
+        summary = reason.length > 0 ? [NSString stringWithFormat:@"%d %@", tsx->status_code, reason] : [NSString stringWithFormat:@"%d", tsx->status_code];
+    }
+
+    if (event != NULL && event->type == PJSIP_EVENT_TSX_STATE) {
+        if (event->body.tsx_state.type == PJSIP_EVENT_TRANSPORT_ERROR) {
+            status = SoftphoneSIPPingStatusFailed;
+            detail = SoftphonePJSIPErrorString(event->body.tsx_state.src.status);
+        } else {
+            detail = [NSString stringWithFormat:@"PJSIP event: %s", pjsip_event_str(event->body.tsx_state.type)];
+        }
+    }
+
+    NSDictionary *result = SoftphoneSIPPingResult(token, status, summary, detail, SoftphoneSIPOptionsRawResponse(event));
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (token.completed) {
+            [token.userAgent.sipOptionsPingTokens removeObject:token];
+            return;
+        }
+        token.completed = YES;
+        if (token.completion) {
+            token.completion(result);
+        }
+        [token.userAgent.sipOptionsPingTokens removeObject:token];
+    });
+}
 
 
 @implementation AKSIPUserAgent
@@ -319,6 +429,7 @@ static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
     
     [self setDelegate:aDelegate];
     _accounts = [[NSMutableArray alloc] init];
+    _sipOptionsPingTokens = [[NSMutableSet alloc] init];
     [self setDetectedNATType:kAKNATTypeUnknown];
 
     [self setOutboundProxyPort:kAKSIPUserAgentDefaultOutboundProxyPort];
@@ -939,6 +1050,115 @@ static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
     });
     
     return [priorities[identifier] unsignedIntegerValue];
+}
+
+- (void)sendSIPOptionsPingTo:(NSString *)destination
+                   transport:(NSString *)transport
+                      account:(AKSIPAccount *)account
+                   completion:(AKSIPOptionsPingCompletion)completion {
+    if (!completion) {
+        return;
+    }
+
+    AKSIPOptionsPingToken *token = [[AKSIPOptionsPingToken alloc] init];
+    token.target = SoftphoneSIPOptionsTarget(destination, transport);
+    token.transport = [[transport lowercaseString] length] > 0 ? [transport lowercaseString] : @"udp";
+    token.startedAt = [NSDate date];
+    token.completion = completion;
+    token.userAgent = self;
+    token.account = account;
+
+    [self.sipOptionsPingTokens addObject:token];
+
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        if (token.completed) {
+            return;
+        }
+        token.completed = YES;
+        token.completion(SoftphoneSIPPingResult(
+            token,
+            SoftphoneSIPPingStatusTimeout,
+            @"No final SIP response received within 5 seconds.",
+            @"The OPTIONS transaction is still owned by PJSIP and may complete later in the SIP log.",
+            @""
+        ));
+    });
+
+    // PJSIP still owns the transaction after SIPMan's UI timeout, so keep the
+    // token alive long enough for a late transport callback to arrive safely.
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(90 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        [self.sipOptionsPingTokens removeObject:token];
+    });
+
+    [self performSelector:@selector(thread_sendSIPOptionsPingWithToken:) onThread:self.thread withObject:token waitUntilDone:NO];
+}
+
+- (void)thread_sendSIPOptionsPingWithToken:(AKSIPOptionsPingToken *)token {
+    @autoreleasepool {
+        if (![self isStarted] || token.account == nil || token.account.identifier == kAKSIPUserAgentInvalidIdentifier) {
+            [self completeSIPOptionsPingToken:token result:SoftphoneSIPPingResult(
+                token,
+                SoftphoneSIPPingStatusFailed,
+                @"SIP user agent is not ready.",
+                @"Start and register the account before sending a SIP OPTIONS ping.",
+                @""
+            ) removeToken:YES];
+            return;
+        }
+
+        pjsip_tx_data *tdata = NULL;
+        pj_str_t target = [token.target pjString];
+        pj_status_t status = pjsua_acc_create_request(
+            (pjsua_acc_id)token.account.identifier,
+            pjsip_get_options_method(),
+            &target,
+            &tdata
+        );
+        if (status != PJ_SUCCESS) {
+            [self completeSIPOptionsPingToken:token result:SoftphoneSIPPingResult(
+                token,
+                SoftphoneSIPPingStatusFailed,
+                @"Could not create SIP OPTIONS request.",
+                SoftphonePJSIPErrorString(status),
+                @""
+            ) removeToken:YES];
+            return;
+        }
+
+        status = pjsip_endpt_send_request(
+            pjsua_get_pjsip_endpt(),
+            tdata,
+            -1,
+            (__bridge void *)token,
+            &SoftphoneSIPOptionsPingCallback
+        );
+        if (status != PJ_SUCCESS) {
+            if (tdata != NULL) {
+                pjsip_tx_data_dec_ref(tdata);
+            }
+            [self completeSIPOptionsPingToken:token result:SoftphoneSIPPingResult(
+                token,
+                SoftphoneSIPPingStatusFailed,
+                @"Could not send SIP OPTIONS request.",
+                SoftphonePJSIPErrorString(status),
+                @""
+            ) removeToken:YES];
+        }
+    }
+}
+
+- (void)completeSIPOptionsPingToken:(AKSIPOptionsPingToken *)token result:(NSDictionary *)result removeToken:(BOOL)removeToken {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (!token.completed) {
+            token.completed = YES;
+            if (token.completion) {
+                token.completion(result);
+            }
+        }
+        if (removeToken) {
+            [self.sipOptionsPingTokens removeObject:token];
+        }
+    });
 }
 
 - (NSString *)stringForSIPResponseCode:(NSInteger)responseCode {

@@ -35,6 +35,30 @@ struct SoftphoneSIPLogEntryModel: Equatable, Identifiable {
     let message: String
 }
 
+struct SoftphoneSIPPingResultModel: Equatable {
+    let target: String
+    let transport: String
+    let status: String
+    let summary: String
+    let detail: String
+    let rawResponse: String
+    let elapsed: String
+
+    init(dictionary: [String: Any]) {
+        target = dictionary["target"] as? String ?? ""
+        transport = dictionary["transport"] as? String ?? ""
+        status = dictionary["status"] as? String ?? "Unknown"
+        summary = dictionary["summary"] as? String ?? "No result"
+        detail = dictionary["detail"] as? String ?? ""
+        rawResponse = dictionary["rawResponse"] as? String ?? ""
+        if let elapsedMilliseconds = dictionary["elapsedMilliseconds"] as? NSNumber {
+            elapsed = String(format: "%.0f ms", elapsedMilliseconds.doubleValue)
+        } else {
+            elapsed = "--"
+        }
+    }
+}
+
 struct SoftphoneDiagnosticsSnapshot: Equatable {
     let accountUUID: String
     let domain: String
