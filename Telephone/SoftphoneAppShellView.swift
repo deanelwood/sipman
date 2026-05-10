@@ -31,18 +31,20 @@ protocol SoftphoneCallTarget: AnyObject {
 @objcMembers
 final class SoftphoneAppShellViewFactory: NSObject {
     @MainActor
-    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:callHistoryStore:)
+    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:callHistoryStore:messageStore:)
     static func makeView(
         callTarget: SoftphoneCallTarget,
         accountDisplayName: String,
         sipAddress: String,
-        callHistoryStore: SoftphoneCallHistoryStore
+        callHistoryStore: SoftphoneCallHistoryStore,
+        messageStore: SoftphoneMessageStore
     ) -> NSView {
         let view = NSHostingView(
             rootView: SoftphoneAppShellView(
                 accountDisplayName: accountDisplayName,
                 sipAddress: sipAddress,
                 callHistoryStore: callHistoryStore,
+                messageStore: messageStore,
                 onCall: { [weak callTarget] destination in
                     callTarget?.softphoneMakeCall(to: destination)
                 },
@@ -60,6 +62,7 @@ struct SoftphoneAppShellView: View {
     let accountDisplayName: String
     let sipAddress: String
     @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
+    @ObservedObject var messageStore: SoftphoneMessageStore
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
 
@@ -85,6 +88,7 @@ struct SoftphoneAppShellView: View {
                     selectedItem: selectedItem,
                     dialPad: $dialPad,
                     callHistoryStore: callHistoryStore,
+                    messageStore: messageStore,
                     onCall: onCall,
                     onPickCallHistoryRecord: onPickCallHistoryRecord
                 )
@@ -308,6 +312,7 @@ private struct SoftphoneMainContent: View {
     let selectedItem: SoftphoneNavigationItem
     @Binding var dialPad: SoftphoneDialPad
     @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
+    @ObservedObject var messageStore: SoftphoneMessageStore
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
 
@@ -317,7 +322,7 @@ private struct SoftphoneMainContent: View {
             case .keypad:
                 SoftphoneKeypadScreen(dialPad: $dialPad, onCall: onCall)
             case .messages:
-                SoftphoneMessagesPlaceholder()
+                SoftphoneMessagesScreen(messageStore: messageStore)
             case .history:
                 SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
             case .settings:
@@ -405,50 +410,45 @@ private struct SoftphoneKeypadScreen: View {
     }
 }
 
-private struct SoftphoneMessagesPlaceholder: View {
+private struct SoftphoneMessagesScreen: View {
+    @ObservedObject var messageStore: SoftphoneMessageStore
+
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
                 SoftphoneSearchFieldPlaceholder()
-                SoftphoneConversationRow(initials: "AE", name: "Alex Engineer", preview: "SIP MESSAGE support is ready for wiring.", time: "10:35")
-                SoftphoneConversationRow(initials: "QA", name: "QA Lab", preview: "Registration scenario confirmed.", time: "09:14")
+                if messageStore.conversations.isEmpty {
+                    SoftphoneEmptyState(title: "No messages", subtitle: "SIP MESSAGE conversations will appear here.")
+                } else {
+                    ForEach(messageStore.conversations) { conversation in
+                        SoftphoneConversationRow(
+                            conversation: conversation,
+                            isSelected: conversation.id == messageStore.selectedConversationId
+                        ) {
+                            messageStore.selectConversation(id: conversation.id)
+                        }
+                    }
+                }
                 Spacer()
             }
             .frame(width: 300)
             Divider()
             VStack(spacing: 0) {
-                HStack {
-                    SoftphoneAvatar(initials: "AE")
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Alex Engineer")
-                            .font(.system(size: 15, weight: .semibold))
-                        Text("+44 20 7946 0000")
-                            .font(.system(size: 12))
-                            .foregroundStyle(SoftphoneTheme.muted)
+                if let selectedConversation = messageStore.conversations.first(where: { $0.id == messageStore.selectedConversationId }) {
+                    SoftphoneMessageHeader(conversation: selectedConversation)
+                    Divider()
+                    ScrollView {
+                        LazyVStack(spacing: 10) {
+                            ForEach(messageStore.messages) { message in
+                                SoftphoneMessageBubble(message: message)
+                            }
+                        }
+                        .padding(18)
                     }
-                    Spacer()
-                    Button("Call") {}
-                        .buttonStyle(SoftphoneSecondaryButtonStyle(width: 72))
+                    SoftphoneMessageComposerPlaceholder()
+                } else {
+                    SoftphoneEmptyState(title: "Select a conversation", subtitle: "SIP MESSAGE details will appear here.")
                 }
-                .padding(.horizontal, 20)
-                .frame(height: 72)
-                Divider()
-                Spacer()
-                HStack {
-                    Text("Message")
-                        .foregroundStyle(SoftphoneTheme.placeholder)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal, 15)
-                        .frame(height: 46)
-                        .background(SoftphoneTheme.fieldBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-                    Button {
-                    } label: {
-                        Image(systemName: "paperplane.fill")
-                    }
-                    .buttonStyle(SoftphonePrimaryIconButtonStyle())
-                }
-                .padding(14)
             }
         }
     }
@@ -537,33 +537,110 @@ private struct SoftphoneSearchFieldPlaceholder: View {
 }
 
 private struct SoftphoneConversationRow: View {
-    let initials: String
-    let name: String
-    let preview: String
-    let time: String
+    let conversation: SoftphoneMessageConversationRowModel
+    let isSelected: Bool
+    let onSelect: () -> Void
 
     var body: some View {
-        HStack(spacing: 11) {
-            SoftphoneAvatar(initials: initials)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text(name)
-                        .font(.system(size: 13, weight: .semibold))
-                    Spacer()
-                    Text(time)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundStyle(SoftphoneTheme.placeholder)
+        Button(action: onSelect) {
+            HStack(spacing: 11) {
+                SoftphoneAvatar(initials: initials(for: conversation.title))
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(conversation.title)
+                            .font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        Text(conversation.date)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(SoftphoneTheme.placeholder)
+                    }
+                    Text(conversation.preview)
+                        .font(.system(size: 12))
+                        .foregroundStyle(SoftphoneTheme.muted)
+                        .lineLimit(1)
                 }
-                Text(preview)
-                    .font(.system(size: 12))
+            }
+            .padding(10)
+            .background(isSelected ? SoftphoneTheme.selectedControlBackground : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.trailing, 14)
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func initials(for value: String) -> String {
+        let parts = value.split(separator: " ").prefix(2)
+        let result = parts.compactMap(\.first).map(String.init).joined()
+        return result.isEmpty ? "#" : result.uppercased()
+    }
+}
+
+private struct SoftphoneMessageHeader: View {
+    let conversation: SoftphoneMessageConversationRowModel
+
+    var body: some View {
+        HStack {
+            SoftphoneAvatar(initials: "#")
+            VStack(alignment: .leading, spacing: 2) {
+                Text(conversation.title)
+                    .font(.system(size: 15, weight: .semibold))
+                Text(conversation.id)
+                    .font(.system(size: 12, design: .monospaced))
                     .foregroundStyle(SoftphoneTheme.muted)
                     .lineLimit(1)
+                    .truncationMode(.middle)
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 20)
+        .frame(height: 72)
+    }
+}
+
+private struct SoftphoneMessageBubble: View {
+    let message: SoftphoneMessageBubbleModel
+
+    var body: some View {
+        HStack {
+            if message.isOutgoing {
+                Spacer(minLength: 52)
+            }
+            VStack(alignment: .leading, spacing: 6) {
+                Text(message.body)
+                    .font(.system(size: 13))
+                Text("\(message.date) - \(message.deliveryState)")
+                    .font(.system(size: 10, weight: .semibold))
+                    .foregroundStyle(message.isOutgoing ? .white.opacity(0.72) : SoftphoneTheme.muted)
+            }
+            .padding(12)
+            .background(message.isOutgoing ? SoftphoneTheme.blue : SoftphoneTheme.fieldBackground)
+            .foregroundStyle(message.isOutgoing ? .white : SoftphoneTheme.text)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            if !message.isOutgoing {
+                Spacer(minLength: 52)
             }
         }
-        .padding(10)
-        .background(SoftphoneTheme.selectedControlBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .padding(.trailing, 14)
+    }
+}
+
+private struct SoftphoneMessageComposerPlaceholder: View {
+    var body: some View {
+        HStack {
+            Text("Message")
+                .foregroundStyle(SoftphoneTheme.placeholder)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.horizontal, 15)
+                .frame(height: 46)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Button {
+            } label: {
+                Image(systemName: "paperplane.fill")
+            }
+            .buttonStyle(SoftphonePrimaryIconButtonStyle())
+            .disabled(true)
+        }
+        .padding(14)
     }
 }
 

@@ -33,6 +33,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 
 @property(nonatomic) CallHistoryViewEventTarget *callHistoryViewEventTarget;
 @property(nonatomic) SoftphoneCallHistoryStore *softphoneCallHistoryStore;
+@property(nonatomic) SoftphoneMessageStore *softphoneMessageStore;
 
 @property(nonatomic, weak) IBOutlet NSView *activeAccountView;
 @property(nonatomic, weak) IBOutlet NSView *callHistoryView;
@@ -89,6 +90,8 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     self.bottomViewHeightConstraint.constant = 0;
 
     self.softphoneCallHistoryStore = [[SoftphoneCallHistoryStore alloc] init];
+    self.softphoneMessageStore = [[SoftphoneMessageStore alloc] initWithAccountUUID:self.account.uuid
+                                                                     accountAddress:self.account.domain];
 
     [self.callHistoryViewEventTargetFactory makeWithAccount:self.account
                                                        view:self.softphoneCallHistoryStore
@@ -132,7 +135,8 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     self.softphoneAppShellView = [SoftphoneAppShellViewFactory makeViewWithCallTarget:self
                                                                    accountDisplayName:self.account.domain
                                                                            sipAddress:self.account.domain
-                                                                   callHistoryStore:self.softphoneCallHistoryStore];
+                                                                   callHistoryStore:self.softphoneCallHistoryStore
+                                                                       messageStore:self.softphoneMessageStore];
     [self.view addSubview:self.softphoneAppShellView];
     [self.view addConstraints:FullSizeConstraintsForView(self.softphoneAppShellView)];
 }

@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added a SwiftUI SIP MESSAGE screen backed by the SIP MESSAGE record and
+  conversation models.
 - Replaced the SwiftUI history placeholder with real call-history rows
   backed by the existing account history API.
 - Wired the SwiftUI keypad to the existing outbound call path and added
