@@ -24,19 +24,30 @@ import SwiftUI
 protocol SoftphoneCallTarget: AnyObject {
     @objc(softphoneMakeCallTo:)
     func softphoneMakeCall(to destination: String)
+    @objc(softphonePickCallHistoryRecordWithIdentifier:)
+    func softphonePickCallHistoryRecord(withIdentifier identifier: String)
 }
 
 @objcMembers
 final class SoftphoneAppShellViewFactory: NSObject {
     @MainActor
-    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:)
-    static func makeView(callTarget: SoftphoneCallTarget, accountDisplayName: String, sipAddress: String) -> NSView {
+    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:callHistoryStore:)
+    static func makeView(
+        callTarget: SoftphoneCallTarget,
+        accountDisplayName: String,
+        sipAddress: String,
+        callHistoryStore: SoftphoneCallHistoryStore
+    ) -> NSView {
         let view = NSHostingView(
             rootView: SoftphoneAppShellView(
                 accountDisplayName: accountDisplayName,
                 sipAddress: sipAddress,
+                callHistoryStore: callHistoryStore,
                 onCall: { [weak callTarget] destination in
                     callTarget?.softphoneMakeCall(to: destination)
+                },
+                onPickCallHistoryRecord: { [weak callTarget] identifier in
+                    callTarget?.softphonePickCallHistoryRecord(withIdentifier: identifier)
                 }
             )
         )
@@ -48,7 +59,9 @@ final class SoftphoneAppShellViewFactory: NSObject {
 struct SoftphoneAppShellView: View {
     let accountDisplayName: String
     let sipAddress: String
+    @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
     let onCall: (String) -> Void
+    let onPickCallHistoryRecord: (String) -> Void
 
     @State private var selectedItem: SoftphoneNavigationItem = .keypad
     @State private var isSidebarCollapsed = false
@@ -71,7 +84,9 @@ struct SoftphoneAppShellView: View {
                 SoftphoneMainContent(
                     selectedItem: selectedItem,
                     dialPad: $dialPad,
-                    onCall: onCall
+                    callHistoryStore: callHistoryStore,
+                    onCall: onCall,
+                    onPickCallHistoryRecord: onPickCallHistoryRecord
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -292,7 +307,9 @@ private struct SoftphonePill<Content: View>: View {
 private struct SoftphoneMainContent: View {
     let selectedItem: SoftphoneNavigationItem
     @Binding var dialPad: SoftphoneDialPad
+    @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
     let onCall: (String) -> Void
+    let onPickCallHistoryRecord: (String) -> Void
 
     var body: some View {
         Group {
@@ -302,7 +319,7 @@ private struct SoftphoneMainContent: View {
             case .messages:
                 SoftphoneMessagesPlaceholder()
             case .history:
-                SoftphoneHistoryPlaceholder()
+                SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
             case .settings:
                 SoftphoneSettingsPlaceholder()
             }
@@ -437,7 +454,10 @@ private struct SoftphoneMessagesPlaceholder: View {
     }
 }
 
-private struct SoftphoneHistoryPlaceholder: View {
+private struct SoftphoneHistoryScreen: View {
+    @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
+    let onPickRecord: (String) -> Void
+
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {
@@ -452,10 +472,19 @@ private struct SoftphoneHistoryPlaceholder: View {
                 SoftphoneSegmentedPlaceholder()
             }
             Divider()
-            VStack(spacing: 6) {
-                SoftphoneCallHistoryRow(symbol: "phone.arrow.up.right.fill", title: "Outbound call", detail: "+44 7700 900123 - Today, 10:44 - 03:21", isMissed: false)
-                SoftphoneCallHistoryRow(symbol: "phone.arrow.down.left.fill", title: "Inbound call", detail: "+44 7700 900456 - Today, 09:15 - 11:08", isMissed: false)
-                SoftphoneCallHistoryRow(symbol: "phone.down.fill", title: "Missed inbound", detail: "+44 20 7946 0172 - Yesterday, 16:32", isMissed: true)
+            if callHistoryStore.rows.isEmpty {
+                SoftphoneEmptyState(title: "No recent calls", subtitle: "Completed and missed calls will appear here.")
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(callHistoryStore.rows) { row in
+                            SoftphoneCallHistoryRow(row: row) {
+                                onPickRecord(row.id)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
             }
             Spacer()
         }
@@ -565,27 +594,26 @@ private struct SoftphoneSegmentedPlaceholder: View {
 }
 
 private struct SoftphoneCallHistoryRow: View {
-    let symbol: String
-    let title: String
-    let detail: String
-    let isMissed: Bool
+    let row: SoftphoneCallHistoryRowModel
+    let onCall: () -> Void
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: symbol)
-                .foregroundStyle(isMissed ? SoftphoneTheme.red : SoftphoneTheme.blue)
+            Image(systemName: row.symbolName)
+                .foregroundStyle(row.isMissed ? SoftphoneTheme.red : SoftphoneTheme.blue)
                 .frame(width: 42, height: 42)
-                .background((isMissed ? SoftphoneTheme.red : SoftphoneTheme.blue).opacity(0.1))
+                .background((row.isMissed ? SoftphoneTheme.red : SoftphoneTheme.blue).opacity(0.1))
                 .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
-                Text(title)
+                Text(row.title)
                     .font(.system(size: 14, weight: .semibold))
-                Text(detail)
+                Text(row.detail)
                     .font(.system(size: 12))
                     .foregroundStyle(SoftphoneTheme.muted)
             }
             Spacer()
             Button {
+                onCall()
             } label: {
                 Image(systemName: "phone.fill")
             }
@@ -594,6 +622,23 @@ private struct SoftphoneCallHistoryRow: View {
         .padding(12)
         .background(SoftphoneTheme.rowBackground)
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+}
+
+private struct SoftphoneEmptyState: View {
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        VStack(spacing: 6) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+            Text(subtitle)
+                .font(.system(size: 13))
+                .foregroundStyle(SoftphoneTheme.muted)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 46)
     }
 }
 

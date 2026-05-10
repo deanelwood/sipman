@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Replaced the SwiftUI history placeholder with real call-history rows
+  backed by the existing account history API.
 - Wired the SwiftUI keypad to the existing outbound call path and added
   dial-pad behavior tests.
 - Added the initial SwiftUI softphone shell inside the existing account

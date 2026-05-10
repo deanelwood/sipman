@@ -35,7 +35,7 @@ final class CallHistoryViewEventTarget: NSObject {
         self.callMake = callMake
     }
 
-    func shouldReloadData() {
+    @objc func shouldReloadData() {
         executeRecordGet()
     }
 
@@ -43,7 +43,7 @@ final class CallHistoryViewEventTarget: NSObject {
         recordRemoveAll.execute()
     }
 
-    func didPickRecord(withIdentifier identifier: String) {
+    @objc func didPickRecord(withIdentifier identifier: String) {
         callMake.make(identifier: identifier).execute()
     }
 

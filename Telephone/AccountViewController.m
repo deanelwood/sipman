@@ -32,6 +32,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 @property(nonatomic, readonly) id<Account> account;
 
 @property(nonatomic) CallHistoryViewEventTarget *callHistoryViewEventTarget;
+@property(nonatomic) SoftphoneCallHistoryStore *softphoneCallHistoryStore;
 
 @property(nonatomic, weak) IBOutlet NSView *activeAccountView;
 @property(nonatomic, weak) IBOutlet NSView *callHistoryView;
@@ -87,11 +88,13 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 
     self.bottomViewHeightConstraint.constant = 0;
 
+    self.softphoneCallHistoryStore = [[SoftphoneCallHistoryStore alloc] init];
+
     [self.callHistoryViewEventTargetFactory makeWithAccount:self.account
-                                                       view:self.callHistoryViewController
+                                                       view:self.softphoneCallHistoryStore
                                                  completion:^(CallHistoryViewEventTarget * _Nonnull target) {
                                                      self.callHistoryViewEventTarget = target;
-                                                     self.callHistoryViewController.target = self.callHistoryViewEventTarget;
+                                                     [self.callHistoryViewEventTarget shouldReloadData];
                                                  }];
 
     [self showSoftphoneAppShell];
@@ -125,20 +128,21 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     [self.activeAccountViewController makeCall:self];
 }
 
-@end
-
-@implementation AccountViewController (SoftphoneAppShell)
-
 - (void)showSoftphoneAppShell {
     self.softphoneAppShellView = [SoftphoneAppShellViewFactory makeViewWithCallTarget:self
                                                                    accountDisplayName:self.account.domain
-                                                                           sipAddress:self.account.domain];
+                                                                           sipAddress:self.account.domain
+                                                                   callHistoryStore:self.softphoneCallHistoryStore];
     [self.view addSubview:self.softphoneAppShellView];
     [self.view addConstraints:FullSizeConstraintsForView(self.softphoneAppShellView)];
 }
 
 - (void)softphoneMakeCallTo:(NSString *)destination {
     [self makeCallToDestination:destination];
+}
+
+- (void)softphonePickCallHistoryRecordWithIdentifier:(NSString *)identifier {
+    [self.callHistoryViewEventTarget didPickRecordWithIdentifier:identifier];
 }
 
 @end
