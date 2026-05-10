@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Removed the legacy availability toolbar from account windows, and bumped
+  the build number to 163.
 - Split Settings into Account and Diagnostics tabs so each pane can use the
   full content width, and bumped the build number to 162.
 - Wired the History All, Inbound, and Outbound filters to the call-history

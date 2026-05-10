@@ -70,6 +70,7 @@
     self.window.title = self.accountDescription;
     self.window.frameAutosaveName = self.SIPAddress;
     self.window.excludedFromWindowsMenu = YES;
+    self.window.toolbar = nil;
 
     [self.window.contentView addSubview:self.accountViewController.view];
     self.accountViewController.view.translatesAutoresizingMaskIntoConstraints = NO;
