@@ -208,6 +208,10 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     [self.callControlTarget toggleMicrophoneMuteForCallWithIdentifier:identifier];
 }
 
+- (void)softphoneToggleHoldForCallWithIdentifier:(NSString *)identifier {
+    [self.callControlTarget toggleHoldForCallWithIdentifier:identifier];
+}
+
 - (void)softphoneSendDTMFDigit:(NSString *)digit forCallWithIdentifier:(NSString *)identifier {
     [self.callControlTarget sendDTMFDigits:digit forCallWithIdentifier:identifier];
 }

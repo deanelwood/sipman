@@ -404,6 +404,10 @@ static NSString * const kRussian = @"ru";
     [[self callControllerWithIdentifier:identifier] toggleMicrophoneMute];
 }
 
+- (void)toggleHoldForCallWithIdentifier:(NSString *)identifier {
+    [[self callControllerWithIdentifier:identifier] toggleCallHold];
+}
+
 - (void)sendDTMFDigits:(NSString *)digits forCallWithIdentifier:(NSString *)identifier {
     if (digits.length == 0) {
         return;

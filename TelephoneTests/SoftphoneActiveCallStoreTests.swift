@@ -58,6 +58,32 @@ final class SoftphoneActiveCallStoreTests: XCTestCase {
         XCTAssertEqual(sut.primaryCall?.remoteParty, "+1 415-555-2671")
     }
 
+    func testUpdatesActiveCallHoldPresentation() {
+        let sut = SoftphoneActiveCallStore()
+
+        sut.upsertCall(
+            identifier: "call-1",
+            remoteParty: "1001",
+            status: "Connected",
+            duration: "00:08",
+            isMuted: false,
+            isOnHold: false,
+            statsSnapshot: nil
+        )
+        sut.upsertCall(
+            identifier: "call-1",
+            remoteParty: "1001",
+            status: "On hold",
+            duration: "00:09",
+            isMuted: false,
+            isOnHold: true,
+            statsSnapshot: nil
+        )
+
+        XCTAssertEqual(sut.primaryCall?.status, "On hold")
+        XCTAssertEqual(sut.primaryCall?.isOnHold, true)
+    }
+
     func testCollatesStatsPeaksForCall() {
         let sut = SoftphoneActiveCallStore()
 

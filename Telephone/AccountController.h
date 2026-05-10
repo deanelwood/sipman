@@ -76,6 +76,7 @@ extern NSString * const kEmailSIPLabel;
 - (void)makeCallToDestinationRegisteringAccountIfNeeded:(SanitizedCallDestination *)destination;
 - (void)hangUpCallWithIdentifier:(NSString *)identifier;
 - (void)toggleMicrophoneMuteForCallWithIdentifier:(NSString *)identifier;
+- (void)toggleHoldForCallWithIdentifier:(NSString *)identifier;
 - (void)sendDTMFDigits:(NSString *)digits forCallWithIdentifier:(NSString *)identifier;
 
 - (void)showWindow;

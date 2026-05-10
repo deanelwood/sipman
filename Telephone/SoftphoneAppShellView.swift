@@ -31,6 +31,8 @@ protocol SoftphoneCallTarget: AnyObject {
     func softphoneHangUpCall(withIdentifier identifier: String)
     @objc(softphoneToggleMuteForCallWithIdentifier:)
     func softphoneToggleMuteForCall(withIdentifier identifier: String)
+    @objc(softphoneToggleHoldForCallWithIdentifier:)
+    func softphoneToggleHoldForCall(withIdentifier identifier: String)
     @objc(softphoneSendDTMFDigit:forCallWithIdentifier:)
     func softphoneSendDTMFDigit(_ digit: String, forCallWithIdentifier identifier: String)
     @objc(softphoneSendSIPOptionsPingTo:transport:completion:)
@@ -74,6 +76,9 @@ final class SoftphoneAppShellViewFactory: NSObject {
                 onToggleMute: { [weak callTarget] identifier in
                     callTarget?.softphoneToggleMuteForCall(withIdentifier: identifier)
                 },
+                onToggleHold: { [weak callTarget] identifier in
+                    callTarget?.softphoneToggleHoldForCall(withIdentifier: identifier)
+                },
                 onSendDTMFDigit: { [weak callTarget] digit, identifier in
                     callTarget?.softphoneSendDTMFDigit(digit, forCallWithIdentifier: identifier)
                 },
@@ -98,6 +103,7 @@ struct SoftphoneAppShellView: View {
     let onPickCallHistoryRecord: (String) -> Void
     let onHangUp: (String) -> Void
     let onToggleMute: (String) -> Void
+    let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
 
@@ -132,6 +138,7 @@ struct SoftphoneAppShellView: View {
                     onPickCallHistoryRecord: onPickCallHistoryRecord,
                     onHangUp: onHangUp,
                     onToggleMute: onToggleMute,
+                    onToggleHold: onToggleHold,
                     onSendDTMFDigit: onSendDTMFDigit,
                     onSIPPing: onSIPPing
                 )
@@ -358,6 +365,7 @@ private struct SoftphoneMainContent: View {
     let onPickCallHistoryRecord: (String) -> Void
     let onHangUp: (String) -> Void
     let onToggleMute: (String) -> Void
+    let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
 
@@ -372,6 +380,7 @@ private struct SoftphoneMainContent: View {
                     onCall: onCall,
                     onHangUp: onHangUp,
                     onToggleMute: onToggleMute,
+                    onToggleHold: onToggleHold,
                     onSendDTMFDigit: onSendDTMFDigit
                 )
             case .messages:
@@ -476,6 +485,7 @@ private struct SoftphoneCallingScreen: View {
     let onCall: (String) -> Void
     let onHangUp: (String) -> Void
     let onToggleMute: (String) -> Void
+    let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
 
     @State private var selectedTab: SoftphoneCallingTab = .keypad
@@ -501,6 +511,7 @@ private struct SoftphoneCallingScreen: View {
                         onCall: onCall,
                         onHangUp: onHangUp,
                         onToggleMute: onToggleMute,
+                        onToggleHold: onToggleHold,
                         onSendDTMFDigit: onSendDTMFDigit
                     )
                 } else if selectedTab == .contacts {
@@ -512,6 +523,7 @@ private struct SoftphoneCallingScreen: View {
                         onCall: onCall,
                         onHangUp: onHangUp,
                         onToggleMute: onToggleMute,
+                        onToggleHold: onToggleHold,
                         onSendDTMFDigit: onSendDTMFDigit
                     )
                 }
@@ -842,6 +854,7 @@ private struct SoftphoneKeypadScreen: View {
     let onCall: (String) -> Void
     let onHangUp: (String) -> Void
     let onToggleMute: (String) -> Void
+    let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
 
     private let keys = [
@@ -968,6 +981,18 @@ private struct SoftphoneKeypadScreen: View {
                     .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(SoftphoneSecondaryButtonStyle())
+
+                Button {
+                    onToggleHold(activeCall.id)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: activeCall.isOnHold ? "play.fill" : "pause.fill")
+                        Text(activeCall.isOnHold ? "Release" : "Hold")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle())
+                .help(activeCall.isOnHold ? "Release hold" : "Put call on hold")
 
                 Button {
                     onHangUp(activeCall.id)

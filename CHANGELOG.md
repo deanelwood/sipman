@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added an in-call Hold/Release control backed by the existing PJSIP re-INVITE
+  hold flow, and bumped the build number to 177.
 - Renamed the Keypad navigation item to Calling, added Keypad and Contacts
   modes for idle calling, kept the in-call DTMF keypad direct, refreshed
   Contacts permission copy, and bumped the build number to 176.
