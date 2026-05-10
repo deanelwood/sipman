@@ -1,22 +1,70 @@
-SIPMan is a VoIP SIP softphone for Mac. It allows you to make phone
-calls over the Internet or your company network. If your phone line
-supports SIP protocol, you can use it on your Mac instead of a
-physical phone anywhere you have a decent network connection.
+# SIPMan
 
-## Softphone Interface
+SIPMan is a native macOS SIP softphone for engineers who need a small,
+practical tool for testing and operating SIP systems in the field.
 
-The account window hosts the new SwiftUI softphone shell. It keeps the
-main workflow focused on keypad dialing, SIP MESSAGE conversations,
-call history, account diagnostics, and a compact active-call panel.
+It is designed around the workflows that come up during SIP deployment,
+support, and troubleshooting: registering an account, placing and
+receiving calls, sending SIP MESSAGE traffic, reviewing recent calls, and
+checking live diagnostics from the PJSIP stack while a call is active.
 
-The active-call panel appears only while a call is in progress and can
-expand to show PJSIP media/debug stats collected from the active audio
-stream.
+## Who It Is For
+
+SIPMan is primarily aimed at:
+
+- Field engineers testing PBX, SBC, carrier, or hosted SIP platforms.
+- VoIP support teams reproducing customer call and registration issues.
+- Developers working on SIP infrastructure who need a focused desktop
+  endpoint.
+- Lab users who want a simple Mac softphone with useful diagnostics
+  close at hand.
+
+It is not trying to be a consumer collaboration app. The interface should
+stay compact, calm, and task-focused so it can sit beside packet captures,
+server logs, and monitoring tools during live investigations.
+
+## What It Does
+
+- Registers a SIP account from the macOS app.
+- Places outbound calls from a keypad-first interface.
+- Handles active calls in the main window with DTMF, mute, duration, and
+  hang-up controls.
+- Tracks recent inbound, outbound, and missed calls.
+- Provides a SIP MESSAGE data model and conversation UI foundation.
+- Surfaces account diagnostics, in-call media statistics, and a rolling
+  live SIP log from PJSIP.
+- Stores SIP credentials in the macOS Keychain.
+
+## Interface Overview
+
+The main window is a single compact shell:
+
+- **Keypad** is the default workflow for entering numbers and starting
+  calls.
+- **Messages** is the future SIP MESSAGE conversation area.
+- **History** shows recent call activity with basic direction filters.
+- **Settings** contains account configuration, diagnostics, and the live
+  SIP log.
+
+During a call, SIPMan keeps the call controls in the main keypad area so
+the user can send DTMF tones and hang up without managing a second call
+window.
+
+## Repository Layout
+
+- `Telephone/` contains the macOS app source.
+- `Domain/`, `UseCases/`, and related test targets contain shared model
+  and behavior code.
+- `ThirdParty/` contains tracked configuration and patches for locally
+  built dependencies. Built third-party products are ignored by Git.
+- `scripts/` contains repeatable build, bootstrap, and test helpers.
+- `THIRD_PARTY_NOTICES.md` documents linked third-party libraries and
+  redistribution notes.
 
 ## Building
 
-The third-party libraries are installed into `ThirdParty/`. Those
-build products are intentionally ignored by Git.
+The third-party libraries are installed into `ThirdParty/`. Those build
+products are intentionally ignored by Git.
 
 To build the dependencies for a local Apple Silicon Debug build:
 
@@ -32,9 +80,9 @@ To build and launch the app:
 
 SIPMan stores SIP passwords in Keychain. For interactive smoke testing,
 use a signed Debug build so macOS sees a stable app identity. If this
-script reports that no valid signing identity is available, create a
-Mac Development or Apple Development certificate in Xcode. Unsigned
-builds are still available for compile checks:
+script reports that no valid signing identity is available, create a Mac
+Development or Apple Development certificate in Xcode. Unsigned builds
+are still available for compile checks:
 
     $ scripts/build-app.sh --unsigned
 
@@ -55,9 +103,12 @@ Run an individual shared test scheme:
 
 SIPMan is GPL-3.0-or-later. See `LICENSE`.
 
-Third-party dependency notices are maintained in `THIRD_PARTY_NOTICES.md`.
-Source and binary distributions should include that file along with
-`COPYING.GPL-2.0`, `COPYING.LGPL-2.1`, and `COPYING.LibreSSL`.
+Third-party dependency notices are maintained in
+`THIRD_PARTY_NOTICES.md`. Source and binary distributions should include
+that file along with `COPYING.GPL-2.0`, `COPYING.LGPL-2.1`, and
+`COPYING.LibreSSL`.
+
+## Manual Dependency Build Reference
 
 The dependency build can also be run manually.
 
@@ -115,7 +166,7 @@ Patch:
     $ patch -p0 -i /path/to/SIPMan/ThirdParty/PJSIP/patches/os_core_unix.patch
     $ patch -p0 -i /path/to/SIPMan/ThirdParty/PJSIP/patches/coreaudio_dev.patch
 
-Build and install (remove `--with-opus` option if you don’t need Opus):
+Build and install. Remove `--with-opus` if Opus is not required:
 
     $ ./configure --prefix=/path/to/SIPMan/ThirdParty/PJSIP --with-opus=/path/to/SIPMan/ThirdParty/Opus --with-ssl=/path/to/SIPMan/ThirdParty/LibreSSL --disable-video --disable-libyuv --disable-libwebrtc --host=arm-apple-darwin CFLAGS='-arch arm64 -Os -DNDEBUG -mmacosx-version-min=13.5' CXXFLAGS='-arch arm64 -Os -DNDEBUG -mmacosx-version-min=13.5'
     $ make dep
@@ -126,7 +177,8 @@ Build SIPMan, if you have not already:
 
     $ scripts/build-app.sh
 
-## Contribution
+## Maintenance Notes
 
-For the legal reasons, pull requests are not accepted. Please feel
-free to share your thoughts and ideas by commenting on the issues.
+Keep `CHANGELOG.md` updated with completed changes. When app/runtime
+behavior changes, bump `CURRENT_PROJECT_VERSION` in the Xcode project.
+Documentation-only changes do not normally require a build number bump.

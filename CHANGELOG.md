@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Reworked the README around SIPMan's field-engineering audience, core SIP
+  softphone workflows, diagnostics focus, repository layout, and build/test
+  guidance.
 - Added third-party dependency notices for the linked PJSIP, LibreSSL, Opus,
   and bundled codec libraries, documented distribution license files, and
   bumped the build number to 171.
