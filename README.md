@@ -16,6 +16,16 @@ Then build Telephone:
 
     $ xcodebuild -project Telephone.xcodeproj -scheme Telephone -configuration Debug -derivedDataPath /tmp/telephone-deriveddata CODE_SIGNING_ALLOWED=NO build
 
+## Testing
+
+Run the local arm64 XCTest suite:
+
+    $ scripts/test.sh
+
+Run an individual shared test scheme:
+
+    $ scripts/test.sh --scheme TelephoneTests
+
 The dependency build can also be run manually.
 
 The commands below build arm64 static libraries for a local Apple

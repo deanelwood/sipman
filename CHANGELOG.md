@@ -3,6 +3,7 @@
 ## 1.7
 - Removed the Telephone Pro subscription prompt and unlocked the full
   call history and 30 simultaneous-call limit without a purchase check.
+- Added a shared app test scheme and local test runner script.
 - Minimum deployment target 13.5.
 - Added repeatable third-party dependency bootstrap instructions and
   script.
