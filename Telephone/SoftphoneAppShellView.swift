@@ -156,6 +156,7 @@ struct SoftphoneAppShellView: View {
         .frame(minWidth: 840, minHeight: 560)
         .foregroundStyle(SoftphoneTheme.text)
         .background(SoftphoneTheme.windowBackground)
+        .background(SoftphoneWindowAppearanceBinder(mode: appearanceMode).frame(width: 0, height: 0))
         .preferredColorScheme(appearanceMode.colorScheme)
         .onReceive(activeCallStore.$calls) { calls in
             let hasActiveCall = !calls.isEmpty

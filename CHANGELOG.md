@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Applied the dark mode toggle to SIPMan's AppKit window appearance so the
+  adaptive SwiftUI palette updates immediately, and bumped the build number
+  to 182.
 - Fixed the Calling Contacts crash by fetching every CNContact property used by
   the shared contact mapper, and bumped the build number to 181.
 - Added an explicit CodeQL workflow that keeps C/C++ analysis on no-build mode

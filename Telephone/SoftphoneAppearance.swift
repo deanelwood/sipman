@@ -15,6 +15,7 @@
 //  GNU General Public License for more details.
 //
 
+import AppKit
 import SwiftUI
 
 enum SoftphoneAppearanceMode: String {
@@ -32,8 +33,39 @@ enum SoftphoneAppearanceMode: String {
     var colorScheme: ColorScheme {
         isDarkModeEnabled ? .dark : .light
     }
+
+    var nsAppearanceName: NSAppearance.Name {
+        isDarkModeEnabled ? .darkAqua : .aqua
+    }
 }
 
 enum SoftphoneAppearance {
     static let userDefaultsKey = "SIPManAppearanceMode"
+}
+
+struct SoftphoneWindowAppearanceBinder: NSViewRepresentable {
+    let mode: SoftphoneAppearanceMode
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: .zero)
+        applyAppearance(to: view)
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {
+        applyAppearance(to: nsView)
+    }
+
+    private func applyAppearance(to view: NSView) {
+        guard let appearance = NSAppearance(named: mode.nsAppearanceName) else {
+            return
+        }
+
+        view.appearance = appearance
+        NSApp.appearance = appearance
+
+        DispatchQueue.main.async {
+            view.window?.appearance = appearance
+        }
+    }
 }
