@@ -2,6 +2,10 @@
 
 ## 1.7
 - Minimum deployment target 13.5.
+- Added repeatable third-party dependency bootstrap instructions and
+  script.
+- Added repository agent guidance for builds, tests, versioning,
+  comments, changelog maintenance, and Git hygiene.
 
 ## 1.6 - 2022-06-29
 - macOS Big Sur.
