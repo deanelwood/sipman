@@ -509,6 +509,7 @@ private final class SoftphoneContactBrowserStore: ObservableObject {
 
     private static let keysToFetch: [CNKeyDescriptor] = [
         CNContactFormatter.descriptorForRequiredKeys(for: .fullName),
+        CNContactEmailAddressesKey as CNKeyDescriptor,
         CNContactPhoneNumbersKey as CNKeyDescriptor
     ]
 }

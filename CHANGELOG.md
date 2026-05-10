@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Fixed the Calling Contacts crash by fetching every CNContact property used by
+  the shared contact mapper, and bumped the build number to 181.
 - Made Calling's Keypad/Contacts switch more obvious, added contact-load
   diagnostics for empty local contact results, and bumped the build number
   to 180.
