@@ -130,11 +130,9 @@ struct SoftphoneAppShellView: View {
         .background(SoftphoneTheme.windowBackground)
         .onReceive(activeCallStore.$calls) { calls in
             let hasActiveCall = !calls.isEmpty
-            if hasActiveCall {
+            if hasActiveCall && !hadActiveCall {
                 selectedItem = .keypad
-                if !hadActiveCall {
-                    dialPad.clear()
-                }
+                dialPad.clear()
             }
             hadActiveCall = hasActiveCall
         }

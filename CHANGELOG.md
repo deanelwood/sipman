@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Stopped live call timer/stat refreshes from forcing navigation back to the
+  Keypad while viewing Settings diagnostics, and bumped the build number to
+  169.
 - Added live in-call diagnostics to Settings, including current and peak
   PJSIP media stats such as jitter, packet counts, RTT, RTP, and ICE details,
   and bumped the build number to 168.
