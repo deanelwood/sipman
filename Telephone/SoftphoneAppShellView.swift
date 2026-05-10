@@ -19,16 +19,25 @@
 import AppKit
 import SwiftUI
 
+@objc
+@MainActor
+protocol SoftphoneCallTarget: AnyObject {
+    @objc(softphoneMakeCallTo:)
+    func softphoneMakeCall(to destination: String)
+}
+
 @objcMembers
 final class SoftphoneAppShellViewFactory: NSObject {
     @MainActor
-    @objc(makeViewWithAccountDisplayName:sipAddress:)
-    static func makeView(accountDisplayName: String, sipAddress: String) -> NSView {
+    @objc(makeViewWithCallTarget:accountDisplayName:sipAddress:)
+    static func makeView(callTarget: SoftphoneCallTarget, accountDisplayName: String, sipAddress: String) -> NSView {
         let view = NSHostingView(
             rootView: SoftphoneAppShellView(
                 accountDisplayName: accountDisplayName,
                 sipAddress: sipAddress,
-                onCall: { _ in }
+                onCall: { [weak callTarget] destination in
+                    callTarget?.softphoneMakeCall(to: destination)
+                }
             )
         )
         view.translatesAutoresizingMaskIntoConstraints = false
@@ -43,7 +52,7 @@ struct SoftphoneAppShellView: View {
 
     @State private var selectedItem: SoftphoneNavigationItem = .keypad
     @State private var isSidebarCollapsed = false
-    @State private var dialedNumber = ""
+    @State private var dialPad = SoftphoneDialPad()
 
     var body: some View {
         HStack(spacing: 0) {
@@ -61,7 +70,7 @@ struct SoftphoneAppShellView: View {
                 Divider()
                 SoftphoneMainContent(
                     selectedItem: selectedItem,
-                    dialedNumber: $dialedNumber,
+                    dialPad: $dialPad,
                     onCall: onCall
                 )
             }
@@ -282,14 +291,14 @@ private struct SoftphonePill<Content: View>: View {
 
 private struct SoftphoneMainContent: View {
     let selectedItem: SoftphoneNavigationItem
-    @Binding var dialedNumber: String
+    @Binding var dialPad: SoftphoneDialPad
     let onCall: (String) -> Void
 
     var body: some View {
         Group {
             switch selectedItem {
             case .keypad:
-                SoftphoneKeypadScreen(dialedNumber: $dialedNumber, onCall: onCall)
+                SoftphoneKeypadScreen(dialPad: $dialPad, onCall: onCall)
             case .messages:
                 SoftphoneMessagesPlaceholder()
             case .history:
@@ -304,7 +313,7 @@ private struct SoftphoneMainContent: View {
 }
 
 private struct SoftphoneKeypadScreen: View {
-    @Binding var dialedNumber: String
+    @Binding var dialPad: SoftphoneDialPad
     let onCall: (String) -> Void
 
     private let keys = [
@@ -316,9 +325,9 @@ private struct SoftphoneKeypadScreen: View {
 
     var body: some View {
         VStack(spacing: 18) {
-            Text(dialedNumber.isEmpty ? "Enter number" : dialedNumber)
-                .font(.system(size: dialedNumber.isEmpty ? 22 : 30, weight: .semibold))
-                .foregroundStyle(dialedNumber.isEmpty ? SoftphoneTheme.placeholder : SoftphoneTheme.text)
+            Text(dialPad.destination.isEmpty ? "Enter number" : dialPad.destination)
+                .font(.system(size: dialPad.destination.isEmpty ? 22 : 30, weight: .semibold))
+                .foregroundStyle(dialPad.destination.isEmpty ? SoftphoneTheme.placeholder : SoftphoneTheme.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.7)
                 .frame(maxWidth: .infinity)
@@ -330,7 +339,7 @@ private struct SoftphoneKeypadScreen: View {
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(118), spacing: 13), count: 3), spacing: 13) {
                 ForEach(keys, id: \.0) { key in
                     Button {
-                        dialedNumber.append(key.0)
+                        dialPad.append(key.0)
                     } label: {
                         VStack(spacing: 6) {
                             Text(key.0)
@@ -350,28 +359,26 @@ private struct SoftphoneKeypadScreen: View {
 
             HStack(spacing: 12) {
                 Button("Clear") {
-                    dialedNumber.removeAll()
+                    dialPad.clear()
                 }
                 .buttonStyle(SoftphoneSecondaryButtonStyle())
 
                 Button {
-                    guard !dialedNumber.isEmpty else { return }
-                    onCall(dialedNumber)
+                    guard dialPad.canCall else { return }
+                    onCall(dialPad.destination)
                 } label: {
                     Image(systemName: "phone.fill")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.white)
                         .frame(width: 82, height: 56)
-                        .background(dialedNumber.isEmpty ? SoftphoneTheme.placeholder : SoftphoneTheme.green)
+                        .background(dialPad.canCall ? SoftphoneTheme.green : SoftphoneTheme.placeholder)
                         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
                 }
                 .buttonStyle(.plain)
-                .disabled(dialedNumber.isEmpty)
+                .disabled(!dialPad.canCall)
 
                 Button("Delete") {
-                    if !dialedNumber.isEmpty {
-                        dialedNumber.removeLast()
-                    }
+                    dialPad.deleteLast()
                 }
                 .buttonStyle(SoftphoneSecondaryButtonStyle())
             }

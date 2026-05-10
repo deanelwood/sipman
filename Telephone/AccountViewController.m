@@ -24,7 +24,7 @@
 
 static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 
-@interface AccountViewController ()
+@interface AccountViewController () <SoftphoneCallTarget>
 
 @property(nonatomic, readonly) ActiveAccountViewController *activeAccountViewController;
 @property(nonatomic, readonly) CallHistoryViewController *callHistoryViewController;
@@ -130,10 +130,15 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 @implementation AccountViewController (SoftphoneAppShell)
 
 - (void)showSoftphoneAppShell {
-    self.softphoneAppShellView = [SoftphoneAppShellViewFactory makeViewWithAccountDisplayName:self.account.domain
-                                                                                   sipAddress:self.account.domain];
+    self.softphoneAppShellView = [SoftphoneAppShellViewFactory makeViewWithCallTarget:self
+                                                                   accountDisplayName:self.account.domain
+                                                                           sipAddress:self.account.domain];
     [self.view addSubview:self.softphoneAppShellView];
     [self.view addConstraints:FullSizeConstraintsForView(self.softphoneAppShellView)];
+}
+
+- (void)softphoneMakeCallTo:(NSString *)destination {
+    [self makeCallToDestination:destination];
 }
 
 @end

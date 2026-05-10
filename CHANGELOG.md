@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Wired the SwiftUI keypad to the existing outbound call path and added
+  dial-pad behavior tests.
 - Added the initial SwiftUI softphone shell inside the existing account
   window.
 - Added a UI-ready recent-call history item model and adapter for inbound,
