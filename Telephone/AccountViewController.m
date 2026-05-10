@@ -41,6 +41,9 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 @property(nonatomic, weak) IBOutlet NSLayoutConstraint *horizontalLineHeightConstraint;
 @property(nonatomic) CGFloat originalActiveAccountViewHeight;
 @property(nonatomic) CGFloat originalHorizontalLineHeight;
+@property(nonatomic) NSView *softphoneAppShellView;
+
+- (void)showSoftphoneAppShell;
 
 @end
 
@@ -90,6 +93,8 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
                                                      self.callHistoryViewEventTarget = target;
                                                      self.callHistoryViewController.target = self.callHistoryViewEventTarget;
                                                  }];
+
+    [self showSoftphoneAppShell];
 }
 
 #pragma mark -
@@ -118,6 +123,17 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
     self.activeAccountViewController.callDestinationField.tokenStyle = NSTokenStyleRounded;
     self.activeAccountViewController.callDestinationField.stringValue = destination;
     [self.activeAccountViewController makeCall:self];
+}
+
+@end
+
+@implementation AccountViewController (SoftphoneAppShell)
+
+- (void)showSoftphoneAppShell {
+    self.softphoneAppShellView = [SoftphoneAppShellViewFactory makeViewWithAccountDisplayName:self.account.domain
+                                                                                   sipAddress:self.account.domain];
+    [self.view addSubview:self.softphoneAppShellView];
+    [self.view addConstraints:FullSizeConstraintsForView(self.softphoneAppShellView)];
 }
 
 @end

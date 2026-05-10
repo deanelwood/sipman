@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added the initial SwiftUI softphone shell inside the existing account
+  window.
 - Added a UI-ready recent-call history item model and adapter for inbound,
   outbound, and missed calls.
 - Added an in-call stats model, quality evaluator, stats store, and
