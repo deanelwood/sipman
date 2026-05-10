@@ -24,9 +24,12 @@
 #import "AKSIPUserAgent.h"
 #import "PJSUACallInfo.h"
 
+#import <pjmedia/transport_ice.h>
+
 #import "Telephone-Swift.h"
 
 #define THIS_FILE "AKSIPCall.m"
+#define AKInvalidMediaIndex ((unsigned)-1)
 
 
 @interface AKSIPCall () {
@@ -38,6 +41,17 @@
 @property(nonatomic, getter=isMicrophoneMuted) BOOL microphoneMuted;
 
 @end
+
+static void AddTextRow(NSMutableArray<CallStatsRow *> *rows, NSString *metric, NSString *live);
+static void AddIntegerRow(NSMutableArray<CallStatsRow *> *rows, NSString *metric, NSUInteger value);
+static void AddDoubleMillisecondsRow(NSMutableArray<CallStatsRow *> *rows, NSString *metric, double value);
+static NSString *PJString(pj_str_t value);
+static NSString *AddressString(const pj_sockaddr *address);
+static NSString *ICECandidateTypeName(pj_ice_cand_type type);
+static NSString *ICEComponentPairString(pjmedia_ice_transport_info *info, unsigned componentIndex);
+static NSString *ICEPathType(pjmedia_ice_transport_info *info, unsigned componentIndex);
+static BOOL ICEComponentUsesRelay(pjmedia_ice_transport_info *info, unsigned componentIndex);
+static unsigned FirstAudioMediaIndex(const pjsua_call_info *callInfo);
 
 @implementation AKSIPCall
 
@@ -163,6 +177,127 @@
     pjsua_call_get_info((pjsua_call_id)[self identifier], &callInfo);
     
     return (callInfo.media[0].status == PJSUA_CALL_MEDIA_REMOTE_HOLD) ? YES : NO;
+}
+
+- (CallStatsSnapshot *)callStatsSnapshot {
+    NSMutableArray<CallStatsRow *> *rows = [NSMutableArray array];
+    CallStatsSample *sample = nil;
+
+    if ([self identifier] == kAKSIPUserAgentInvalidIdentifier) {
+        AddTextRow(rows, @"Stats", @"unavailable");
+        return [[CallStatsSnapshot alloc] initWithSampledAt:[NSDate date]
+                                                       rows:rows
+                                                    quality:CallStatsQualityWaiting];
+    }
+
+    pjsua_call_info callInfo;
+    pj_status_t callInfoStatus = pjsua_call_get_info((pjsua_call_id)[self identifier], &callInfo);
+    if (callInfoStatus != PJ_SUCCESS) {
+        AddTextRow(rows, @"Stats", [NSString stringWithFormat:@"unavailable status=%d", callInfoStatus]);
+        return [[CallStatsSnapshot alloc] initWithSampledAt:[NSDate date]
+                                                       rows:rows
+                                                    quality:CallStatsQualityWaiting];
+    }
+
+    unsigned mediaIndex = FirstAudioMediaIndex(&callInfo);
+    if (mediaIndex == AKInvalidMediaIndex) {
+        AddTextRow(rows, @"Stats", @"no active audio media");
+        return [[CallStatsSnapshot alloc] initWithSampledAt:[NSDate date]
+                                                       rows:rows
+                                                    quality:CallStatsQualityWaiting];
+    }
+
+    pjsua_stream_info streamInfo;
+    pj_status_t streamInfoStatus = pjsua_call_get_stream_info((pjsua_call_id)[self identifier], mediaIndex, &streamInfo);
+    if (streamInfoStatus == PJ_SUCCESS) {
+        AddTextRow(
+            rows,
+            @"Codec",
+            [NSString stringWithFormat:@"%@ / %u Hz",
+             PJString(streamInfo.info.aud.fmt.encoding_name),
+             streamInfo.info.aud.fmt.clock_rate]
+        );
+        AddTextRow(rows, @"Remote RTP", AddressString(&streamInfo.info.aud.rem_addr));
+        AddTextRow(rows, @"Remote RTCP", AddressString(&streamInfo.info.aud.rem_rtcp));
+        AddTextRow(rows, @"Selected RTP destination", AddressString(&streamInfo.info.aud.rem_addr));
+    } else {
+        AddTextRow(rows, @"Stream info", [NSString stringWithFormat:@"unavailable status=%d", streamInfoStatus]);
+    }
+
+    pjmedia_transport_info transportInfo;
+    pjmedia_transport_info_init(&transportInfo);
+    pj_status_t transportInfoStatus = pjsua_call_get_med_transport_info(
+        (pjsua_call_id)[self identifier],
+        mediaIndex,
+        &transportInfo
+    );
+    if (transportInfoStatus == PJ_SUCCESS) {
+        AddTextRow(rows, @"Local RTP", AddressString(&transportInfo.sock_info.rtp_addr_name));
+        AddTextRow(rows, @"Local RTCP", AddressString(&transportInfo.sock_info.rtcp_addr_name));
+        AddTextRow(rows, @"Source RTP", AddressString(&transportInfo.src_rtp_name));
+        AddTextRow(rows, @"Source RTCP", AddressString(&transportInfo.src_rtcp_name));
+
+        pjmedia_ice_transport_info *iceInfo = (pjmedia_ice_transport_info *)pjmedia_transport_info_get_spc_info(
+            &transportInfo,
+            PJMEDIA_TRANSPORT_TYPE_ICE
+        );
+        if (iceInfo != NULL) {
+            AddTextRow(rows, @"ICE active", iceInfo->active ? @"true" : @"false");
+            AddTextRow(rows, @"ICE state", [NSString stringWithUTF8String:pj_ice_strans_state_name(iceInfo->sess_state)]);
+            AddTextRow(rows, @"ICE role", [NSString stringWithUTF8String:pj_ice_sess_role_name(iceInfo->role)]);
+            if (iceInfo->comp_cnt > 0) {
+                AddTextRow(rows, @"ICE RTP pair", ICEComponentPairString(iceInfo, 0));
+                AddTextRow(rows, @"ICE RTP path type", ICEPathType(iceInfo, 0));
+            }
+            if (iceInfo->comp_cnt > 1) {
+                AddTextRow(rows, @"ICE RTCP pair", ICEComponentPairString(iceInfo, 1));
+                AddTextRow(rows, @"ICE RTCP path type", ICEPathType(iceInfo, 1));
+            }
+            AddTextRow(rows, @"TURN used", ICEComponentUsesRelay(iceInfo, 0) || ICEComponentUsesRelay(iceInfo, 1) ? @"true" : @"false");
+        } else {
+            AddTextRow(rows, @"ICE active", @"false");
+            AddTextRow(rows, @"TURN used", @"false");
+        }
+    } else {
+        AddTextRow(rows, @"ICE info", [NSString stringWithFormat:@"unavailable status=%d", transportInfoStatus]);
+    }
+
+    pjsua_stream_stat streamStat;
+    pj_status_t streamStatStatus = pjsua_call_get_stream_stat((pjsua_call_id)[self identifier], mediaIndex, &streamStat);
+    if (streamStatStatus == PJ_SUCCESS) {
+        double rxJitter = streamStat.rtcp.rx.jitter.last / 1000.0;
+        double txJitter = streamStat.rtcp.tx.jitter.last / 1000.0;
+        double rtt = streamStat.rtcp.rtt.last / 1000.0;
+        double jbufAverage = streamStat.jbuf.avg_delay;
+
+        AddIntegerRow(rows, @"RX packets", streamStat.rtcp.rx.pkt);
+        AddIntegerRow(rows, @"RX bytes", streamStat.rtcp.rx.bytes);
+        AddIntegerRow(rows, @"RX loss", streamStat.rtcp.rx.loss);
+        AddDoubleMillisecondsRow(rows, @"RX jitter", rxJitter);
+        AddIntegerRow(rows, @"TX packets", streamStat.rtcp.tx.pkt);
+        AddIntegerRow(rows, @"TX bytes", streamStat.rtcp.tx.bytes);
+        AddIntegerRow(rows, @"TX loss", streamStat.rtcp.tx.loss);
+        AddDoubleMillisecondsRow(rows, @"TX jitter", txJitter);
+        AddDoubleMillisecondsRow(rows, @"RTT", rtt);
+        AddDoubleMillisecondsRow(rows, @"JBuf avg", jbufAverage);
+        AddIntegerRow(rows, @"JBuf lost", streamStat.jbuf.lost);
+        AddIntegerRow(rows, @"JBuf discard", streamStat.jbuf.discard);
+        AddIntegerRow(rows, @"JBuf empty", streamStat.jbuf.empty);
+
+        sample = [[CallStatsSample alloc] initWithRttMilliseconds:rtt
+                        averageJitterBufferDelayMilliseconds:jbufAverage
+                                       receiveJitterMilliseconds:rxJitter
+                                               jitterBufferLost:streamStat.jbuf.lost
+                                            jitterBufferDiscard:streamStat.jbuf.discard
+                                              jitterBufferEmpty:streamStat.jbuf.empty];
+    } else {
+        AddTextRow(rows, @"Stream stats", [NSString stringWithFormat:@"unavailable status=%d", streamStatStatus]);
+    }
+
+    return [[CallStatsSnapshot alloc] initWithSampledAt:[NSDate date]
+                                                   rows:rows
+                                                quality:[CallStatsQualityEvaluator immediateQualityFor:sample]
+                                                 sample:sample];
 }
 
 
@@ -343,3 +478,83 @@
 }
 
 @end
+
+static void AddTextRow(NSMutableArray<CallStatsRow *> *rows, NSString *metric, NSString *live) {
+    [rows addObject:[[CallStatsRow alloc] initWithMetric:metric live:live numericLiveValue:nil]];
+}
+
+static void AddIntegerRow(NSMutableArray<CallStatsRow *> *rows, NSString *metric, NSUInteger value) {
+    [rows addObject:[[CallStatsRow alloc] initWithMetric:metric
+                                                    live:[NSString stringWithFormat:@"%lu", value]
+                                        numericLiveValue:@(value)]];
+}
+
+static void AddDoubleMillisecondsRow(NSMutableArray<CallStatsRow *> *rows, NSString *metric, double value) {
+    [rows addObject:[[CallStatsRow alloc] initWithMetric:metric
+                                                    live:[NSString stringWithFormat:@"%.1f ms", value]
+                                        numericLiveValue:@(value)]];
+}
+
+static NSString *PJString(pj_str_t value) {
+    return [NSString stringWithPJString:value];
+}
+
+static NSString *AddressString(const pj_sockaddr *address) {
+    if (!pj_sockaddr_has_addr((const pj_sockaddr_t *)address)) {
+        return @"unavailable";
+    }
+
+    char buffer[PJ_INET6_ADDRSTRLEN + 16];
+    pj_sockaddr_print((const pj_sockaddr_t *)address, buffer, sizeof(buffer), 3);
+    return [NSString stringWithUTF8String:buffer] ?: @"unavailable";
+}
+
+static NSString *ICECandidateTypeName(pj_ice_cand_type type) {
+    return [NSString stringWithUTF8String:pj_ice_get_cand_type_name(type)] ?: @"unknown";
+}
+
+static NSString *ICEComponentPairString(pjmedia_ice_transport_info *info, unsigned componentIndex) {
+    if (componentIndex >= info->comp_cnt) {
+        return @"unavailable";
+    }
+
+    return [NSString stringWithFormat:@"local %@ %@ -> remote %@ %@",
+            ICECandidateTypeName(info->comp[componentIndex].lcand_type),
+            AddressString(&info->comp[componentIndex].lcand_addr),
+            ICECandidateTypeName(info->comp[componentIndex].rcand_type),
+            AddressString(&info->comp[componentIndex].rcand_addr)];
+}
+
+static NSString *ICEPathType(pjmedia_ice_transport_info *info, unsigned componentIndex) {
+    if (componentIndex >= info->comp_cnt) {
+        return @"unavailable";
+    }
+
+    pj_ice_cand_type local = info->comp[componentIndex].lcand_type;
+    pj_ice_cand_type remote = info->comp[componentIndex].rcand_type;
+    if (local == PJ_ICE_CAND_TYPE_RELAYED || remote == PJ_ICE_CAND_TYPE_RELAYED) {
+        return @"relay";
+    }
+    if (local == PJ_ICE_CAND_TYPE_SRFLX ||
+        remote == PJ_ICE_CAND_TYPE_SRFLX ||
+        local == PJ_ICE_CAND_TYPE_PRFLX ||
+        remote == PJ_ICE_CAND_TYPE_PRFLX) {
+        return @"direct NAT";
+    }
+    return @"direct host";
+}
+
+static BOOL ICEComponentUsesRelay(pjmedia_ice_transport_info *info, unsigned componentIndex) {
+    return componentIndex < info->comp_cnt &&
+        (info->comp[componentIndex].lcand_type == PJ_ICE_CAND_TYPE_RELAYED ||
+         info->comp[componentIndex].rcand_type == PJ_ICE_CAND_TYPE_RELAYED);
+}
+
+static unsigned FirstAudioMediaIndex(const pjsua_call_info *callInfo) {
+    for (unsigned i = 0; i < callInfo->media_cnt; i++) {
+        if (callInfo->media[i].type == PJMEDIA_TYPE_AUDIO) {
+            return i;
+        }
+    }
+    return AKInvalidMediaIndex;
+}

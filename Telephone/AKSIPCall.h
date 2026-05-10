@@ -52,7 +52,7 @@ typedef NS_ENUM(NSUInteger, AKSIPCallState) {
 
 @class AKSIPAccount, AKSIPURI, PJSUACallInfo;
 
-@interface AKSIPCall : NSObject <Call>
+@interface AKSIPCall : NSObject <Call, CallStatsProviding>
 
 @property(nonatomic, readonly) AKSIPAccount<Account> *account;
 @property(nonatomic) NSInteger identifier;

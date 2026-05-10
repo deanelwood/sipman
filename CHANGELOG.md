@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added an in-call stats model, quality evaluator, stats store, and
+  PJSIP-backed `AKSIPCall` stats sampler.
+- Added PJSIP in-call stats documentation for the desktop app effort.
 - Added stable SIP MESSAGE conversation IDs generated from normalized
   sender and recipient participants.
 - Added a SIP MESSAGE data model for future messaging UI work.

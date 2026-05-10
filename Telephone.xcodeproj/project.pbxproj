@@ -31,6 +31,8 @@
 		8AC0D0082D116A0000D0F001 /* SIPMessageContentTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D0072D116A0000D0F001 /* SIPMessageContentTests.swift */; };
 		8AC0D00A2D116A0000D0F001 /* SIPMessageConversationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D0092D116A0000D0F001 /* SIPMessageConversationTests.swift */; };
 		8AC0D00C2D116A0000D0F001 /* SIPMessageRecordTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D00B2D116A0000D0F001 /* SIPMessageRecordTests.swift */; };
+		8AC0D1022D11900000D0F001 /* CallStats.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D1012D11900000D0F001 /* CallStats.swift */; };
+		8AC0D1042D11900000D0F001 /* CallStatsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D1032D11900000D0F001 /* CallStatsTests.swift */; };
 		8A0058F22F606A510020F9D2 /* ContactsActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0058F12F606A510020F9D2 /* ContactsActor.swift */; };
 		8A01163620D2A8B500DA68A5 /* SystemAudioDevices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A01163520D2A8B500DA68A5 /* SystemAudioDevices.swift */; };
 		8A01163920D2E99B00DA68A5 /* SystemAudioDevicesFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A01163820D2E99B00DA68A5 /* SystemAudioDevicesFactory.swift */; };
@@ -898,6 +900,8 @@
 		8AC0D0072D116A0000D0F001 /* SIPMessageContentTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SIPMessageContentTests.swift; path = UseCasesTests/SIPMessageContentTests.swift; sourceTree = SOURCE_ROOT; };
 		8AC0D0092D116A0000D0F001 /* SIPMessageConversationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SIPMessageConversationTests.swift; path = UseCasesTests/SIPMessageConversationTests.swift; sourceTree = SOURCE_ROOT; };
 		8AC0D00B2D116A0000D0F001 /* SIPMessageRecordTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SIPMessageRecordTests.swift; path = UseCasesTests/SIPMessageRecordTests.swift; sourceTree = SOURCE_ROOT; };
+		8AC0D1012D11900000D0F001 /* CallStats.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CallStats.swift; sourceTree = "<group>"; };
+		8AC0D1032D11900000D0F001 /* CallStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = CallStatsTests.swift; path = UseCasesTests/CallStatsTests.swift; sourceTree = SOURCE_ROOT; };
 		8A0058F12F606A510020F9D2 /* ContactsActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsActor.swift; sourceTree = "<group>"; };
 		8A01163520D2A8B500DA68A5 /* SystemAudioDevices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioDevices.swift; sourceTree = "<group>"; };
 		8A01163820D2E99B00DA68A5 /* SystemAudioDevicesFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioDevicesFactory.swift; sourceTree = "<group>"; };
@@ -2794,6 +2798,7 @@
 				AA39055F1C007799005A8AA3 /* Audio Devices */,
 				8A11B3C81DDB443A002EDA93 /* Calls */,
 				8AEF77A21DCB9BA300C73BCB /* Call History */,
+				8AC0D1052D11900000D0F001 /* Call Stats */,
 				8A0CF7931EC0D2EA0014226A /* Contact Matching */,
 				8A4B65B01EB2186300F13654 /* Contacts */,
 				8A0CBBC52052FBDF00FC0633 /* DayChangeEventTarget */,
@@ -2827,6 +2832,15 @@
 				AA078B2D1BFF80E30013FF8F /* Info.plist */,
 			);
 			path = UseCases;
+			sourceTree = "<group>";
+		};
+		8AC0D1052D11900000D0F001 /* Call Stats */ = {
+			isa = PBXGroup;
+			children = (
+				8AC0D1012D11900000D0F001 /* CallStats.swift */,
+				8AC0D1032D11900000D0F001 /* CallStatsTests.swift */,
+			);
+			name = "Call Stats";
 			sourceTree = "<group>";
 		};
 		8AC0D00D2D116A0000D0F001 /* Messaging */ = {
@@ -4095,6 +4109,7 @@
 				8AE396F91D6DAFFA00DCFB9E /* PurchaseReminderSettings.swift in Sources */,
 				AA3905411BFFDE37005A8AA3 /* UserAgentEventTarget.swift in Sources */,
 				8A7814241DB150D6005CB612 /* SettingsKeys.swift in Sources */,
+				8AC0D1022D11900000D0F001 /* CallStats.swift in Sources */,
 				8A11B3CE1DDB46B8002EDA93 /* CallEventTarget.swift in Sources */,
 				8A3961E91F7EA28B00209266 /* WeakStoreEventTarget.swift in Sources */,
 				AA92F8A41C2B02E700C378B6 /* Ringtone.swift in Sources */,
@@ -4269,6 +4284,7 @@
 				8A41A7551E5DAEC800E0C854 /* ContactCallHistoryRecordGetAllUseCaseTests.swift in Sources */,
 				8AB677F61F0BFC15001A47A2 /* ContactCallHistoryRecordGetUseCaseTests.swift in Sources */,
 				8A143C831DD0D22900B1CD23 /* TruncatingCallHistoryTests.swift in Sources */,
+				8AC0D1042D11900000D0F001 /* CallStatsTests.swift in Sources */,
 				AA3166391C4FB21500E7ECA5 /* SettingsRingtoneSoundConfigurationLoadUseCaseTests.swift in Sources */,
 				AA3B6E8B1C47BFDF0030D410 /* RepeatingSoundTests.swift in Sources */,
 				8ACD2AD61DD1F9AA00E81984 /* NotifyingCallHistoryTests.swift in Sources */,
@@ -5517,7 +5533,7 @@
 				CODE_SIGN_ENTITLEMENTS = Telephone/Telephone.entitlements;
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 146;
+				CURRENT_PROJECT_VERSION = 147;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = B5WSA37RY8;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -5573,7 +5589,7 @@
 				CODE_SIGN_ENTITLEMENTS = Telephone/Telephone.entitlements;
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 146;
+				CURRENT_PROJECT_VERSION = 147;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = B5WSA37RY8;
 				ENABLE_HARDENED_RUNTIME = YES;
