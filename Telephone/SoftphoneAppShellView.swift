@@ -107,6 +107,7 @@ struct SoftphoneAppShellView: View {
     let onSendDTMFDigit: (String, String) -> Void
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
 
+    @AppStorage(SoftphoneAppearance.userDefaultsKey) private var appearanceModeRawValue = SoftphoneAppearanceMode.light.rawValue
     @State private var selectedItem: SoftphoneNavigationItem = .keypad
     @State private var isSidebarCollapsed = false
     @State private var dialPad = SoftphoneDialPad()
@@ -146,7 +147,9 @@ struct SoftphoneAppShellView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 840, minHeight: 560)
+        .foregroundStyle(SoftphoneTheme.text)
         .background(SoftphoneTheme.windowBackground)
+        .preferredColorScheme(appearanceMode.colorScheme)
         .onReceive(activeCallStore.$calls) { calls in
             let hasActiveCall = !calls.isEmpty
             if hasActiveCall && !hadActiveCall {
@@ -155,6 +158,10 @@ struct SoftphoneAppShellView: View {
             }
             hadActiveCall = hasActiveCall
         }
+    }
+
+    private var appearanceMode: SoftphoneAppearanceMode {
+        SoftphoneAppearanceMode(rawValue: appearanceModeRawValue) ?? .light
     }
 }
 
@@ -1382,7 +1389,53 @@ private struct SoftphoneAccountSettingsPane: View {
                 SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
                 SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
             }
+            SoftphoneAppearanceSettingsRow()
         }
+    }
+}
+
+private struct SoftphoneAppearanceSettingsRow: View {
+    @AppStorage(SoftphoneAppearance.userDefaultsKey) private var appearanceModeRawValue = SoftphoneAppearanceMode.light.rawValue
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: appearanceMode.isDarkModeEnabled ? "moon.fill" : "sun.max.fill")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(appearanceMode.isDarkModeEnabled ? SoftphoneTheme.blue : SoftphoneTheme.amber)
+                .frame(width: 34, height: 34)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Dark mode")
+                    .font(.system(size: 13, weight: .bold))
+                Text("Use SIPMan's dark palette.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(SoftphoneTheme.muted)
+            }
+
+            Spacer()
+
+            Toggle("", isOn: isDarkModeEnabled)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+        .padding(14)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    private var appearanceMode: SoftphoneAppearanceMode {
+        SoftphoneAppearanceMode(rawValue: appearanceModeRawValue) ?? .light
+    }
+
+    private var isDarkModeEnabled: Binding<Bool> {
+        Binding(
+            get: { appearanceMode.isDarkModeEnabled },
+            set: { isEnabled in
+                appearanceModeRawValue = SoftphoneAppearanceMode(isDarkModeEnabled: isEnabled).rawValue
+            }
+        )
     }
 }
 
@@ -1982,23 +2035,34 @@ private extension View {
             .foregroundStyle(isSelected ? SoftphoneTheme.text : SoftphoneTheme.muted)
             .padding(.horizontal, 11)
             .frame(height: 29)
-            .background(isSelected ? Color.white.opacity(0.9) : Color.clear)
+            .background(isSelected ? SoftphoneTheme.selectedControlBackground : Color.clear)
             .clipShape(Capsule())
     }
 }
 
 private enum SoftphoneTheme {
-    static let text = Color(red: 0.08, green: 0.1, blue: 0.14)
-    static let muted = Color(red: 0.43, green: 0.46, blue: 0.5)
-    static let placeholder = Color(red: 0.6, green: 0.64, blue: 0.68)
-    static let blue = Color(red: 0.04, green: 0.52, blue: 1)
-    static let green = Color(red: 0.19, green: 0.82, blue: 0.35)
-    static let red = Color(red: 1, green: 0.27, blue: 0.23)
-    static let amber = Color(red: 1, green: 0.62, blue: 0.04)
-    static let windowBackground = Color(red: 0.94, green: 0.96, blue: 0.98)
-    static let sidebarBackground = Color.white.opacity(0.54)
-    static let controlBackground = Color.white.opacity(0.78)
-    static let selectedControlBackground = Color.white.opacity(0.92)
-    static let fieldBackground = Color(red: 0.96, green: 0.97, blue: 0.98)
-    static let rowBackground = Color.white.opacity(0.56)
+    static let text = adaptive(light: color(0.08, 0.10, 0.14), dark: color(0.90, 0.93, 0.96))
+    static let muted = adaptive(light: color(0.43, 0.46, 0.50), dark: color(0.62, 0.67, 0.73))
+    static let placeholder = adaptive(light: color(0.60, 0.64, 0.68), dark: color(0.45, 0.51, 0.58))
+    static let blue = adaptive(light: color(0.04, 0.52, 1.00), dark: color(0.34, 0.66, 1.00))
+    static let green = adaptive(light: color(0.19, 0.82, 0.35), dark: color(0.20, 0.78, 0.42))
+    static let red = adaptive(light: color(1.00, 0.27, 0.23), dark: color(1.00, 0.38, 0.34))
+    static let amber = adaptive(light: color(1.00, 0.62, 0.04), dark: color(1.00, 0.70, 0.22))
+    static let windowBackground = adaptive(light: color(0.94, 0.96, 0.98), dark: color(0.07, 0.09, 0.12))
+    static let sidebarBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.54), dark: color(0.10, 0.13, 0.17, 0.86))
+    static let controlBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.78), dark: color(0.14, 0.18, 0.23, 0.92))
+    static let selectedControlBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.92), dark: color(0.18, 0.23, 0.29, 0.96))
+    static let fieldBackground = adaptive(light: color(0.96, 0.97, 0.98), dark: color(0.11, 0.15, 0.20))
+    static let rowBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.56), dark: color(0.12, 0.16, 0.21, 0.88))
+
+    private static func adaptive(light: NSColor, dark: NSColor) -> Color {
+        let color = NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua ? dark : light
+        }
+        return Color(nsColor: color)
+    }
+
+    private static func color(_ red: CGFloat, _ green: CGFloat, _ blue: CGFloat, _ alpha: CGFloat = 1) -> NSColor {
+        NSColor(calibratedRed: red, green: green, blue: blue, alpha: alpha)
+    }
 }

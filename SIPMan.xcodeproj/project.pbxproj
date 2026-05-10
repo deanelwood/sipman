@@ -53,6 +53,9 @@
 		8AC0D13A2D12350000D0F001 /* SoftphoneActiveCallStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D1392D12350000D0F001 /* SoftphoneActiveCallStore.swift */; };
 		8AC0D13B2D12350000D0F001 /* SoftphoneActiveCallStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D1392D12350000D0F001 /* SoftphoneActiveCallStore.swift */; };
 		8AC0D13D2D12350000D0F001 /* SoftphoneActiveCallStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D13C2D12350000D0F001 /* SoftphoneActiveCallStoreTests.swift */; };
+		8AC0D13F2D12780000D0F001 /* SoftphoneAppearanceTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D13E2D12780000D0F001 /* SoftphoneAppearanceTests.swift */; };
+		8AC0D1412D127D0000D0F001 /* SoftphoneAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D1402D127D0000D0F001 /* SoftphoneAppearance.swift */; };
+		8AC0D1422D127D0000D0F001 /* SoftphoneAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AC0D1402D127D0000D0F001 /* SoftphoneAppearance.swift */; };
 		8A0058F22F606A510020F9D2 /* ContactsActor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A0058F12F606A510020F9D2 /* ContactsActor.swift */; };
 		8A01163620D2A8B500DA68A5 /* SystemAudioDevices.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A01163520D2A8B500DA68A5 /* SystemAudioDevices.swift */; };
 		8A01163920D2E99B00DA68A5 /* SystemAudioDevicesFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A01163820D2E99B00DA68A5 /* SystemAudioDevicesFactory.swift */; };
@@ -933,6 +936,8 @@
 		8AC0D1362D122A0000D0F001 /* SoftphoneRegistrationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftphoneRegistrationState.swift; sourceTree = "<group>"; };
 		8AC0D1392D12350000D0F001 /* SoftphoneActiveCallStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftphoneActiveCallStore.swift; sourceTree = "<group>"; };
 		8AC0D13C2D12350000D0F001 /* SoftphoneActiveCallStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftphoneActiveCallStoreTests.swift; sourceTree = "<group>"; };
+		8AC0D13E2D12780000D0F001 /* SoftphoneAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftphoneAppearanceTests.swift; sourceTree = "<group>"; };
+		8AC0D1402D127D0000D0F001 /* SoftphoneAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftphoneAppearance.swift; sourceTree = "<group>"; };
 		8A0058F12F606A510020F9D2 /* ContactsActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsActor.swift; sourceTree = "<group>"; };
 		8A01163520D2A8B500DA68A5 /* SystemAudioDevices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioDevices.swift; sourceTree = "<group>"; };
 		8A01163820D2E99B00DA68A5 /* SystemAudioDevicesFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioDevicesFactory.swift; sourceTree = "<group>"; };
@@ -1850,6 +1855,7 @@
 				AA1019911C4949C700869D01 /* Timer */,
 				AA2C03F21BD7BE36001D25F9 /* CompositionRoot.swift */,
 				8AC0D1392D12350000D0F001 /* SoftphoneActiveCallStore.swift */,
+				8AC0D1402D127D0000D0F001 /* SoftphoneAppearance.swift */,
 				8AC0D1272D120B0000D0F001 /* SoftphoneCallHistoryStore.swift */,
 				8AC0D1312D12230000D0F001 /* SoftphoneDiagnosticsStore.swift */,
 				8AC0D1222D12010000D0F001 /* SoftphoneDialPad.swift */,
@@ -2990,6 +2996,7 @@
 				AA3FAB891BBAAE630064B2C3 /* Info.plist */,
 				8AC0D12A2D120B0000D0F001 /* SoftphoneCallHistoryStoreTests.swift */,
 				8AC0D13C2D12350000D0F001 /* SoftphoneActiveCallStoreTests.swift */,
+				8AC0D13E2D12780000D0F001 /* SoftphoneAppearanceTests.swift */,
 				8AC0D1342D12230000D0F001 /* SoftphoneDiagnosticsStoreTests.swift */,
 				8AC0D1252D12010000D0F001 /* SoftphoneDialPadTests.swift */,
 				8AC0D12F2D12180000D0F001 /* SoftphoneMessageStoreTests.swift */,
@@ -3923,6 +3930,7 @@
 				AA10198E1C4946EE00869D01 /* NSSoundToSoundAdapter.swift in Sources */,
 				8A41A74F1E5B593800E0C854 /* CallHistoryViewEventTarget.swift in Sources */,
 				8AC0D13A2D12350000D0F001 /* SoftphoneActiveCallStore.swift in Sources */,
+				8AC0D1412D127D0000D0F001 /* SoftphoneAppearance.swift in Sources */,
 				8AC0D1282D120B0000D0F001 /* SoftphoneCallHistoryStore.swift in Sources */,
 				8AC0D1322D12230000D0F001 /* SoftphoneDiagnosticsStore.swift in Sources */,
 				8AC0D1232D12010000D0F001 /* SoftphoneDialPad.swift in Sources */,
@@ -4385,6 +4393,8 @@
 				8A7DE9BA26A0B83C0011C510 /* AppSettingsTests.swift in Sources */,
 				8AC0D12B2D120B0000D0F001 /* SoftphoneCallHistoryStoreTests.swift in Sources */,
 				8AC0D13D2D12350000D0F001 /* SoftphoneActiveCallStoreTests.swift in Sources */,
+				8AC0D1422D127D0000D0F001 /* SoftphoneAppearance.swift in Sources */,
+				8AC0D13F2D12780000D0F001 /* SoftphoneAppearanceTests.swift in Sources */,
 				8AC0D1352D12230000D0F001 /* SoftphoneDiagnosticsStoreTests.swift in Sources */,
 				8AC0D1262D12010000D0F001 /* SoftphoneDialPadTests.swift in Sources */,
 				8AC0D1302D12180000D0F001 /* SoftphoneMessageStoreTests.swift in Sources */,
@@ -5589,7 +5599,7 @@
 				CODE_SIGN_ENTITLEMENTS = Telephone/Telephone.entitlements;
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 177;
+				CURRENT_PROJECT_VERSION = 178;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = B5WSA37RY8;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -5646,7 +5656,7 @@
 				CODE_SIGN_ENTITLEMENTS = Telephone/Telephone.entitlements;
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 177;
+				CURRENT_PROJECT_VERSION = 178;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = B5WSA37RY8;
 				ENABLE_HARDENED_RUNTIME = YES;

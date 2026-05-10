@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added a persistent Settings dark mode toggle, introduced an adaptive SIPMan
+  dark palette for the SwiftUI shell, and bumped the build number to 178.
 - Added an in-call Hold/Release control backed by the existing PJSIP re-INVITE
   hold flow, and bumped the build number to 177.
 - Renamed the Keypad navigation item to Calling, added Keypad and Contacts
