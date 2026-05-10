@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added open-source project housekeeping docs for contributing, conduct,
+  security reporting, issue templates, and pull request review expectations.
 - Added Account settings for username/password visibility plus editable ICE,
   STUN, and TURN server configuration backed by PJSIP network settings, and
   bumped the build number to 179.

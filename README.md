@@ -99,6 +99,18 @@ Run an individual shared test scheme:
 
     $ scripts/test.sh --scheme TelephoneTests
 
+## Contributing and Security
+
+SIPMan is still early-stage, but contributions are welcome when they keep the
+project focused on field SIP testing and diagnostics.
+
+- See `CONTRIBUTING.md` for setup, testing, bug reports, and pull request
+  expectations.
+- See `CODE_OF_CONDUCT.md` for community behavior expectations.
+- See `SECURITY.md` for private vulnerability reporting and sensitive log
+  handling.
+- See `CHANGELOG.md` for completed changes.
+
 ## Licensing
 
 SIPMan is GPL-3.0-or-later. See `LICENSE`.
