@@ -50,12 +50,12 @@
 - (NSString *)titleForPerson:(ABPerson *)person identifier:(NSString *)identifier {
     NSBundle *bundle = [NSBundle bundleWithIdentifier:@"com.tlphn.TelephoneAddressBookPhonePlugIn"];
     
-    return NSLocalizedStringFromTableInBundle(@"Dial with Telephone", nil, bundle, @"Action title.");
+    return NSLocalizedStringFromTableInBundle(@"Dial with SIPMan", nil, bundle, @"Action title.");
 }
 
 - (void)performActionForPerson:(ABPerson *)person identifier:(NSString *)identifier {
     NSArray *applications = [[NSWorkspace sharedWorkspace] runningApplications];
-    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"bundleIdentifier == 'com.tlphn.Telephone'"];
+    NSPredicate *predicate = [NSPredicate predicateWithFormat:@"bundleIdentifier == 'com.tlphn.SIPMan'"];
     applications = [applications filteredArrayUsingPredicate:predicate];
     BOOL isTelephoneLaunched = [applications count] > 0;
     
@@ -64,7 +64,7 @@
     NSString *fullName = [person ak_fullName];
     
     if (!isTelephoneLaunched) {
-        [[NSWorkspace sharedWorkspace] launchApplication:@"Telephone"];
+        [[NSWorkspace sharedWorkspace] launchApplication:@"SIPMan"];
         [self setShouldDial:YES];
         [self setLastPhoneNumber:phoneNumber];
         [self setLastFullName:fullName];
@@ -90,7 +90,7 @@
     NSRunningApplication *application = [[notification userInfo] objectForKey:NSWorkspaceApplicationKey];
     NSString *bundleIdentifier = [application bundleIdentifier];
     
-    if ([bundleIdentifier isEqualToString:@"com.tlphn.Telephone"] && [self shouldDial]) {
+    if ([bundleIdentifier isEqualToString:@"com.tlphn.SIPMan"] && [self shouldDial]) {
         [self setShouldDial:NO];
         
         NSDictionary *userInfo = [NSDictionary dictionaryWithObjectsAndKeys:

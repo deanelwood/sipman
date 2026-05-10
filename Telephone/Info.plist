@@ -65,12 +65,12 @@
 			<key>NSMenuItem</key>
 			<dict>
 				<key>default</key>
-				<string>Telephone: Call</string>
+				<string>SIPMan: Call</string>
 			</dict>
 			<key>NSMessage</key>
 			<string>makeCallFromTextService</string>
 			<key>NSPortName</key>
-			<string>Telephone</string>
+			<string>SIPMan</string>
 			<key>NSSendTypes</key>
 			<array>
 				<string>NSStringPboardType</string>

@@ -210,7 +210,7 @@ final class CompositionRoot: NSObject {
             )
         )
 
-        logFileURL = LogFileURL(locations: applicationDataLocations, filename: "Telephone.log")
+        logFileURL = LogFileURL(locations: applicationDataLocations, filename: "SIPMan.log")
 
         defaultAppSettings = DefaultAppSettings(
             settings: defaults, localization: Bundle.main.preferredLocalizations.first ?? ""

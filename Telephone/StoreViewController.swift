@@ -194,8 +194,8 @@ private func makeReceiptRefreshAlert() -> NSAlert {
     let result = NSAlert()
     result.messageText = NSLocalizedString("Refresh receipt?", comment: "Receipt refresh alert message text.")
     result.informativeText = NSLocalizedString(
-        "Telepohne will quit and the system will attempt to refresh the application receipt. " +
-        "After that, Telephone will be started again. " +
+        "SIPMan will quit and the system will attempt to refresh the application receipt. " +
+        "After that, SIPMan will be started again. " +
         "You may be asked to enter your App Store credentials.",
         comment: "Receipt refresh alert informative text."
     )

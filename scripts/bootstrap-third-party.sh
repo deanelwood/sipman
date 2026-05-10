@@ -2,9 +2,9 @@
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-WORK_DIR="${TELEPHONE_DEPS_WORK_DIR:-/private/tmp/telephone-deps}"
-MIN_MACOS="${TELEPHONE_MIN_MACOS:-13.5}"
-ARCHS="${TELEPHONE_ARCHS:-arm64}"
+WORK_DIR="${SIPMAN_DEPS_WORK_DIR:-${TELEPHONE_DEPS_WORK_DIR:-/private/tmp/sipman-deps}}"
+MIN_MACOS="${SIPMAN_MIN_MACOS:-${TELEPHONE_MIN_MACOS:-13.5}}"
+ARCHS="${SIPMAN_ARCHS:-${TELEPHONE_ARCHS:-arm64}}"
 FORCE=0
 
 OPUS_VERSION="1.3.1"
@@ -15,7 +15,7 @@ usage() {
   cat <<EOF
 Usage: $(basename "$0") [options]
 
-Build and install Telephone's third-party dependencies into ThirdParty/.
+Build and install SIPMan's third-party dependencies into ThirdParty/.
 
 Options:
   --work-dir PATH    Source/build work directory. Default: $WORK_DIR
@@ -26,7 +26,8 @@ Options:
   -h, --help        Show this help.
 
 Environment overrides:
-  TELEPHONE_DEPS_WORK_DIR, TELEPHONE_ARCHS, TELEPHONE_MIN_MACOS
+  SIPMAN_DEPS_WORK_DIR, SIPMAN_ARCHS, SIPMAN_MIN_MACOS
+  TELEPHONE_DEPS_WORK_DIR, TELEPHONE_ARCHS, TELEPHONE_MIN_MACOS are still accepted for compatibility.
 EOF
 }
 
@@ -159,7 +160,7 @@ build_libressl() {
 
 patch_pjproject() {
   local source="$1"
-  local stamp="$source/.telephone-patches-applied"
+  local stamp="$source/.sipman-patches-applied"
 
   if [[ -f "$stamp" ]]; then
     echo "PJSIP patches already applied"
@@ -227,7 +228,7 @@ main() {
   echo
   echo "Third-party dependencies are installed."
   echo "Next:"
-  echo "  xcodebuild -project Telephone.xcodeproj -scheme Telephone -configuration Debug -derivedDataPath /tmp/telephone-deriveddata CODE_SIGNING_ALLOWED=NO build"
+  echo "  xcodebuild -project SIPMan.xcodeproj -scheme SIPMan -configuration Debug -derivedDataPath /tmp/sipman-deriveddata CODE_SIGNING_ALLOWED=NO build"
 }
 
 main "$@"

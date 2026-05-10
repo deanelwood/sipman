@@ -1,4 +1,4 @@
-Telephone is a VoIP SIP softphone for Mac. It allows you to make phone
+SIPMan is a VoIP SIP softphone for Mac. It allows you to make phone
 calls over the Internet or your company network. If your phone line
 supports SIP protocol, you can use it on your Mac instead of a
 physical phone anywhere you have a decent network connection.
@@ -22,9 +22,9 @@ To build the dependencies for a local Apple Silicon Debug build:
 
     $ scripts/bootstrap-third-party.sh
 
-Then build Telephone:
+Then build SIPMan:
 
-    $ xcodebuild -project Telephone.xcodeproj -scheme Telephone -configuration Debug -derivedDataPath /tmp/telephone-deriveddata CODE_SIGNING_ALLOWED=NO build
+    $ xcodebuild -project SIPMan.xcodeproj -scheme SIPMan -configuration Debug -derivedDataPath /tmp/sipman-deriveddata CODE_SIGNING_ALLOWED=NO build
 
 ## Testing
 
@@ -54,7 +54,7 @@ Download:
 
 Build and install:
 
-    $ ./configure --prefix=/path/to/Telephone/ThirdParty/Opus --disable-shared CFLAGS='-arch arm64 -Os -mmacosx-version-min=13.5'
+    $ ./configure --prefix=/path/to/SIPMan/ThirdParty/Opus --disable-shared CFLAGS='-arch arm64 -Os -mmacosx-version-min=13.5'
     $ make
     $ make install
 
@@ -70,7 +70,7 @@ Download:
 
 Build and install:
 
-    $ ./configure --prefix=/path/to/Telephone/ThirdParty/LibreSSL --disable-shared CFLAGS='-arch arm64 -Os -mmacosx-version-min=13.5'
+    $ ./configure --prefix=/path/to/SIPMan/ThirdParty/LibreSSL --disable-shared CFLAGS='-arch arm64 -Os -mmacosx-version-min=13.5'
     $ make
     $ make install
 
@@ -82,26 +82,26 @@ Download:
     $ tar xzvf pjproject-2.10.tar.gz
     $ cd pjproject-2.10
 
-Install Telephone's PJSIP configuration:
+Install SIPMan's PJSIP configuration:
 
-    $ cp /path/to/Telephone/ThirdParty/PJSIP/config_site.h pjlib/include/pj/config_site.h
+    $ cp /path/to/SIPMan/ThirdParty/PJSIP/config_site.h pjlib/include/pj/config_site.h
 
 Patch:
 
-    $ patch -p0 -i /path/to/Telephone/ThirdParty/PJSIP/patches/sock_qos_darwin.patch
-    $ patch -p0 -i /path/to/Telephone/ThirdParty/PJSIP/patches/os_core_unix.patch
-    $ patch -p0 -i /path/to/Telephone/ThirdParty/PJSIP/patches/coreaudio_dev.patch
+    $ patch -p0 -i /path/to/SIPMan/ThirdParty/PJSIP/patches/sock_qos_darwin.patch
+    $ patch -p0 -i /path/to/SIPMan/ThirdParty/PJSIP/patches/os_core_unix.patch
+    $ patch -p0 -i /path/to/SIPMan/ThirdParty/PJSIP/patches/coreaudio_dev.patch
 
 Build and install (remove `--with-opus` option if you don’t need Opus):
 
-    $ ./configure --prefix=/path/to/Telephone/ThirdParty/PJSIP --with-opus=/path/to/Telephone/ThirdParty/Opus --with-ssl=/path/to/Telephone/ThirdParty/LibreSSL --disable-video --disable-libyuv --disable-libwebrtc --host=arm-apple-darwin CFLAGS='-arch arm64 -Os -DNDEBUG -mmacosx-version-min=13.5' CXXFLAGS='-arch arm64 -Os -DNDEBUG -mmacosx-version-min=13.5'
+    $ ./configure --prefix=/path/to/SIPMan/ThirdParty/PJSIP --with-opus=/path/to/SIPMan/ThirdParty/Opus --with-ssl=/path/to/SIPMan/ThirdParty/LibreSSL --disable-video --disable-libyuv --disable-libwebrtc --host=arm-apple-darwin CFLAGS='-arch arm64 -Os -DNDEBUG -mmacosx-version-min=13.5' CXXFLAGS='-arch arm64 -Os -DNDEBUG -mmacosx-version-min=13.5'
     $ make dep
     $ make lib
     $ make install
 
-Build Telephone, if you have not already:
+Build SIPMan, if you have not already:
 
-    $ xcodebuild -project Telephone.xcodeproj -scheme Telephone -configuration Debug -derivedDataPath /tmp/telephone-deriveddata CODE_SIGNING_ALLOWED=NO build
+    $ xcodebuild -project SIPMan.xcodeproj -scheme SIPMan -configuration Debug -derivedDataPath /tmp/sipman-deriveddata CODE_SIGNING_ALLOWED=NO build
 
 ## Contribution
 

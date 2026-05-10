@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Renamed the Xcode project and app product to SIPMan, refreshed the app
+  icon, updated visible app strings, and bumped the build number to 155.
 - Documented the SwiftUI softphone shell and active-call stats panel.
 - Added an active-call panel with collapsible PJSIP debug stats in the
   SwiftUI softphone shell.

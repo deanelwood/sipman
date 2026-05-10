@@ -4,7 +4,7 @@ Guidance for AI coding agents working in this repository.
 
 ## Project Posture
 
-Telephone is a macOS SIP softphone with an Xcode project, Swift,
+SIPMan is a macOS SIP softphone with an Xcode project, Swift,
 Objective-C, C, and vendored third-party C libraries built locally into
 `ThirdParty/`.
 
@@ -23,11 +23,11 @@ scripts/bootstrap-third-party.sh
 Use this command for a local Debug app build:
 
 ```sh
-xcodebuild -project Telephone.xcodeproj -scheme Telephone -configuration Debug -derivedDataPath /tmp/telephone-deriveddata CODE_SIGNING_ALLOWED=NO build
+xcodebuild -project SIPMan.xcodeproj -scheme SIPMan -configuration Debug -derivedDataPath /tmp/sipman-deriveddata CODE_SIGNING_ALLOWED=NO build
 ```
 
 Where possible, build or test the smallest relevant scheme first, then
-run the full `Telephone` scheme before considering a change complete.
+run the full `SIPMan` scheme before considering a change complete.
 
 ## Tests For New Code
 

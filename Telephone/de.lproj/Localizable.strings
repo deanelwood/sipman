@@ -17,7 +17,7 @@
 "Are you sure you want to delete the record “%@”?" = "Wollen Sie den Datensatz „%@“ wirklich löschen?";
 
 /* Telephone quit confirmation. */
-"Are you sure you want to quit Telephone?" = "Wollen Sie Telefon wirklich beenden?";
+"Are you sure you want to quit SIPMan?" = "Wollen Sie SIPMan wirklich beenden?";
 
 /* Account registration Available menu item. */
 "Available" = "Verfügbar";
@@ -166,13 +166,13 @@
 "Sound" = "Ton";
 
 /* Preferences default window title. */
-"Telephone Preferences" = "Telefon Einstellungen";
+"SIPMan Preferences" = "SIPMan Einstellungen";
 
 /* Registrar authentication failed. */
-"Telephone was unable to login to %@. Change user name or password and try again." = "Telefon konnte sich nicht in %@ anmelden. Ändern Sie Benutzername oder Passwort und versuchen Sie es erneut.";
+"SIPMan was unable to login to %@. Change user name or password and try again." = "SIPMan konnte sich nicht in %@ anmelden. Ändern Sie Benutzername oder Passwort und versuchen Sie es erneut.";
 
 /* Receipt refresh alert informative text. */
-"Telepohne will quit and the system will attempt to refresh the application receipt. After that, Telephone will be started again. You may be asked to enter your App Store credentials." = "Telefon wird beendet und es wird versucht, das App-Receipt zu aktualisieren. Danach wird Telefon wieder gestartet. Während dieser Zeit können Sie nach den App-Store-Anmeldedaten gefragt werden.";
+"SIPMan will quit and the system will attempt to refresh the application receipt. After that, SIPMan will be started again. You may be asked to enter your App Store credentials." = "SIPMan wird beendet und es wird versucht, das App-Receipt zu aktualisieren. Danach wird SIPMan wieder gestartet. Während dieser Zeit können Sie nach den App-Store-Anmeldedaten gefragt werden.";
 
 /* Error description. */
 "The error was: “%ld %@”." = "Fehlerbeschreibung: „%1$ld %2$@“.";

@@ -527,7 +527,7 @@ static NSString * const kRussian = @"ru";
 
             [[[self authenticationFailureController] informativeText] setStringValue:
              [NSString stringWithFormat:
-              NSLocalizedString(@"Telephone was unable to login to %@. "
+              NSLocalizedString(@"SIPMan was unable to login to %@. "
                                  "Change user name or password and try again.",
                                 @"Registrar authentication failed."),
               [[self account] registrar]]];

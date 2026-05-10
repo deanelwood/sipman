@@ -14,14 +14,14 @@
 /* Class = "NSMenu"; title = "AMainMenu"; ObjectID = "29"; */
 "29.title" = "AMainMenu";
 
-/* Class = "NSMenuItem"; title = "Telephone"; ObjectID = "56"; */
-"56.title" = "Telephone";
+/* Class = "NSMenuItem"; title = "SIPMan"; ObjectID = "56"; */
+"56.title" = "SIPMan";
 
-/* Class = "NSMenu"; title = "Telephone"; ObjectID = "57"; */
-"57.title" = "Telephone";
+/* Class = "NSMenu"; title = "SIPMan"; ObjectID = "57"; */
+"57.title" = "SIPMan";
 
-/* Class = "NSMenuItem"; title = "About Telephone"; ObjectID = "58"; */
-"58.title" = "About Telephone";
+/* Class = "NSMenuItem"; title = "About SIPMan"; ObjectID = "58"; */
+"58.title" = "About SIPMan";
 
 /* Class = "NSMenuItem"; title = "Close Window"; ObjectID = "73"; */
 "73.title" = "Close Window";
@@ -47,11 +47,11 @@
 /* Class = "NSMenuItem"; title = "Services"; ObjectID = "131"; */
 "131.title" = "Services";
 
-/* Class = "NSMenuItem"; title = "Hide Telephone"; ObjectID = "134"; */
-"134.title" = "Hide Telephone";
+/* Class = "NSMenuItem"; title = "Hide SIPMan"; ObjectID = "134"; */
+"134.title" = "Hide SIPMan";
 
-/* Class = "NSMenuItem"; title = "Quit Telephone"; ObjectID = "136"; */
-"136.title" = "Quit Telephone";
+/* Class = "NSMenuItem"; title = "Quit SIPMan"; ObjectID = "136"; */
+"136.title" = "Quit SIPMan";
 
 /* Class = "NSMenuItem"; title = "Hide Others"; ObjectID = "145"; */
 "145.title" = "Hide Others";

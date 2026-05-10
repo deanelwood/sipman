@@ -4,7 +4,7 @@
 /* Address not found. */
 "Address Not Found" = "Адрес не найден";
 
-/* Telephone quit confirmation informative text. */
+/* SIPMan quit confirmation informative text. */
 "All active calls will be disconnected." = "Будут прекращены все незавершенные звонки.";
 
 /* Call answer button. */
@@ -16,8 +16,8 @@
 /* Call history record removal alert. */
 "Are you sure you want to delete the record “%@”?" = "Вы действительно хотите удалить запись «%@»?";
 
-/* Telephone quit confirmation. */
-"Are you sure you want to quit Telephone?" = "Вы действительно хотите выйти из Телефона?";
+/* SIPMan quit confirmation. */
+"Are you sure you want to quit SIPMan?" = "Вы действительно хотите выйти из SIPMan?";
 
 /* Account registration Available menu item. */
 "Available" = "Доступен";
@@ -166,13 +166,13 @@
 "Sound" = "Звук";
 
 /* Preferences default window title. */
-"Telephone Preferences" = "Настройки Телефона";
+"SIPMan Preferences" = "Настройки SIPMan";
 
 /* Registrar authentication failed. */
-"Telephone was unable to login to %@. Change user name or password and try again." = "Телефон не смог зарегистрироваться на сервере %@. Проверьте имя пользователя и пароль.";
+"SIPMan was unable to login to %@. Change user name or password and try again." = "SIPMan не смог зарегистрироваться на сервере %@. Проверьте имя пользователя и пароль.";
 
 /* Receipt refresh alert informative text. */
-"Telepohne will quit and the system will attempt to refresh the application receipt. After that, Telephone will be started again. You may be asked to enter your App Store credentials." = "Работа Телефона будет завершена, и система предпримет попытку обновить электронный чек приложения, после чего Телефон будет снова запущен. Во время этого система может попросить вас залогиниться в Аппстор.";
+"SIPMan will quit and the system will attempt to refresh the application receipt. After that, SIPMan will be started again. You may be asked to enter your App Store credentials." = "Работа SIPMan будет завершена, и система предпримет попытку обновить электронный чек приложения, после чего SIPMan будет снова запущен. Во время этого система может попросить вас залогиниться в Аппстор.";
 
 /* Error description. */
 "The error was: “%ld %@”." = "%2$@, ошибка %1$ld.";

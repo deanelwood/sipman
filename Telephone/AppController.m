@@ -579,10 +579,10 @@ NS_ASSUME_NONNULL_END
         NSAlert *alert = [[NSAlert alloc] init];
         [alert addButtonWithTitle:NSLocalizedString(@"Quit", @"Quit button.")];
         [alert addButtonWithTitle:NSLocalizedString(@"Cancel", @"Cancel button.")].keyEquivalent = @"\033";
-        [alert setMessageText:NSLocalizedString(@"Are you sure you want to quit Telephone?",
-                                                @"Telephone quit confirmation.")];
+        [alert setMessageText:NSLocalizedString(@"Are you sure you want to quit SIPMan?",
+                                                @"SIPMan quit confirmation.")];
         [alert setInformativeText:NSLocalizedString(@"All active calls will be disconnected.",
-                                                    @"Telephone quit confirmation informative text.")];
+                                                    @"SIPMan quit confirmation informative text.")];
         NSInteger choice = [alert runModal];
         
         if (choice == NSAlertSecondButtonReturn) {

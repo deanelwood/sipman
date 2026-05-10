@@ -216,18 +216,15 @@ private struct SoftphoneSidebar: View {
             .frame(maxWidth: .infinity)
 
             HStack(spacing: 10) {
-                ZStack {
-                    RoundedRectangle(cornerRadius: 12, style: .continuous)
-                        .fill(LinearGradient(colors: [.blue, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
-                    Text("T")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundStyle(.white)
-                }
-                .frame(width: 36, height: 36)
+                Image(nsImage: NSApp.applicationIconImage)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .frame(width: 36, height: 36)
 
                 if !isCollapsed {
                     VStack(alignment: .leading, spacing: 2) {
-                        Text("Telephone")
+                        Text("SIPMan")
                             .font(.system(size: 14, weight: .semibold))
                         Text("SIP softphone")
                             .font(.system(size: 12))

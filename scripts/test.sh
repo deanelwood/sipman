@@ -6,17 +6,17 @@ usage() {
   cat <<EOF
 Usage: scripts/test.sh [--scheme NAME] [--derived-data PATH]
 
-Runs the local arm64 XCTest schemes used while developing Telephone.
+Runs the local arm64 XCTest schemes used while developing SIPMan.
 
 Options:
   --scheme NAME        Run one scheme instead of the default test set.
-  --derived-data PATH  Derived data path. Default: /tmp/telephone-deriveddata
+  --derived-data PATH  Derived data path. Default: /tmp/sipman-deriveddata
   -h, --help           Show this help message.
 EOF
 }
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DERIVED_DATA_PATH="/tmp/telephone-deriveddata"
+DERIVED_DATA_PATH="/tmp/sipman-deriveddata"
 SCHEMES=(
   "Domain"
   "UseCasesTests"
@@ -51,7 +51,7 @@ done
 for scheme in "${SCHEMES[@]}"; do
   echo "==> Testing ${scheme}"
   xcodebuild \
-    -project "${ROOT_DIR}/Telephone.xcodeproj" \
+    -project "${ROOT_DIR}/SIPMan.xcodeproj" \
     -scheme "${scheme}" \
     -configuration Debug \
     -derivedDataPath "${DERIVED_DATA_PATH}" \

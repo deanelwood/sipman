@@ -4,7 +4,7 @@
 /* Address not found. */
 "Address Not Found" = "Address Not Found";
 
-/* Telephone quit confirmation informative text. */
+/* SIPMan quit confirmation informative text. */
 "All active calls will be disconnected." = "All active calls will be disconnected.";
 
 /* Call answer button. */
@@ -16,8 +16,8 @@
 /* Call history record removal alert. */
 "Are you sure you want to delete the record “%@”?" = "Are you sure you want to delete the record “%@”?";
 
-/* Telephone quit confirmation. */
-"Are you sure you want to quit Telephone?" = "Are you sure you want to quit Telephone?";
+/* SIPMan quit confirmation. */
+"Are you sure you want to quit SIPMan?" = "Are you sure you want to quit SIPMan?";
 
 /* Account registration Available menu item. */
 "Available" = "Available";
@@ -166,13 +166,13 @@
 "Sound" = "Sound";
 
 /* Preferences default window title. */
-"Telephone Preferences" = "Telephone Preferences";
+"SIPMan Preferences" = "SIPMan Preferences";
 
 /* Registrar authentication failed. */
-"Telephone was unable to login to %@. Change user name or password and try again." = "Telephone was unable to login to %@. Change user name or password and try again.";
+"SIPMan was unable to login to %@. Change user name or password and try again." = "SIPMan was unable to login to %@. Change user name or password and try again.";
 
 /* Receipt refresh alert informative text. */
-"Telepohne will quit and the system will attempt to refresh the application receipt. After that, Telephone will be started again. You may be asked to enter your App Store credentials." = "Telepohne will quit and the system will attempt to refresh the application receipt. After that, Telephone will be started again. You may be asked to enter your App Store credentials.";
+"SIPMan will quit and the system will attempt to refresh the application receipt. After that, SIPMan will be started again. You may be asked to enter your App Store credentials." = "SIPMan will quit and the system will attempt to refresh the application receipt. After that, SIPMan will be started again. You may be asked to enter your App Store credentials.";
 
 /* Error description. */
 "The error was: “%ld %@”." = "The error was: “%1$ld %2$@”.";
@@ -206,4 +206,3 @@
 
 /* Product name. */
 "Yearly" = "Yearly";
-
