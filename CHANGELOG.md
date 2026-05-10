@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Moved CodeQL analysis to GitHub's macOS 26 arm64 runner so Swift analysis
+  uses a current Xcode/macOS SDK toolchain.
 - Made the SIP OPTIONS Tools pane scroll within the Settings area and reduced
   the raw response panel height so ping results fit smaller windows, and bumped
   the build number to 185.
