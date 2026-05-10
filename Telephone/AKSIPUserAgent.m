@@ -234,6 +234,14 @@ static NSString *SoftphoneSIPOptionsTarget(NSString *destination, NSString *tran
     return target;
 }
 
+static NSString *SoftphoneSIPOptionsFrom(AKSIPAccount *account) {
+    if ([account.SIPAddress length] > 0) {
+        return [@"sip:" stringByAppendingString:account.SIPAddress];
+    }
+
+    return @"sip:sipman@localhost";
+}
+
 static NSString *SoftphoneSIPOptionsRawResponse(pjsip_event *event) {
     if (event == NULL ||
         event->type != PJSIP_EVENT_TSX_STATE ||
@@ -1095,12 +1103,12 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
 
 - (void)thread_sendSIPOptionsPingWithToken:(AKSIPOptionsPingToken *)token {
     @autoreleasepool {
-        if (![self isStarted] || token.account == nil || token.account.identifier == kAKSIPUserAgentInvalidIdentifier) {
+        if (![self isStarted]) {
             [self completeSIPOptionsPingToken:token result:SoftphoneSIPPingResult(
                 token,
                 SoftphoneSIPPingStatusFailed,
                 @"SIP user agent is not ready.",
-                @"Start and register the account before sending a SIP OPTIONS ping.",
+                @"Start the SIP user agent before sending a SIP OPTIONS ping.",
                 @""
             ) removeToken:YES];
             return;
@@ -1108,12 +1116,32 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
 
         pjsip_tx_data *tdata = NULL;
         pj_str_t target = [token.target pjString];
-        pj_status_t status = pjsua_acc_create_request(
-            (pjsua_acc_id)token.account.identifier,
-            pjsip_get_options_method(),
-            &target,
-            &tdata
-        );
+        pj_status_t status;
+        if (token.account != nil && token.account.identifier != kAKSIPUserAgentInvalidIdentifier) {
+            status = pjsua_acc_create_request(
+                (pjsua_acc_id)token.account.identifier,
+                pjsip_get_options_method(),
+                &target,
+                &tdata
+            );
+        } else {
+            // SIP Ping is a diagnostics tool, so allow OPTIONS probes before the
+            // selected account has been registered with PJSUA.
+            NSString *fromAddress = SoftphoneSIPOptionsFrom(token.account);
+            pj_str_t from = [fromAddress pjString];
+            status = pjsip_endpt_create_request(
+                pjsua_get_pjsip_endpt(),
+                pjsip_get_options_method(),
+                &target,
+                &from,
+                &target,
+                &from,
+                NULL,
+                -1,
+                NULL,
+                &tdata
+            );
+        }
         if (status != PJ_SUCCESS) {
             [self completeSIPOptionsPingToken:token result:SoftphoneSIPPingResult(
                 token,

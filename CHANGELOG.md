@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Allowed the SIP Ping tool to send OPTIONS probes without requiring the
+  selected account to be registered, and bumped the build number to 174.
 - Made the Settings Diagnostics pane vertically scrollable so long live-call
   media stats remain accessible in the app window, and bumped the build number
   to 173.
