@@ -1047,17 +1047,20 @@ private struct SoftphoneDiagnosticsSettingsPane: View {
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SoftphoneSectionHeader(title: "Diagnostics", subtitle: "Registration, media path, and live call quality.")
-            HStack(spacing: 8) {
-                SoftphoneDiagnosticTile(label: "Registration", value: diagnosticsStore.snapshot.registrationState.title)
-                SoftphoneDiagnosticTile(label: "Last registered", value: diagnosticsStore.snapshot.lastRegistration)
-                SoftphoneDiagnosticTile(
-                    label: "Transport",
-                    value: "\(diagnosticsStore.snapshot.transport) - \(diagnosticsStore.snapshot.port)"
-                )
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                SoftphoneSectionHeader(title: "Diagnostics", subtitle: "Registration, media path, and live call quality.")
+                HStack(spacing: 8) {
+                    SoftphoneDiagnosticTile(label: "Registration", value: diagnosticsStore.snapshot.registrationState.title)
+                    SoftphoneDiagnosticTile(label: "Last registered", value: diagnosticsStore.snapshot.lastRegistration)
+                    SoftphoneDiagnosticTile(
+                        label: "Transport",
+                        value: "\(diagnosticsStore.snapshot.transport) - \(diagnosticsStore.snapshot.port)"
+                    )
+                }
+                SoftphoneLiveCallDiagnosticsPane(activeCall: diagnosticsStore.snapshot.activeCall)
             }
-            SoftphoneLiveCallDiagnosticsPane(activeCall: diagnosticsStore.snapshot.activeCall)
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 }

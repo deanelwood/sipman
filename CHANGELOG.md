@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Made the Settings Diagnostics pane vertically scrollable so long live-call
+  media stats remain accessible in the app window, and bumped the build number
+  to 173.
 - Added a Settings Tools tab with a SIP Ping tool that sends PJSIP-backed
   SIP OPTIONS probes over UDP, TCP, or TLS, captures responses/timeouts, and
   bumped the build number to 172.
