@@ -78,6 +78,14 @@ To build and launch the app:
 
     $ scripts/build-app.sh --open
 
+To install the app somewhere easy to double-click:
+
+    $ scripts/install-app.sh
+
+That copies the latest build to `~/Applications/SIPMan.app`, where it can
+be opened from Finder like a normal Mac app. Add `--open` if you want the
+script to launch the installed app immediately.
+
 SIPMan stores SIP passwords in Keychain. For interactive smoke testing,
 use a signed Debug build so macOS sees a stable app identity. If this
 script reports that no valid signing identity is available, create a Mac
