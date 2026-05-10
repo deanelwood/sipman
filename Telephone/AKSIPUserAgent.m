@@ -28,6 +28,9 @@
 
 #import "Telephone-Swift.h"
 
+#import <pthread.h>
+#import <stdio.h>
+
 #define THIS_FILE "AKSIPUserAgent.m"
 
 enum {
@@ -55,6 +58,90 @@ static const BOOL kAKSIPUserAgentDefaultUsesQoS = YES;
 static const NSInteger kAKSIPUserAgentDefaultTransportPort = 0;
 static const BOOL kAKSIPUserAgentDefaultUsesG711Only = NO;
 static const BOOL kAKSIPUserAgentDefaultLocksCodec = YES;
+
+static NSString * const SoftphoneSIPLogLineNotification = @"SoftphoneSIPLogLineNotification";
+static NSString * const SoftphoneSIPLogLevelKey = @"level";
+static NSString * const SoftphoneSIPLogMessageKey = @"message";
+
+static pthread_mutex_t SoftphonePJSIPLogFileMutex = PTHREAD_MUTEX_INITIALIZER;
+static FILE *SoftphonePJSIPLogFile = NULL;
+static unsigned SoftphonePJSIPConsoleLogLevel = 0;
+
+// PJSIP allows only one application log callback, so this callback tees the
+// stack output to every place SIPMan needs it: the existing file, console, and
+// SwiftUI diagnostics pane.
+static void SoftphoneClosePJSIPLogFile(void) {
+    pthread_mutex_lock(&SoftphonePJSIPLogFileMutex);
+    if (SoftphonePJSIPLogFile != NULL) {
+        fclose(SoftphonePJSIPLogFile);
+        SoftphonePJSIPLogFile = NULL;
+    }
+    pthread_mutex_unlock(&SoftphonePJSIPLogFileMutex);
+}
+
+static void SoftphoneOpenPJSIPLogFile(NSString *path) {
+    SoftphoneClosePJSIPLogFile();
+
+    NSString *expandedPath = [path stringByExpandingTildeInPath];
+    if ([expandedPath length] == 0) {
+        return;
+    }
+
+    NSString *directory = [expandedPath stringByDeletingLastPathComponent];
+    [[NSFileManager defaultManager] createDirectoryAtPath:directory
+                              withIntermediateDirectories:YES
+                                               attributes:nil
+                                                    error:nil];
+
+    pthread_mutex_lock(&SoftphonePJSIPLogFileMutex);
+    SoftphonePJSIPLogFile = fopen([expandedPath fileSystemRepresentation], "w");
+    pthread_mutex_unlock(&SoftphonePJSIPLogFileMutex);
+}
+
+static void SoftphoneWritePJSIPLogFile(const char *data, int len) {
+    pthread_mutex_lock(&SoftphonePJSIPLogFileMutex);
+    if (SoftphonePJSIPLogFile != NULL) {
+        fwrite(data, sizeof(char), (size_t)len, SoftphonePJSIPLogFile);
+        fflush(SoftphonePJSIPLogFile);
+    }
+    pthread_mutex_unlock(&SoftphonePJSIPLogFileMutex);
+}
+
+static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
+    if (data == NULL || len <= 0) {
+        return;
+    }
+
+    SoftphoneWritePJSIPLogFile(data, len);
+    if ((unsigned)level <= SoftphonePJSIPConsoleLogLevel) {
+        pj_log_write(level, data, len);
+    }
+
+    @autoreleasepool {
+        NSString *message = [[NSString alloc] initWithBytes:data
+                                                     length:(NSUInteger)len
+                                                   encoding:NSUTF8StringEncoding];
+        if ([message length] == 0) {
+            message = [[NSString alloc] initWithBytes:data
+                                               length:(NSUInteger)len
+                                             encoding:NSISOLatin1StringEncoding];
+        }
+
+        NSString *trimmedMessage = [message stringByTrimmingCharactersInSet:[NSCharacterSet newlineCharacterSet]];
+        if ([trimmedMessage length] == 0) {
+            return;
+        }
+
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:SoftphoneSIPLogLineNotification
+                                                                object:nil
+                                                              userInfo:@{
+                SoftphoneSIPLogLevelKey: @(level),
+                SoftphoneSIPLogMessageKey: trimmedMessage
+            }];
+        });
+    }
+}
 
 
 @interface AKSIPUserAgent ()
@@ -363,12 +450,12 @@ static const BOOL kAKSIPUserAgentDefaultLocksCodec = YES;
 
     userAgentConfig.user_agent = [[self userAgentString] pjString];
 
-    if ([[self logFileName] length] > 0) {
-        loggingConfig.log_filename = [[[self logFileName] stringByExpandingTildeInPath] pjString];
-    }
+    SoftphoneOpenPJSIPLogFile([self logFileName]);
 
     loggingConfig.level = (unsigned)[self logLevel];
     loggingConfig.console_level = (unsigned)[self consoleLogLevel];
+    loggingConfig.cb = &SoftphonePJSIPLogCallback;
+    SoftphonePJSIPConsoleLogLevel = loggingConfig.console_level;
     mediaConfig.no_vad = ![self detectsVoiceActivity];
     mediaConfig.enable_ice = [self usesICE];
     mediaConfig.snd_auto_close_time = 1;
@@ -584,6 +671,7 @@ static const BOOL kAKSIPUserAgentDefaultLocksCodec = YES;
     if (pjsua_destroy() != PJ_SUCCESS) {
         NSLog(@"Error stopping SIP user agent");
     }
+    SoftphoneClosePJSIPLogFile();
 }
 
 - (void)finishStopping {

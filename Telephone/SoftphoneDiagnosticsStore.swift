@@ -28,6 +28,13 @@ struct SoftphoneLiveCallDiagnosticsModel: Equatable {
     let statsRows: [SoftphoneCallStatsRowModel]
 }
 
+struct SoftphoneSIPLogEntryModel: Equatable, Identifiable {
+    let id: UUID
+    let timestamp: String
+    let level: Int
+    let message: String
+}
+
 struct SoftphoneDiagnosticsSnapshot: Equatable {
     let accountUUID: String
     let domain: String
@@ -37,12 +44,20 @@ struct SoftphoneDiagnosticsSnapshot: Equatable {
     let port: String
     let lastRegistration: String
     let activeCall: SoftphoneLiveCallDiagnosticsModel?
+    let sipLogEntries: [SoftphoneSIPLogEntryModel]
 }
 
 @MainActor
 @objc
 final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
     @Published private(set) var snapshot: SoftphoneDiagnosticsSnapshot
+
+    static let sipLogNotificationName = Notification.Name("SoftphoneSIPLogLineNotification")
+
+    private enum SIPLogNotificationUserInfoKey {
+        static let level = "level"
+        static let message = "message"
+    }
 
     private let callStatsStore = CallStatsStore()
 
@@ -55,9 +70,20 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             transport: "Auto",
             port: "Default",
             lastRegistration: "--",
-            activeCall: nil
+            activeCall: nil,
+            sipLogEntries: []
         )
         super.init()
+        NotificationCenter.default.addObserver(
+            self,
+            selector: #selector(handleSIPLogNotification(_:)),
+            name: Self.sipLogNotificationName,
+            object: nil
+        )
+    }
+
+    deinit {
+        NotificationCenter.default.removeObserver(self)
     }
 
     @objc func markRegistered() {
@@ -85,7 +111,8 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             transport: transport,
             port: port,
             lastRegistration: snapshot.lastRegistration,
-            activeCall: snapshot.activeCall
+            activeCall: snapshot.activeCall,
+            sipLogEntries: snapshot.sipLogEntries
         )
     }
 
@@ -120,6 +147,39 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
         update(activeCall: nil)
     }
 
+    @objc func appendSIPLogLine(_ message: String, level: Int) {
+        let trimmedMessage = message.trimmingCharacters(in: .newlines)
+        guard !trimmedMessage.isEmpty else { return }
+
+        let entry = SoftphoneSIPLogEntryModel(
+            id: UUID(),
+            timestamp: Self.logTimeFormatter.string(from: Date()),
+            level: level,
+            message: trimmedMessage
+        )
+        var entries = snapshot.sipLogEntries
+        entries.append(entry)
+        if entries.count > Self.maxSIPLogEntries {
+            entries.removeFirst(entries.count - Self.maxSIPLogEntries)
+        }
+        update(sipLogEntries: entries)
+    }
+
+    @objc func clearSIPLog() {
+        update(sipLogEntries: [])
+    }
+
+    @objc private func handleSIPLogNotification(_ notification: Notification) {
+        guard
+            let userInfo = notification.userInfo,
+            let level = userInfo[Self.SIPLogNotificationUserInfoKey.level] as? Int,
+            let message = userInfo[Self.SIPLogNotificationUserInfoKey.message] as? String
+        else {
+            return
+        }
+        appendSIPLogLine(message, level: level)
+    }
+
     private func update(registrationState: SoftphoneRegistrationState, lastRegistration: String) {
         snapshot = SoftphoneDiagnosticsSnapshot(
             accountUUID: snapshot.accountUUID,
@@ -129,7 +189,8 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             transport: snapshot.transport,
             port: snapshot.port,
             lastRegistration: lastRegistration,
-            activeCall: snapshot.activeCall
+            activeCall: snapshot.activeCall,
+            sipLogEntries: snapshot.sipLogEntries
         )
     }
 
@@ -142,7 +203,22 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             transport: snapshot.transport,
             port: snapshot.port,
             lastRegistration: snapshot.lastRegistration,
-            activeCall: activeCall
+            activeCall: activeCall,
+            sipLogEntries: snapshot.sipLogEntries
+        )
+    }
+
+    private func update(sipLogEntries: [SoftphoneSIPLogEntryModel]) {
+        snapshot = SoftphoneDiagnosticsSnapshot(
+            accountUUID: snapshot.accountUUID,
+            domain: snapshot.domain,
+            sipAddress: snapshot.sipAddress,
+            registrationState: snapshot.registrationState,
+            transport: snapshot.transport,
+            port: snapshot.port,
+            lastRegistration: snapshot.lastRegistration,
+            activeCall: snapshot.activeCall,
+            sipLogEntries: sipLogEntries
         )
     }
 
@@ -151,4 +227,12 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
         formatter.timeStyle = .medium
         return formatter
     }()
+
+    private static let logTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .medium
+        return formatter
+    }()
+
+    private static let maxSIPLogEntries = 500
 }

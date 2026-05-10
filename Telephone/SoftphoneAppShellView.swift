@@ -935,6 +935,7 @@ private struct SoftphoneHistoryScreen: View {
 private enum SoftphoneSettingsTab: String, CaseIterable, Identifiable {
     case account
     case diagnostics
+    case sipLog
 
     var id: String { rawValue }
 
@@ -944,6 +945,8 @@ private enum SoftphoneSettingsTab: String, CaseIterable, Identifiable {
             return "Account"
         case .diagnostics:
             return "Diagnostics"
+        case .sipLog:
+            return "SIP Log"
         }
     }
 }
@@ -962,6 +965,8 @@ private struct SoftphoneSettingsScreen: View {
                 SoftphoneAccountSettingsPane(diagnosticsStore: diagnosticsStore)
             case .diagnostics:
                 SoftphoneDiagnosticsSettingsPane(diagnosticsStore: diagnosticsStore)
+            case .sipLog:
+                SoftphoneSIPLogSettingsPane(diagnosticsStore: diagnosticsStore)
             }
 
             Spacer()
@@ -1026,6 +1031,88 @@ private struct SoftphoneDiagnosticsSettingsPane: View {
             }
             SoftphoneLiveCallDiagnosticsPane(activeCall: diagnosticsStore.snapshot.activeCall)
         }
+    }
+}
+
+private struct SoftphoneSIPLogSettingsPane: View {
+    @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .top) {
+                SoftphoneSectionHeader(title: "Live SIP Log", subtitle: "Rolling PJSIP stack output.")
+                Spacer()
+                Button {
+                    diagnosticsStore.clearSIPLog()
+                } label: {
+                    Label("Clear", systemImage: "trash")
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle(width: 92))
+                .disabled(diagnosticsStore.snapshot.sipLogEntries.isEmpty)
+                .help("Clear the live SIP log")
+            }
+
+            if diagnosticsStore.snapshot.sipLogEntries.isEmpty {
+                SoftphoneEmptyState(title: "No SIP log entries", subtitle: "PJSIP messages will appear here as the stack runs.")
+                    .background(SoftphoneTheme.rowBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            } else {
+                SoftphoneSIPLogPanel(entries: diagnosticsStore.snapshot.sipLogEntries)
+            }
+        }
+    }
+}
+
+private struct SoftphoneSIPLogPanel: View {
+    let entries: [SoftphoneSIPLogEntryModel]
+
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                LazyVStack(alignment: .leading, spacing: 2) {
+                    ForEach(entries) { entry in
+                        SoftphoneSIPLogRow(entry: entry)
+                            .id(entry.id)
+                    }
+                }
+                .padding(12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(SoftphoneTheme.rowBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .onChange(of: entries.last?.id) { id in
+                guard let id else { return }
+                withAnimation(.easeOut(duration: 0.16)) {
+                    proxy.scrollTo(id, anchor: .bottom)
+                }
+            }
+        }
+    }
+}
+
+private struct SoftphoneSIPLogRow: View {
+    let entry: SoftphoneSIPLogEntryModel
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 8) {
+            Text(entry.timestamp)
+                .foregroundStyle(SoftphoneTheme.placeholder)
+                .frame(width: 76, alignment: .leading)
+            Text("L\(entry.level)")
+                .foregroundStyle(levelColor)
+                .frame(width: 24, alignment: .leading)
+            Text(entry.message)
+                .foregroundStyle(SoftphoneTheme.text)
+                .textSelection(.enabled)
+        }
+        .font(.system(size: 11, design: .monospaced))
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 2)
+    }
+
+    private var levelColor: Color {
+        entry.level <= 2 ? SoftphoneTheme.amber : SoftphoneTheme.muted
     }
 }
 
