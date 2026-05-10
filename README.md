@@ -8,6 +8,16 @@ physical phone anywhere you have a decent network connection.
 The third-party libraries are installed into `ThirdParty/`. Those
 build products are intentionally ignored by Git.
 
+To build the dependencies for a local Apple Silicon Debug build:
+
+    $ scripts/bootstrap-third-party.sh
+
+Then build Telephone:
+
+    $ xcodebuild -project Telephone.xcodeproj -scheme Telephone -configuration Debug -derivedDataPath /tmp/telephone-deriveddata CODE_SIGNING_ALLOWED=NO build
+
+The dependency build can also be run manually.
+
 The commands below build arm64 static libraries for a local Apple
 Silicon Debug build. For a redistributable universal build, add
 `-arch x86_64` to the `CFLAGS` and `CXXFLAGS` values as needed.
@@ -69,7 +79,7 @@ Build and install (remove `--with-opus` option if you don’t need Opus):
     $ make lib
     $ make install
 
-Build Telephone:
+Build Telephone, if you have not already:
 
     $ xcodebuild -project Telephone.xcodeproj -scheme Telephone -configuration Debug -derivedDataPath /tmp/telephone-deriveddata CODE_SIGNING_ALLOWED=NO build
 
