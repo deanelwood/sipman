@@ -77,6 +77,30 @@ arch_flags() {
   printf '%q ' "${flags[@]}"
 }
 
+configure_host_arg() {
+  local arch
+  local arch_count=0
+  local only_arch=""
+
+  for arch in $ARCHS; do
+    arch_count=$((arch_count + 1))
+    only_arch="$arch"
+  done
+
+  if [[ "$arch_count" -ne 1 ]]; then
+    return
+  fi
+
+  case "$only_arch" in
+    arm64)
+      printf '%s' "--host=arm-apple-darwin"
+      ;;
+    x86_64)
+      printf '%s' "--host=x86_64-apple-darwin"
+      ;;
+  esac
+}
+
 download() {
   local url="$1"
   local output="$2"
@@ -117,7 +141,9 @@ build_opus() {
   local archive="$WORK_DIR/opus-$OPUS_VERSION.tar.gz"
   local source="$WORK_DIR/opus-$OPUS_VERSION"
   local cflags
+  local host_arg
   cflags="$(arch_flags)-Os -mmacosx-version-min=$MIN_MACOS"
+  host_arg="$(configure_host_arg)"
 
   if [[ "$FORCE" -eq 0 && -f "$prefix/lib/libopus.a" && -f "$prefix/include/opus/opus.h" ]]; then
     echo "Opus already installed at $prefix"
@@ -130,7 +156,7 @@ build_opus() {
   echo "Building Opus $OPUS_VERSION"
   (
     cd "$source"
-    ./configure --prefix="$prefix" --disable-shared CFLAGS="$cflags"
+    ./configure ${host_arg:+"$host_arg"} --prefix="$prefix" --disable-shared CFLAGS="$cflags"
     run_make_install
   )
 }
@@ -140,7 +166,9 @@ build_libressl() {
   local archive="$WORK_DIR/libressl-$LIBRESSL_VERSION.tar.gz"
   local source="$WORK_DIR/libressl-$LIBRESSL_VERSION"
   local cflags
+  local host_arg
   cflags="$(arch_flags)-Os -mmacosx-version-min=$MIN_MACOS"
+  host_arg="$(configure_host_arg)"
 
   if [[ "$FORCE" -eq 0 && -f "$prefix/lib/libssl.a" && -f "$prefix/lib/libcrypto.a" && -f "$prefix/include/openssl/ssl.h" ]]; then
     echo "LibreSSL already installed at $prefix"
@@ -153,7 +181,7 @@ build_libressl() {
   echo "Building LibreSSL $LIBRESSL_VERSION"
   (
     cd "$source"
-    ./configure --prefix="$prefix" --disable-shared CFLAGS="$cflags"
+    ./configure ${host_arg:+"$host_arg"} --prefix="$prefix" --disable-shared CFLAGS="$cflags"
     run_make_install
   )
 }

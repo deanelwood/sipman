@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Made the third-party bootstrap script pass explicit configure host triples for
+  single-architecture dependency builds so CI/CodeQL runner architecture
+  detection stays aligned with the requested build architecture.
 - Cached the Calling Contacts model after the first sync, moved contact loading
   off the immediate UI path, added first-run syncing feedback, and bumped the
   build number to 183.
