@@ -16,6 +16,17 @@
 //
 
 import Foundation
+import UseCases
+
+struct SoftphoneLiveCallDiagnosticsModel: Equatable {
+    let id: String
+    let remoteParty: String
+    let status: String
+    let duration: String
+    let quality: CallStatsQuality
+    let sampledAt: String
+    let statsRows: [SoftphoneCallStatsRowModel]
+}
 
 struct SoftphoneDiagnosticsSnapshot: Equatable {
     let accountUUID: String
@@ -25,12 +36,15 @@ struct SoftphoneDiagnosticsSnapshot: Equatable {
     let transport: String
     let port: String
     let lastRegistration: String
+    let activeCall: SoftphoneLiveCallDiagnosticsModel?
 }
 
 @MainActor
 @objc
 final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
     @Published private(set) var snapshot: SoftphoneDiagnosticsSnapshot
+
+    private let callStatsStore = CallStatsStore()
 
     @objc init(accountUUID: String, domain: String, sipAddress: String) {
         self.snapshot = SoftphoneDiagnosticsSnapshot(
@@ -40,7 +54,8 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             registrationState: .offline,
             transport: "Auto",
             port: "Default",
-            lastRegistration: "--"
+            lastRegistration: "--",
+            activeCall: nil
         )
         super.init()
     }
@@ -69,8 +84,40 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             registrationState: snapshot.registrationState,
             transport: transport,
             port: port,
-            lastRegistration: snapshot.lastRegistration
+            lastRegistration: snapshot.lastRegistration,
+            activeCall: snapshot.activeCall
         )
+    }
+
+    @objc func updateActiveCall(
+        identifier: String,
+        remoteParty: String,
+        status: String,
+        duration: String,
+        statsSnapshot: CallStatsSnapshot?
+    ) {
+        if let statsSnapshot {
+            callStatsStore.update(statsSnapshot, callIdentifier: identifier)
+        }
+        let collatedSnapshot = callStatsStore.snapshot(callIdentifier: identifier) ?? statsSnapshot
+        let activeCall = SoftphoneLiveCallDiagnosticsModel(
+            id: identifier,
+            remoteParty: remoteParty.isEmpty ? "Unknown caller" : remoteParty.ak_prettyFormattedPhoneNumber,
+            status: status.isEmpty ? "Connecting" : status,
+            duration: duration,
+            quality: collatedSnapshot?.quality ?? .waiting,
+            sampledAt: collatedSnapshot.map { Self.sampleTimeFormatter.string(from: $0.sampledAt) } ?? "--",
+            statsRows: collatedSnapshot?.rows.map {
+                SoftphoneCallStatsRowModel(metric: $0.metric, live: $0.live, peak: $0.peak ?? "")
+            } ?? []
+        )
+        update(activeCall: activeCall)
+    }
+
+    @objc func removeActiveCall(identifier: String) {
+        callStatsStore.remove(callIdentifier: identifier)
+        guard snapshot.activeCall?.id == identifier else { return }
+        update(activeCall: nil)
     }
 
     private func update(registrationState: SoftphoneRegistrationState, lastRegistration: String) {
@@ -81,7 +128,27 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
             registrationState: registrationState,
             transport: snapshot.transport,
             port: snapshot.port,
-            lastRegistration: lastRegistration
+            lastRegistration: lastRegistration,
+            activeCall: snapshot.activeCall
         )
     }
+
+    private func update(activeCall: SoftphoneLiveCallDiagnosticsModel?) {
+        snapshot = SoftphoneDiagnosticsSnapshot(
+            accountUUID: snapshot.accountUUID,
+            domain: snapshot.domain,
+            sipAddress: snapshot.sipAddress,
+            registrationState: snapshot.registrationState,
+            transport: snapshot.transport,
+            port: snapshot.port,
+            lastRegistration: snapshot.lastRegistration,
+            activeCall: activeCall
+        )
+    }
+
+    private static let sampleTimeFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.timeStyle = .medium
+        return formatter
+    }()
 }

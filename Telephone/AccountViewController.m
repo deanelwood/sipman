@@ -175,11 +175,17 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
                                                     isMuted:isMuted
                                                    isOnHold:isOnHold
                                               statsSnapshot:statsSnapshot];
+    [self.softphoneDiagnosticsStore updateActiveCallWithIdentifier:identifier
+                                                       remoteParty:remoteParty
+                                                            status:status
+                                                          duration:duration
+                                                     statsSnapshot:statsSnapshot];
 }
 
 - (void)removeSoftphoneCallWithIdentifier:(NSString *)identifier {
     (void)self.view;
     [self.softphoneActiveCallStore removeCallWithIdentifier:identifier];
+    [self.softphoneDiagnosticsStore removeActiveCallWithIdentifier:identifier];
 }
 
 - (void)softphoneMakeCallTo:(NSString *)destination {
@@ -193,6 +199,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 - (void)softphoneHangUpCallWithIdentifier:(NSString *)identifier {
     [self.callControlTarget hangUpCallWithIdentifier:identifier];
     [self.softphoneActiveCallStore removeCallWithIdentifier:identifier];
+    [self.softphoneDiagnosticsStore removeActiveCallWithIdentifier:identifier];
 }
 
 - (void)softphoneToggleMuteForCallWithIdentifier:(NSString *)identifier {

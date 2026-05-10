@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added live in-call diagnostics to Settings, including current and peak
+  PJSIP media stats such as jitter, packet counts, RTT, RTP, and ICE details,
+  and bumped the build number to 168.
 - Prevented ended inline calls from being republished by stale status timers
   after hang-up, and bumped the build number to 167.
 - Removed former-author website, FAQ, terms, privacy, subscription

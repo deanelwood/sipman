@@ -1017,7 +1017,7 @@ private struct SoftphoneDiagnosticsSettingsPane: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            SoftphoneSectionHeader(title: "Diagnostics", subtitle: "Registration and SIP troubleshooting.")
+            SoftphoneSectionHeader(title: "Diagnostics", subtitle: "Registration, media path, and live call quality.")
             HStack(spacing: 8) {
                 SoftphoneDiagnosticTile(label: "Registration", value: diagnosticsStore.snapshot.registrationState.title)
                 SoftphoneDiagnosticTile(label: "Last registered", value: diagnosticsStore.snapshot.lastRegistration)
@@ -1026,8 +1026,45 @@ private struct SoftphoneDiagnosticsSettingsPane: View {
                     value: "\(diagnosticsStore.snapshot.transport) - \(diagnosticsStore.snapshot.port)"
                 )
             }
-            SoftphoneLogPlaceholder()
+            SoftphoneLiveCallDiagnosticsPane(activeCall: diagnosticsStore.snapshot.activeCall)
         }
+    }
+}
+
+private struct SoftphoneLiveCallDiagnosticsPane: View {
+    let activeCall: SoftphoneLiveCallDiagnosticsModel?
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack {
+                Text("Live call")
+                    .font(.system(size: 13, weight: .bold))
+                Spacer()
+                if let activeCall {
+                    SoftphoneQualityPill(quality: activeCall.quality)
+                }
+            }
+
+            if let activeCall {
+                HStack(spacing: 8) {
+                    SoftphoneDiagnosticTile(label: "Remote party", value: activeCall.remoteParty)
+                    SoftphoneDiagnosticTile(label: "Status", value: activeCall.status)
+                    SoftphoneDiagnosticTile(label: "Duration", value: activeCall.duration.isEmpty ? "--" : activeCall.duration)
+                    SoftphoneDiagnosticTile(label: "Sampled", value: activeCall.sampledAt)
+                }
+
+                if activeCall.statsRows.isEmpty {
+                    SoftphoneEmptyState(title: "Stats pending", subtitle: "Media diagnostics will appear once RTP is active.")
+                } else {
+                    SoftphoneCallStatsTable(rows: activeCall.statsRows)
+                }
+            } else {
+                SoftphoneEmptyState(title: "No active call", subtitle: "Jitter, packet, RTP, and ICE diagnostics will appear during a live call.")
+            }
+        }
+        .padding(14)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -1295,30 +1332,6 @@ private struct SoftphoneDiagnosticTile: View {
         .padding(10)
         .background(SoftphoneTheme.fieldBackground)
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-}
-
-private struct SoftphoneLogPlaceholder: View {
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack {
-                Text("Rolling SIP log")
-                Spacer()
-                Text("Last 250 lines")
-            }
-            .font(.system(size: 12, weight: .bold))
-            .foregroundStyle(.white.opacity(0.72))
-            .padding(12)
-            Divider().background(.white.opacity(0.1))
-            Text("SIP log will appear here once diagnostics are connected.")
-                .font(.system(size: 12, design: .monospaced))
-                .foregroundStyle(.white.opacity(0.78))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .padding(14)
-        }
-        .frame(minHeight: 240)
-        .background(Color(red: 0.08, green: 0.1, blue: 0.14))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 }
 
