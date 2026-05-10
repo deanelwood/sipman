@@ -1798,44 +1798,47 @@ private struct SoftphoneToolsSettingsPane: View {
     @State private var result: SoftphoneSIPPingResultModel?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SoftphoneSectionHeader(title: "Tools", subtitle: "One-off SIP probes for field diagnostics.")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 14) {
+                SoftphoneSectionHeader(title: "Tools", subtitle: "One-off SIP probes for field diagnostics.")
 
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 12) {
-                    SoftphoneEditableField(
-                        label: "SIP target",
-                        placeholder: "user@domain",
-                        text: $destination
-                    )
-                    .frame(minWidth: 260)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        SoftphoneEditableField(
+                            label: "SIP target",
+                            placeholder: "user@domain",
+                            text: $destination
+                        )
+                        .frame(minWidth: 260)
 
-                    SoftphoneTransportPicker(selectedTransport: $selectedTransport)
-                        .frame(width: 190)
-                }
-
-                HStack {
-                    Button {
-                        sendPing()
-                    } label: {
-                        Label(isRunning ? "Pinging" : "Send OPTIONS", systemImage: "dot.radiowaves.left.and.right")
+                        SoftphoneTransportPicker(selectedTransport: $selectedTransport)
+                            .frame(width: 190)
                     }
-                    .buttonStyle(SoftphoneSecondaryButtonStyle(width: 156))
-                    .disabled(!canSend)
-                    .help("Send a SIP OPTIONS ping")
 
-                    Spacer()
-                }
+                    HStack {
+                        Button {
+                            sendPing()
+                        } label: {
+                            Label(isRunning ? "Pinging" : "Send OPTIONS", systemImage: "dot.radiowaves.left.and.right")
+                        }
+                        .buttonStyle(SoftphoneSecondaryButtonStyle(width: 156))
+                        .disabled(!canSend)
+                        .help("Send a SIP OPTIONS ping")
 
-                if let result {
-                    SoftphoneSIPPingResultPanel(result: result)
-                } else {
-                    SoftphoneEmptyState(title: "No SIP ping yet", subtitle: "Send OPTIONS to capture a response or timeout.")
+                        Spacer()
+                    }
+
+                    if let result {
+                        SoftphoneSIPPingResultPanel(result: result)
+                    } else {
+                        SoftphoneEmptyState(title: "No SIP ping yet", subtitle: "Send OPTIONS to capture a response or timeout.")
+                    }
                 }
+                .padding(14)
+                .background(SoftphoneTheme.rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
             }
-            .padding(14)
-            .background(SoftphoneTheme.rowBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 
@@ -1932,7 +1935,7 @@ private struct SoftphoneSIPPingResultPanel: View {
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(12)
                     }
-                    .frame(minHeight: 130, maxHeight: 220)
+                    .frame(minHeight: 110, maxHeight: 170)
                     .background(SoftphoneTheme.fieldBackground)
                     .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
                 }

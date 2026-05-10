@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Made the SIP OPTIONS Tools pane scroll within the Settings area and reduced
+  the raw response panel height so ping results fit smaller windows, and bumped
+  the build number to 185.
 - Added a PJSIP endpoint observer for inbound and outbound SIP packets so the
   Live SIP Log pane receives real stack traffic, and bumped the build number
   to 184.
