@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Split Settings into Account and Diagnostics tabs so each pane can use the
+  full content width, and bumped the build number to 162.
 - Wired the History All, Inbound, and Outbound filters to the call-history
   row source, and bumped the build number to 161.
 - Tightened the SwiftUI sidebar width and navigation spacing to give the

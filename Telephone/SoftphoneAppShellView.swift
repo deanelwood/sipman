@@ -935,36 +935,99 @@ private struct SoftphoneHistoryScreen: View {
     }
 }
 
+private enum SoftphoneSettingsTab: String, CaseIterable, Identifiable {
+    case account
+    case diagnostics
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .account:
+            return "Account"
+        case .diagnostics:
+            return "Diagnostics"
+        }
+    }
+}
+
 private struct SoftphoneSettingsScreen: View {
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
 
+    @State private var selectedTab: SoftphoneSettingsTab = .account
+
     var body: some View {
-        HStack(alignment: .top, spacing: 18) {
-            VStack(alignment: .leading, spacing: 14) {
-                SoftphoneSectionHeader(title: "Account", subtitle: "SIP account configuration.")
-                SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
+        VStack(alignment: .leading, spacing: 16) {
+            SoftphoneSettingsTabControl(selectedTab: $selectedTab)
+
+            switch selectedTab {
+            case .account:
+                SoftphoneAccountSettingsPane(diagnosticsStore: diagnosticsStore)
+            case .diagnostics:
+                SoftphoneDiagnosticsSettingsPane(diagnosticsStore: diagnosticsStore)
+            }
+
+            Spacer()
+        }
+    }
+}
+
+private struct SoftphoneSettingsTabControl: View {
+    @Binding var selectedTab: SoftphoneSettingsTab
+
+    var body: some View {
+        HStack(spacing: 3) {
+            ForEach(SoftphoneSettingsTab.allCases) { tab in
+                Button {
+                    selectedTab = tab
+                } label: {
+                    Text(tab.title)
+                        .softphoneSegment(isSelected: selectedTab == tab)
+                }
+                .buttonStyle(.plain)
+                .help("Show \(tab.title.lowercased()) settings")
+            }
+        }
+        .padding(4)
+        .background(SoftphoneTheme.fieldBackground)
+        .clipShape(Capsule())
+    }
+}
+
+private struct SoftphoneAccountSettingsPane: View {
+    @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SoftphoneSectionHeader(title: "Account", subtitle: "SIP account configuration.")
+            HStack(spacing: 12) {
                 SoftphoneLabeledField(label: "SIP address", value: diagnosticsStore.snapshot.sipAddress)
                 SoftphoneLabeledField(label: "Domain", value: diagnosticsStore.snapshot.domain)
-                HStack {
-                    SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
-                    SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
-                }
-                Spacer()
             }
-            Divider()
-            VStack(alignment: .leading, spacing: 14) {
-                SoftphoneSectionHeader(title: "Diagnostics", subtitle: "Registration and SIP troubleshooting.")
-                HStack(spacing: 8) {
-                    SoftphoneDiagnosticTile(label: "Registration", value: diagnosticsStore.snapshot.registrationState.title)
-                    SoftphoneDiagnosticTile(label: "Last registered", value: diagnosticsStore.snapshot.lastRegistration)
-                    SoftphoneDiagnosticTile(
-                        label: "Transport",
-                        value: "\(diagnosticsStore.snapshot.transport) - \(diagnosticsStore.snapshot.port)"
-                    )
-                }
-                SoftphoneLogPlaceholder()
-                Spacer()
+            SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
+            HStack(spacing: 12) {
+                SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
+                SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
             }
+        }
+    }
+}
+
+private struct SoftphoneDiagnosticsSettingsPane: View {
+    @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SoftphoneSectionHeader(title: "Diagnostics", subtitle: "Registration and SIP troubleshooting.")
+            HStack(spacing: 8) {
+                SoftphoneDiagnosticTile(label: "Registration", value: diagnosticsStore.snapshot.registrationState.title)
+                SoftphoneDiagnosticTile(label: "Last registered", value: diagnosticsStore.snapshot.lastRegistration)
+                SoftphoneDiagnosticTile(
+                    label: "Transport",
+                    value: "\(diagnosticsStore.snapshot.transport) - \(diagnosticsStore.snapshot.port)"
+                )
+            }
+            SoftphoneLogPlaceholder()
         }
     }
 }
