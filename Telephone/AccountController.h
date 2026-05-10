@@ -20,6 +20,7 @@
 
 #import "AKSIPAccount.h"
 
+#import "AccountViewController.h"
 #import "CallController.h"
 
 // Address Book label for SIP address in the email field.
@@ -30,7 +31,7 @@ extern NSString * const kEmailSIPLabel;
 @class CallTransferController, SanitizedCallDestination, WorkspaceSleepStatus;
 @protocol RingtonePlaybackUseCase;
 
-@interface AccountController : NSObject <AKSIPAccountDelegate, CallControllerDelegate>
+@interface AccountController : NSObject <AKSIPAccountDelegate, CallControllerDelegate, SoftphoneCallControlling>
 
 @property(nonatomic, readonly) AKSIPAccount *account;
 @property(nonatomic, readonly) id<RingtonePlaybackUseCase> ringtonePlayback;
@@ -73,6 +74,9 @@ extern NSString * const kEmailSIPLabel;
 - (void)makeCallToURI:(AKSIPURI *)destinationURI phoneLabel:(NSString *)phoneLabel;
 
 - (void)makeCallToDestinationRegisteringAccountIfNeeded:(SanitizedCallDestination *)destination;
+- (void)hangUpCallWithIdentifier:(NSString *)identifier;
+- (void)toggleMicrophoneMuteForCallWithIdentifier:(NSString *)identifier;
+- (void)sendDTMFDigits:(NSString *)digits forCallWithIdentifier:(NSString *)identifier;
 
 - (void)showWindow;
 - (void)showWindowWithoutMakingKey;

@@ -23,8 +23,13 @@ scripts/bootstrap-third-party.sh
 Use this command for a local Debug app build:
 
 ```sh
-xcodebuild -project SIPMan.xcodeproj -scheme SIPMan -configuration Debug -derivedDataPath /tmp/sipman-deriveddata CODE_SIGNING_ALLOWED=NO build
+scripts/build-app.sh
 ```
+
+Use `scripts/build-app.sh --unsigned` only for compile checks on
+machines without a signing identity. Unsigned/ad-hoc app launches can
+trigger repeated Keychain prompts because macOS cannot attach a stable
+trusted identity to rebuilt binaries.
 
 Where possible, build or test the smallest relevant scheme first, then
 run the full `SIPMan` scheme before considering a change complete.

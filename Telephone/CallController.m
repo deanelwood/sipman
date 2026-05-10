@@ -53,10 +53,12 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
 
 // Call info view.
 @property(nonatomic, strong) NSView *callInfoView;
+@property(nonatomic, assign) BOOL didNotifyDelegateWillClose;
 
 // Closes call window.
 - (void)closeCallWindow;
 - (void)notifyDelegatePresentationDidChange;
+- (void)notifyDelegateWillClose;
 
 @end
 
@@ -265,6 +267,11 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
     
     [self removeUserNotification];
 
+    if (self.usesInlineSoftphoneControls) {
+        [self notifyDelegateWillClose];
+        return;
+    }
+
     // Optionally close call window.
     if ([self.defaults boolForKey:UserDefaultsKeys.autoCloseCallWindow] && ![self isKindOfClass:[CallTransferController class]]) {
         [self performSelector:@selector(closeCallWindow) withObject:nil afterDelay:kCallWindowAutoCloseTime];
@@ -386,6 +393,15 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
     [self.delegate callControllerDidChangePresentation:self];
 }
 
+- (void)notifyDelegateWillClose {
+    if (self.didNotifyDelegateWillClose) {
+        return;
+    }
+
+    self.didNotifyDelegateWillClose = YES;
+    [self.delegate callControllerWillClose:self];
+}
+
 - (void)prepareForCall {
     self.window.styleMask &= ~NSWindowStyleMaskClosable;
     [self showActiveCallView];
@@ -483,7 +499,7 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
         [[self call] hangUp];
     }
     
-    [self.delegate callControllerWillClose:self];
+    [self notifyDelegateWillClose];
 
     [_incomingCallViewController removeObservations];
     [_activeCallViewController removeObservations];
@@ -558,6 +574,12 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
                 [self setStatus:[[self call] lastStatusText]];
             }
             break;
+    }
+
+    if (self.usesInlineSoftphoneControls) {
+        [self removeOrShowUserNotificationOnDisconnectIfNeeded];
+        [self notifyDelegateWillClose];
+        return;
     }
 
     [self showEndedCallView];

@@ -36,3 +36,32 @@ struct SoftphoneDialPad: Equatable {
         destination.removeAll()
     }
 }
+
+enum SoftphoneKeypadKeyboardAction: Equatable {
+    case append(String)
+    case deleteLast
+    case clear
+    case submit
+
+    init?(characters: String?, keyCode: UInt16) {
+        switch keyCode {
+        case 36, 76:
+            self = .submit
+        case 51, 117:
+            self = .deleteLast
+        case 53:
+            self = .clear
+        default:
+            guard let characters, characters.count == 1, let character = characters.first else {
+                return nil
+            }
+            let value = String(character)
+            guard Self.acceptedCharacters.contains(character) else {
+                return nil
+            }
+            self = .append(value)
+        }
+    }
+
+    private static let acceptedCharacters = Set("0123456789*#+")
+}

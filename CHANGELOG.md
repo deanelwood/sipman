@@ -1,6 +1,25 @@
 # Changelog
 
 ## 1.7
+- Tightened the SwiftUI sidebar width and navigation spacing to give the
+  main softphone content more room, and bumped the build number to 160.
+- Moved the Messages search field into the top status row beside the
+  registration pills, and bumped the build number to 159.
+- Tightened the active-call keypad layout so mute and hang-up controls fit
+  in the main window, removed the duplicate number display, and bumped the
+  build number to 158.
+- Added a signed-app build helper and documented why unsigned Debug
+  launches can repeatedly prompt for SIP credential Keychain access.
+- Added direct hardware keyboard support for the SwiftUI keypad and bumped
+  the build number to 157.
+- Moved active outgoing call controls into the SwiftUI keypad, including
+  DTMF entry, duration, mute, and hang-up controls, and bumped the build
+  number to 156.
+- Removed decorative traffic-light dots from the SwiftUI sidebar.
+- Collapsed the legacy account input and call-history views beneath the
+  SwiftUI shell to prevent the old token-field focus ring showing through.
+- Fixed UseCases receipt-localization bundle lookup after the SIPMan
+  bundle identifier rename.
 - Renamed the Xcode project and app product to SIPMan, refreshed the app
   icon, updated visible app strings, and bumped the build number to 155.
 - Documented the SwiftUI softphone shell and active-call stats panel.

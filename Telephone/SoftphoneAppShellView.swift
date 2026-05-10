@@ -27,6 +27,12 @@ protocol SoftphoneCallTarget: AnyObject {
     func softphoneMakeCall(to destination: String)
     @objc(softphonePickCallHistoryRecordWithIdentifier:)
     func softphonePickCallHistoryRecord(withIdentifier identifier: String)
+    @objc(softphoneHangUpCallWithIdentifier:)
+    func softphoneHangUpCall(withIdentifier identifier: String)
+    @objc(softphoneToggleMuteForCallWithIdentifier:)
+    func softphoneToggleMuteForCall(withIdentifier identifier: String)
+    @objc(softphoneSendDTMFDigit:forCallWithIdentifier:)
+    func softphoneSendDTMFDigit(_ digit: String, forCallWithIdentifier identifier: String)
 }
 
 @objcMembers
@@ -55,6 +61,15 @@ final class SoftphoneAppShellViewFactory: NSObject {
                 },
                 onPickCallHistoryRecord: { [weak callTarget] identifier in
                     callTarget?.softphonePickCallHistoryRecord(withIdentifier: identifier)
+                },
+                onHangUp: { [weak callTarget] identifier in
+                    callTarget?.softphoneHangUpCall(withIdentifier: identifier)
+                },
+                onToggleMute: { [weak callTarget] identifier in
+                    callTarget?.softphoneToggleMuteForCall(withIdentifier: identifier)
+                },
+                onSendDTMFDigit: { [weak callTarget] digit, identifier in
+                    callTarget?.softphoneSendDTMFDigit(digit, forCallWithIdentifier: identifier)
                 }
             )
         )
@@ -72,10 +87,14 @@ struct SoftphoneAppShellView: View {
     @ObservedObject var activeCallStore: SoftphoneActiveCallStore
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
+    let onHangUp: (String) -> Void
+    let onToggleMute: (String) -> Void
+    let onSendDTMFDigit: (String, String) -> Void
 
     @State private var selectedItem: SoftphoneNavigationItem = .keypad
     @State private var isSidebarCollapsed = false
     @State private var dialPad = SoftphoneDialPad()
+    @State private var hadActiveCall = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -86,6 +105,7 @@ struct SoftphoneAppShellView: View {
             Divider()
             VStack(spacing: 0) {
                 SoftphoneTopStatusBar(
+                    selectedItem: selectedItem,
                     registrationState: diagnosticsStore.snapshot.registrationState,
                     accountDisplayName: accountDisplayName,
                     sipAddress: sipAddress
@@ -99,13 +119,26 @@ struct SoftphoneAppShellView: View {
                     diagnosticsStore: diagnosticsStore,
                     activeCallStore: activeCallStore,
                     onCall: onCall,
-                    onPickCallHistoryRecord: onPickCallHistoryRecord
+                    onPickCallHistoryRecord: onPickCallHistoryRecord,
+                    onHangUp: onHangUp,
+                    onToggleMute: onToggleMute,
+                    onSendDTMFDigit: onSendDTMFDigit
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .frame(minWidth: 840, minHeight: 560)
         .background(SoftphoneTheme.windowBackground)
+        .onReceive(activeCallStore.$calls) { calls in
+            let hasActiveCall = !calls.isEmpty
+            if hasActiveCall {
+                selectedItem = .keypad
+                if !hadActiveCall {
+                    dialPad.clear()
+                }
+            }
+            hadActiveCall = hasActiveCall
+        }
     }
 }
 
@@ -196,64 +229,46 @@ private struct SoftphoneSidebar: View {
     @Binding var isCollapsed: Bool
 
     var body: some View {
-        VStack(alignment: isCollapsed ? .center : .leading, spacing: 18) {
-            HStack {
-                SoftphoneWindowDots()
-                Spacer(minLength: 0)
-                Button {
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        isCollapsed.toggle()
-                    }
-                } label: {
-                    Image(systemName: isCollapsed ? "sidebar.right" : "sidebar.left")
-                }
-                .buttonStyle(.plain)
-                .frame(width: 30, height: 30)
-                .background(SoftphoneTheme.controlBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
-                .accessibilityLabel(isCollapsed ? "Expand sidebar" : "Collapse sidebar")
-            }
-            .frame(maxWidth: .infinity)
-
-            HStack(spacing: 10) {
+        VStack(alignment: isCollapsed ? .center : .leading, spacing: 16) {
+            HStack(spacing: 9) {
                 Image(nsImage: NSApp.applicationIconImage)
                     .resizable()
                     .aspectRatio(contentMode: .fit)
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .frame(width: 36, height: 36)
+                    .frame(width: 34, height: 34)
 
                 if !isCollapsed {
                     VStack(alignment: .leading, spacing: 2) {
                         Text("SIPMan")
-                            .font(.system(size: 14, weight: .semibold))
+                            .font(.system(size: 13, weight: .semibold))
                         Text("SIP softphone")
-                            .font(.system(size: 12))
+                            .font(.system(size: 11))
                             .foregroundStyle(SoftphoneTheme.muted)
                     }
                     .transition(.opacity.combined(with: .move(edge: .leading)))
                 }
             }
 
-            VStack(spacing: 6) {
+            VStack(spacing: 5) {
                 ForEach(SoftphoneNavigationItem.allCases) { item in
                     Button {
                         selectedItem = item
                     } label: {
-                        HStack(spacing: 11) {
+                        HStack(spacing: 10) {
                             Image(systemName: item.systemImageName)
-                                .frame(width: 22, height: 22)
+                                .frame(width: 20, height: 20)
                             if !isCollapsed {
                                 Text(item.title)
-                                    .font(.system(size: 14, weight: .semibold))
+                                    .font(.system(size: 13, weight: .semibold))
                                 Spacer(minLength: 0)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: isCollapsed ? .center : .leading)
-                        .padding(.horizontal, isCollapsed ? 0 : 12)
-                        .frame(height: 44)
+                        .padding(.horizontal, isCollapsed ? 0 : 10)
+                        .frame(height: 40)
                         .foregroundStyle(selectedItem == item ? SoftphoneTheme.text : SoftphoneTheme.muted)
                         .background(selectedItem == item ? SoftphoneTheme.selectedControlBackground : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .help(item.title)
@@ -262,30 +277,24 @@ private struct SoftphoneSidebar: View {
 
             Spacer()
         }
-        .padding(18)
-        .frame(width: isCollapsed ? 76 : 236)
+        .padding(14)
+        .frame(width: isCollapsed ? 64 : 196)
         .background(SoftphoneTheme.sidebarBackground)
     }
 }
 
-private struct SoftphoneWindowDots: View {
-    var body: some View {
-        HStack(spacing: 8) {
-            Circle().fill(Color(red: 1, green: 0.37, blue: 0.34))
-            Circle().fill(Color(red: 1, green: 0.74, blue: 0.18))
-            Circle().fill(Color(red: 0.16, green: 0.78, blue: 0.25))
-        }
-        .frame(width: 52, height: 12)
-    }
-}
-
 private struct SoftphoneTopStatusBar: View {
+    let selectedItem: SoftphoneNavigationItem
     let registrationState: SoftphoneRegistrationState
     let accountDisplayName: String
     let sipAddress: String
 
     var body: some View {
         HStack(spacing: 10) {
+            if selectedItem == .messages {
+                SoftphoneSearchFieldPlaceholder(height: 36, cornerRadius: 18, trailingPadding: 0)
+                    .frame(width: 300)
+            }
             Spacer()
             SoftphonePill {
                 Circle()
@@ -337,27 +346,31 @@ private struct SoftphoneMainContent: View {
     @ObservedObject var activeCallStore: SoftphoneActiveCallStore
     let onCall: (String) -> Void
     let onPickCallHistoryRecord: (String) -> Void
+    let onHangUp: (String) -> Void
+    let onToggleMute: (String) -> Void
+    let onSendDTMFDigit: (String, String) -> Void
 
     var body: some View {
-        VStack(spacing: 16) {
-            if let activeCall = activeCallStore.primaryCall {
-                SoftphoneActiveCallPanel(call: activeCall)
+        Group {
+            switch selectedItem {
+            case .keypad:
+                SoftphoneKeypadScreen(
+                    dialPad: $dialPad,
+                    activeCall: activeCallStore.primaryCall,
+                    onCall: onCall,
+                    onHangUp: onHangUp,
+                    onToggleMute: onToggleMute,
+                    onSendDTMFDigit: onSendDTMFDigit
+                )
+            case .messages:
+                SoftphoneMessagesScreen(messageStore: messageStore)
+            case .history:
+                SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
+            case .settings:
+                SoftphoneSettingsScreen(diagnosticsStore: diagnosticsStore)
             }
-
-            Group {
-                switch selectedItem {
-                case .keypad:
-                    SoftphoneKeypadScreen(dialPad: $dialPad, onCall: onCall)
-                case .messages:
-                    SoftphoneMessagesScreen(messageStore: messageStore)
-                case .history:
-                    SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
-                case .settings:
-                    SoftphoneSettingsScreen(diagnosticsStore: diagnosticsStore)
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding(22)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -498,7 +511,11 @@ private struct SoftphoneCallStatsRow: View {
 
 private struct SoftphoneKeypadScreen: View {
     @Binding var dialPad: SoftphoneDialPad
+    let activeCall: SoftphoneActiveCallModel?
     let onCall: (String) -> Void
+    let onHangUp: (String) -> Void
+    let onToggleMute: (String) -> Void
+    let onSendDTMFDigit: (String, String) -> Void
 
     private let keys = [
         ("1", ""), ("2", "ABC"), ("3", "DEF"),
@@ -508,39 +525,137 @@ private struct SoftphoneKeypadScreen: View {
     ]
 
     var body: some View {
-        VStack(spacing: 18) {
-            Text(dialPad.destination.isEmpty ? "Enter number" : dialPad.destination)
-                .font(.system(size: dialPad.destination.isEmpty ? 22 : 30, weight: .semibold))
-                .foregroundStyle(dialPad.destination.isEmpty ? SoftphoneTheme.placeholder : SoftphoneTheme.text)
-                .lineLimit(1)
-                .minimumScaleFactor(0.7)
-                .frame(maxWidth: .infinity)
-                .frame(height: 64)
-                .padding(.horizontal, 18)
-                .background(SoftphoneTheme.fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+        VStack(spacing: verticalSpacing) {
+            if let activeCall {
+                SoftphoneInlineCallHeader(call: activeCall)
+            }
 
-            LazyVGrid(columns: Array(repeating: GridItem(.fixed(118), spacing: 13), count: 3), spacing: 13) {
+            if activeCall == nil {
+                keypadDisplay
+            }
+
+            LazyVGrid(columns: Array(repeating: GridItem(.fixed(keyWidth), spacing: keySpacing), count: 3), spacing: keySpacing) {
                 ForEach(keys, id: \.0) { key in
                     Button {
-                        dialPad.append(key.0)
+                        appendKeypadValue(key.0)
                     } label: {
-                        VStack(spacing: 6) {
+                        VStack(spacing: keyLabelSpacing) {
                             Text(key.0)
-                                .font(.system(size: 27, weight: .medium))
+                                .font(.system(size: keyDigitFontSize, weight: .medium))
                             Text(key.1)
-                                .font(.system(size: 10, weight: .bold))
+                                .font(.system(size: keyLetterFontSize, weight: .bold))
                                 .foregroundStyle(SoftphoneTheme.placeholder)
-                                .frame(height: 10)
+                                .frame(height: keyLetterHeight)
                         }
-                        .frame(width: 118, height: 66)
+                        .frame(width: keyWidth, height: keyHeight)
                         .background(SoftphoneTheme.controlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: keyCornerRadius, style: .continuous))
                     }
                     .buttonStyle(.plain)
                 }
             }
 
+            callControls
+        }
+        .frame(maxWidth: 390)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(
+            SoftphoneKeyboardCaptureView { action in
+                handleKeyboardAction(action)
+            }
+            .frame(width: 0, height: 0)
+        )
+    }
+
+    private var isInCall: Bool {
+        activeCall != nil
+    }
+
+    private var verticalSpacing: CGFloat {
+        isInCall ? 10 : 18
+    }
+
+    private var keyWidth: CGFloat {
+        118
+    }
+
+    private var keyHeight: CGFloat {
+        isInCall ? 56 : 66
+    }
+
+    private var keySpacing: CGFloat {
+        isInCall ? 10 : 13
+    }
+
+    private var keyLabelSpacing: CGFloat {
+        isInCall ? 2 : 6
+    }
+
+    private var keyDigitFontSize: CGFloat {
+        isInCall ? 24 : 27
+    }
+
+    private var keyLetterFontSize: CGFloat {
+        isInCall ? 9 : 10
+    }
+
+    private var keyLetterHeight: CGFloat {
+        isInCall ? 8 : 10
+    }
+
+    private var keyCornerRadius: CGFloat {
+        isInCall ? 18 : 22
+    }
+
+    private var keypadDisplay: some View {
+        Text(displayText)
+            .font(.system(size: displayFontSize, weight: .semibold))
+            .foregroundStyle(displayText == placeholderText ? SoftphoneTheme.placeholder : SoftphoneTheme.text)
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .frame(maxWidth: .infinity)
+            .frame(height: isInCall ? 42 : 64)
+            .padding(.horizontal, isInCall ? 14 : 18)
+            .background(SoftphoneTheme.fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: isInCall ? 16 : 20, style: .continuous))
+    }
+
+    private var displayFontSize: CGFloat {
+        if displayText == placeholderText {
+            return isInCall ? 17 : 22
+        }
+        return isInCall ? 23 : 30
+    }
+
+    @ViewBuilder
+    private var callControls: some View {
+        if let activeCall {
+            HStack(spacing: 12) {
+                Button {
+                    onToggleMute(activeCall.id)
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: activeCall.isMuted ? "mic.slash.fill" : "mic.fill")
+                        Text(activeCall.isMuted ? "Unmute" : "Mute")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle())
+
+                Button {
+                    onHangUp(activeCall.id)
+                } label: {
+                    Image(systemName: "phone.down.fill")
+                        .font(.system(size: 20, weight: .bold))
+                        .foregroundStyle(.white)
+                        .frame(width: 118, height: 48)
+                        .background(SoftphoneTheme.red)
+                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .help("Hang up")
+            }
+        } else {
             HStack(spacing: 12) {
                 Button("Clear") {
                     dialPad.clear()
@@ -567,8 +682,162 @@ private struct SoftphoneKeypadScreen: View {
                 .buttonStyle(SoftphoneSecondaryButtonStyle())
             }
         }
-        .frame(maxWidth: 390)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var placeholderText: String {
+        activeCall == nil ? "Enter number" : "DTMF"
+    }
+
+    private var displayText: String {
+        dialPad.destination.isEmpty ? placeholderText : dialPad.destination
+    }
+
+    private func handleKeyboardAction(_ action: SoftphoneKeypadKeyboardAction) {
+        switch action {
+        case .append(let value):
+            appendKeypadValue(value)
+        case .deleteLast:
+            dialPad.deleteLast()
+        case .clear:
+            dialPad.clear()
+        case .submit:
+            guard activeCall == nil, dialPad.canCall else { return }
+            onCall(dialPad.destination)
+        }
+    }
+
+    private func appendKeypadValue(_ value: String) {
+        if let activeCall {
+            guard value.count == 1, let character = value.first, "0123456789*#".contains(character) else {
+                return
+            }
+            onSendDTMFDigit(value, activeCall.id)
+        } else {
+            dialPad.append(value)
+        }
+    }
+}
+
+private struct SoftphoneKeyboardCaptureView: NSViewRepresentable {
+    let onAction: (SoftphoneKeypadKeyboardAction) -> Void
+
+    func makeNSView(context: Context) -> SoftphoneKeyboardCaptureNSView {
+        let view = SoftphoneKeyboardCaptureNSView()
+        view.onAction = onAction
+        return view
+    }
+
+    func updateNSView(_ nsView: SoftphoneKeyboardCaptureNSView, context: Context) {
+        nsView.onAction = onAction
+        nsView.requestFocus()
+    }
+}
+
+private final class SoftphoneKeyboardCaptureNSView: NSView {
+    var onAction: ((SoftphoneKeypadKeyboardAction) -> Void)?
+    private var eventMonitor: Any?
+
+    override var acceptsFirstResponder: Bool {
+        true
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        updateEventMonitor()
+        requestFocus()
+    }
+
+    deinit {
+        MainActor.assumeIsolated {
+            removeEventMonitor()
+        }
+    }
+
+    func requestFocus() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let window = self.window else { return }
+            if window.firstResponder !== self {
+                window.makeFirstResponder(self)
+            }
+        }
+    }
+
+    override func keyDown(with event: NSEvent) {
+        guard handle(event) else {
+            super.keyDown(with: event)
+            return
+        }
+    }
+
+    private func updateEventMonitor() {
+        removeEventMonitor()
+        guard window != nil else { return }
+
+        eventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, event.window === self.window else { return event }
+            return self.handle(event) ? nil : event
+        }
+    }
+
+    private func removeEventMonitor() {
+        if let eventMonitor {
+            NSEvent.removeMonitor(eventMonitor)
+            self.eventMonitor = nil
+        }
+    }
+
+    private func handle(_ event: NSEvent) -> Bool {
+        let blockedModifiers: NSEvent.ModifierFlags = [.command, .control, .option]
+        guard event.modifierFlags.intersection(blockedModifiers).isEmpty,
+              let action = SoftphoneKeypadKeyboardAction(characters: event.characters, keyCode: event.keyCode) else {
+            return false
+        }
+
+        onAction?(action)
+        return true
+    }
+}
+
+private struct SoftphoneInlineCallHeader: View {
+    let call: SoftphoneActiveCallModel
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "phone.fill")
+                .font(.system(size: 16, weight: .semibold))
+                .foregroundStyle(.white)
+                .frame(width: 38, height: 38)
+                .background(SoftphoneTheme.green)
+                .clipShape(Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(call.remoteParty)
+                    .font(.system(size: 17, weight: .bold))
+                    .foregroundStyle(SoftphoneTheme.text)
+                    .lineLimit(1)
+                Text(call.status)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(SoftphoneTheme.muted)
+                    .lineLimit(1)
+            }
+
+            Spacer()
+
+            HStack(spacing: 7) {
+                Image(systemName: "timer")
+                Text(call.duration.isEmpty ? "00:00" : call.duration)
+            }
+            .font(.system(size: 13, weight: .bold))
+            .foregroundStyle(SoftphoneTheme.muted)
+            .padding(.horizontal, 10)
+            .frame(height: 30)
+            .background(SoftphoneTheme.fieldBackground)
+            .clipShape(Capsule())
+        }
+        .padding(.horizontal, 12)
+        .frame(height: 56)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 }
 
@@ -578,7 +847,6 @@ private struct SoftphoneMessagesScreen: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 10) {
-                SoftphoneSearchFieldPlaceholder()
                 if messageStore.conversations.isEmpty {
                     SoftphoneEmptyState(title: "No messages", subtitle: "SIP MESSAGE conversations will appear here.")
                 } else {
@@ -688,6 +956,10 @@ private struct SoftphoneSettingsScreen: View {
 }
 
 private struct SoftphoneSearchFieldPlaceholder: View {
+    var height: CGFloat = 42
+    var cornerRadius: CGFloat = 14
+    var trailingPadding: CGFloat = 14
+
     var body: some View {
         HStack {
             Image(systemName: "magnifyingglass")
@@ -696,10 +968,10 @@ private struct SoftphoneSearchFieldPlaceholder: View {
         }
         .foregroundStyle(SoftphoneTheme.placeholder)
         .padding(.horizontal, 14)
-        .frame(height: 42)
+        .frame(height: height)
         .background(SoftphoneTheme.fieldBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .padding(.trailing, 14)
+        .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .padding(.trailing, trailingPadding)
     }
 }
 

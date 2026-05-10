@@ -30,6 +30,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 @property(nonatomic, readonly) CallHistoryViewController *callHistoryViewController;
 @property(nonatomic, readonly) AsyncCallHistoryViewEventTargetFactory *callHistoryViewEventTargetFactory;
 @property(nonatomic, readonly) id<Account> account;
+@property(nonatomic, readonly, weak) id<SoftphoneCallControlling> callControlTarget;
 
 @property(nonatomic) CallHistoryViewEventTarget *callHistoryViewEventTarget;
 @property(nonatomic) SoftphoneCallHistoryStore *softphoneCallHistoryStore;
@@ -46,30 +47,35 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 @property(nonatomic) CGFloat originalActiveAccountViewHeight;
 @property(nonatomic) CGFloat originalHorizontalLineHeight;
 @property(nonatomic) NSView *softphoneAppShellView;
+@property(nonatomic) BOOL softphoneAllowsCallDestinationInput;
 
 - (void)showSoftphoneAppShell;
+- (void)hideLegacyAccountViews;
 
 @end
 
 @implementation AccountViewController
 
 - (BOOL)allowsCallDestinationInput {
-    return self.activeAccountViewController.allowsCallDestinationInput;
+    return self.softphoneAllowsCallDestinationInput;
 }
 
 - (instancetype)initWithActiveAccountViewController:(ActiveAccountViewController *)activeAccountViewController
-                          callHistoryViewController:(CallHistoryViewController *)callHistoryViewController
-                  callHistoryViewEventTargetFactory:(AsyncCallHistoryViewEventTargetFactory *)callHistoryViewEventTargetFactory
-                                            account:(id<Account>)account {
+                  callHistoryViewController:(CallHistoryViewController *)callHistoryViewController
+          callHistoryViewEventTargetFactory:(AsyncCallHistoryViewEventTargetFactory *)callHistoryViewEventTargetFactory
+                                    account:(id<Account>)account
+                          callControlTarget:(id<SoftphoneCallControlling>)callControlTarget {
     NSParameterAssert(activeAccountViewController);
     NSParameterAssert(callHistoryViewController);
     NSParameterAssert(callHistoryViewEventTargetFactory);
     NSParameterAssert(account);
+    NSParameterAssert(callControlTarget);
     if ((self = [super initWithNibName:@"AccountView" bundle:nil])) {
         _activeAccountViewController = activeAccountViewController;
         _callHistoryViewController = callHistoryViewController;
         _callHistoryViewEventTargetFactory = callHistoryViewEventTargetFactory;
         _account = account;
+        _callControlTarget = callControlTarget;
     }
     return self;
 }
@@ -107,30 +113,21 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
                                                  }];
 
     [self showSoftphoneAppShell];
+    [self hideLegacyAccountViews];
 }
 
 #pragma mark -
 
 - (void)showActiveState {
-    [NSAnimationContext runAnimationGroup:^(NSAnimationContext * _Nonnull context) {
-        self.activeAccountViewHeightConstraint.animator.constant = self.originalActiveAccountViewHeight;
-        self.horizontalLineHeightConstraint.animator.constant = self.originalHorizontalLineHeight;
-    } completionHandler:^{
-        [self.softphoneDiagnosticsStore markRegistered];
-        [self.activeAccountViewController allowCallDestinationInput];
-    }];
+    self.softphoneAllowsCallDestinationInput = YES;
+    [self.softphoneDiagnosticsStore markRegistered];
+    [self hideLegacyAccountViews];
 }
 
 - (void)showInactiveStateAnimated:(BOOL)animated {
+    self.softphoneAllowsCallDestinationInput = NO;
     [self.softphoneDiagnosticsStore markOffline];
-    [self.activeAccountViewController disallowCallDestinationInput];
-    if (animated) {
-        self.activeAccountViewHeightConstraint.animator.constant = 0;
-        self.horizontalLineHeightConstraint.animator.constant = 0;
-    } else {
-        self.activeAccountViewHeightConstraint.constant = 0;
-        self.horizontalLineHeightConstraint.constant = 0;
-    }
+    [self hideLegacyAccountViews];
 }
 
 - (void)makeCallToDestination:(NSString *)destination {
@@ -149,6 +146,18 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
                                                                     activeCallStore:self.softphoneActiveCallStore];
     [self.view addSubview:self.softphoneAppShellView];
     [self.view addConstraints:FullSizeConstraintsForView(self.softphoneAppShellView)];
+}
+
+- (void)hideLegacyAccountViews {
+    [self.activeAccountViewController disallowCallDestinationInput];
+    if ([self.view.window.firstResponder isEqual:self.activeAccountViewController.callDestinationField]) {
+        [self.view.window makeFirstResponder:nil];
+    }
+    self.activeAccountView.hidden = YES;
+    self.callHistoryView.hidden = YES;
+    self.activeAccountViewHeightConstraint.constant = 0;
+    self.horizontalLineHeightConstraint.constant = 0;
+    self.bottomViewHeightConstraint.constant = 0;
 }
 
 - (void)updateSoftphoneCallWithIdentifier:(NSString *)identifier
@@ -179,6 +188,18 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 
 - (void)softphonePickCallHistoryRecordWithIdentifier:(NSString *)identifier {
     [self.callHistoryViewEventTarget didPickRecordWithIdentifier:identifier];
+}
+
+- (void)softphoneHangUpCallWithIdentifier:(NSString *)identifier {
+    [self.callControlTarget hangUpCallWithIdentifier:identifier];
+}
+
+- (void)softphoneToggleMuteForCallWithIdentifier:(NSString *)identifier {
+    [self.callControlTarget toggleMicrophoneMuteForCallWithIdentifier:identifier];
+}
+
+- (void)softphoneSendDTMFDigit:(NSString *)digit forCallWithIdentifier:(NSString *)identifier {
+    [self.callControlTarget sendDTMFDigits:digit forCallWithIdentifier:identifier];
 }
 
 @end

@@ -25,14 +25,23 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@protocol SoftphoneCallControlling <NSObject>
+
+- (void)hangUpCallWithIdentifier:(NSString *)identifier;
+- (void)toggleMicrophoneMuteForCallWithIdentifier:(NSString *)identifier;
+- (void)sendDTMFDigits:(NSString *)digits forCallWithIdentifier:(NSString *)identifier;
+
+@end
+
 @interface AccountViewController : NSViewController
 
 @property(nonatomic, readonly) BOOL allowsCallDestinationInput;
 
 - (instancetype)initWithActiveAccountViewController:(ActiveAccountViewController *)activeAccountViewController
-                          callHistoryViewController:(CallHistoryViewController *)callHistoryViewController
-                  callHistoryViewEventTargetFactory:(AsyncCallHistoryViewEventTargetFactory *)callHistoryViewEventTargetFactory
-                                            account:(id<Account>)account;
+                  callHistoryViewController:(CallHistoryViewController *)callHistoryViewController
+          callHistoryViewEventTargetFactory:(AsyncCallHistoryViewEventTargetFactory *)callHistoryViewEventTargetFactory
+                                    account:(id<Account>)account
+                          callControlTarget:(id<SoftphoneCallControlling>)callControlTarget;
 
 - (void)showActiveState;
 - (void)showInactiveStateAnimated:(BOOL)animated;

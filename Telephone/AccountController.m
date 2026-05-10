@@ -57,6 +57,8 @@ static NSString * const kRussian = @"ru";
 @property(nonatomic, strong) NSTimer *reRegistrationTimer;
 @property(nonatomic, copy) NSString *destinationToCall;
 
+- (nullable CallController *)callControllerWithIdentifier:(NSString *)identifier;
+
 @end
 
 @implementation AccountController
@@ -202,7 +204,8 @@ static NSString * const kRussian = @"ru";
 	    = [[AccountViewController alloc] initWithActiveAccountViewController:[[ActiveAccountViewController alloc] initWithAccountController:self]
 	                                               callHistoryViewController:[[CallHistoryViewController alloc] init]
 	                                       callHistoryViewEventTargetFactory:callHistoryViewEventTargetFactory
-	                                                                 account:[[AccountControllerToAccountAdapter alloc] initWithController:self]];
+	                                                                 account:[[AccountControllerToAccountAdapter alloc] initWithController:self]
+                                                           callControlTarget:self];
     _windowController = [[AccountWindowController alloc] initWithAccountDescription:_accountDescription
                                                                          SIPAddress:_account.SIPAddress
                                                               accountViewController:_accountViewController
@@ -289,6 +292,7 @@ static NSString * const kRussian = @"ru";
                                                       accountController:self
                                                               userAgent:self.userAgent
                                                                delegate:self];
+        aCallController.usesInlineSoftphoneControls = YES;
     } else {
         aCallController = callTransferController;
     }
@@ -353,7 +357,7 @@ static NSString * const kRussian = @"ru";
         [aCallController setStatus:NSLocalizedString(@"calling...", @"Outgoing call in progress.")];
     }
     
-    if (callTransferController == nil) {
+    if (callTransferController == nil && !aCallController.usesInlineSoftphoneControls) {
         [aCallController showWindow:self];
     }
     
@@ -363,8 +367,12 @@ static NSString * const kRussian = @"ru";
             [aCallController setCall:call];
             [aCallController setCallActive:YES];
         } else {
-            [aCallController showEndedCallView];
             [aCallController setStatus:NSLocalizedString(@"Call Failed", @"Call failed.")];
+            if (aCallController.usesInlineSoftphoneControls) {
+                [self callControllerWillClose:aCallController];
+            } else {
+                [aCallController showEndedCallView];
+            }
         }
     }];
 }
@@ -386,6 +394,32 @@ static NSString * const kRussian = @"ru";
 
 - (void)makeCallToDestination:(NSString *)destination {
     [self.windowController makeCallToDestination:destination];
+}
+
+- (void)hangUpCallWithIdentifier:(NSString *)identifier {
+    [[self callControllerWithIdentifier:identifier] hangUpCall];
+}
+
+- (void)toggleMicrophoneMuteForCallWithIdentifier:(NSString *)identifier {
+    [[self callControllerWithIdentifier:identifier] toggleMicrophoneMute];
+}
+
+- (void)sendDTMFDigits:(NSString *)digits forCallWithIdentifier:(NSString *)identifier {
+    if (digits.length == 0) {
+        return;
+    }
+
+    CallController *callController = [self callControllerWithIdentifier:identifier];
+    [callController.call sendDTMFDigits:digits];
+}
+
+- (CallController *)callControllerWithIdentifier:(NSString *)identifier {
+    for (CallController *callController in self.callControllers) {
+        if ([callController.identifier isEqualToString:identifier]) {
+            return callController;
+        }
+    }
+    return nil;
 }
 
 - (void)makeCallToSavedDestination {

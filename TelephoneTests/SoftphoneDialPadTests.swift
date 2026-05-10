@@ -60,4 +60,25 @@ final class SoftphoneDialPadTests: XCTestCase {
         XCTAssertEqual(sut.destination, "")
         XCTAssertFalse(sut.canCall)
     }
+
+    func testKeyboardActionAppendsDialableCharacters() {
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: "1", keyCode: 18), .append("1"))
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: "*", keyCode: 67), .append("*"))
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: "#", keyCode: 42), .append("#"))
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: "+", keyCode: 24), .append("+"))
+    }
+
+    func testKeyboardActionMapsEditingKeys() {
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: "\r", keyCode: 36), .submit)
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: nil, keyCode: 76), .submit)
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: nil, keyCode: 51), .deleteLast)
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: nil, keyCode: 117), .deleteLast)
+        XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: "\u{1b}", keyCode: 53), .clear)
+    }
+
+    func testKeyboardActionIgnoresUnsupportedCharacters() {
+        XCTAssertNil(SoftphoneKeypadKeyboardAction(characters: "a", keyCode: 0))
+        XCTAssertNil(SoftphoneKeypadKeyboardAction(characters: "12", keyCode: 0))
+        XCTAssertNil(SoftphoneKeypadKeyboardAction(characters: nil, keyCode: 0))
+    }
 }

@@ -24,7 +24,22 @@ To build the dependencies for a local Apple Silicon Debug build:
 
 Then build SIPMan:
 
-    $ xcodebuild -project SIPMan.xcodeproj -scheme SIPMan -configuration Debug -derivedDataPath /tmp/sipman-deriveddata CODE_SIGNING_ALLOWED=NO build
+    $ scripts/build-app.sh
+
+To build and launch the app:
+
+    $ scripts/build-app.sh --open
+
+SIPMan stores SIP passwords in Keychain. For interactive smoke testing,
+use a signed Debug build so macOS sees a stable app identity. If this
+script reports that no valid signing identity is available, create a
+Mac Development or Apple Development certificate in Xcode. Unsigned
+builds are still available for compile checks:
+
+    $ scripts/build-app.sh --unsigned
+
+Unsigned builds are intentionally not the default because launching
+rebuilt ad-hoc binaries can make macOS ask for Keychain access again.
 
 ## Testing
 
@@ -101,7 +116,7 @@ Build and install (remove `--with-opus` option if you don’t need Opus):
 
 Build SIPMan, if you have not already:
 
-    $ xcodebuild -project SIPMan.xcodeproj -scheme SIPMan -configuration Debug -derivedDataPath /tmp/sipman-deriveddata CODE_SIGNING_ALLOWED=NO build
+    $ scripts/build-app.sh
 
 ## Contribution
 

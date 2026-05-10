@@ -94,6 +94,9 @@
 // A Boolean value indicating whether the receiver's call is unhandled.
 @property(nonatomic, readonly, getter=isCallUnhandled) BOOL callUnhandled;
 
+// A Boolean value indicating whether the app shell owns call presentation instead of the legacy call window.
+@property(nonatomic, assign) BOOL usesInlineSoftphoneControls;
+
 
 - (instancetype)initWithWindowNibName:(NSString *)windowNibName
                     accountController:(AccountController *)accountController

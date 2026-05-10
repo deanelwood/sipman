@@ -228,7 +228,7 @@ main() {
   echo
   echo "Third-party dependencies are installed."
   echo "Next:"
-  echo "  xcodebuild -project SIPMan.xcodeproj -scheme SIPMan -configuration Debug -derivedDataPath /tmp/sipman-deriveddata CODE_SIGNING_ALLOWED=NO build"
+  echo "  scripts/build-app.sh"
 }
 
 main "$@"

@@ -41,6 +41,8 @@ public enum ReceiptValidationResult: Sendable {
     }
 }
 
+private final class BundleToken {}
+
 private func bundle() -> Bundle {
-    return Bundle(identifier: "com.tlphn.Telephone.UseCases")!
+    Bundle(for: BundleToken.self)
 }
