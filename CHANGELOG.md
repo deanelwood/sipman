@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Prevented ended inline calls from being republished by stale status timers
+  after hang-up, and bumped the build number to 167.
 - Removed former-author website, FAQ, terms, privacy, subscription
   management, Credits blurb, and new-file template header references from
   first-party app surfaces, and bumped the build number to 166.

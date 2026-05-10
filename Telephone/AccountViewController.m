@@ -192,6 +192,7 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
 
 - (void)softphoneHangUpCallWithIdentifier:(NSString *)identifier {
     [self.callControlTarget hangUpCallWithIdentifier:identifier];
+    [self.softphoneActiveCallStore removeCallWithIdentifier:identifier];
 }
 
 - (void)softphoneToggleMuteForCallWithIdentifier:(NSString *)identifier {

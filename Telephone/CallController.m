@@ -59,6 +59,7 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
 - (void)closeCallWindow;
 - (void)notifyDelegatePresentationDidChange;
 - (void)notifyDelegateWillClose;
+- (void)invalidateIntermediateStatusTimer;
 
 @end
 
@@ -246,6 +247,7 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
     if (_activeCallViewController != nil) {
         [[self activeCallViewController] stopCallTimer];
     }
+    [self invalidateIntermediateStatusTimer];
     
     // If remote party hasn't sent back any replies, call hang-up will not happen immediately. Unsubscribe from any
     // notifications about the call state and set disconnected look to the call window.
@@ -390,6 +392,10 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
 }
 
 - (void)notifyDelegatePresentationDidChange {
+    if (self.didNotifyDelegateWillClose) {
+        return;
+    }
+
     [self.delegate callControllerDidChangePresentation:self];
 }
 
@@ -398,8 +404,14 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
         return;
     }
 
+    [self invalidateIntermediateStatusTimer];
     self.didNotifyDelegateWillClose = YES;
     [self.delegate callControllerWillClose:self];
+}
+
+- (void)invalidateIntermediateStatusTimer {
+    [self.intermediateStatusTimer invalidate];
+    self.intermediateStatusTimer = nil;
 }
 
 - (void)prepareForCall {
@@ -491,6 +503,7 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
     if ([self isCallActive]) {
         [self setCallActive:NO];
         [[self activeCallViewController] stopCallTimer];
+        [self invalidateIntermediateStatusTimer];
         
         if ([[[self call] delegate] isEqual:self]) {
             [[self call] setDelegate:nil];
@@ -536,6 +549,7 @@ static const NSTimeInterval kRedialButtonReenableTime = 1.0;
 - (void)SIPCallDidDisconnect:(NSNotification *)notification {
     [self setCallActive:NO];
     [[self activeCallViewController] stopCallTimer];
+    [self invalidateIntermediateStatusTimer];
     
     NSString *preferredLocalization = [[NSBundle mainBundle] preferredLocalizations][0];
     
