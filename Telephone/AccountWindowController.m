@@ -40,6 +40,40 @@
 
 @implementation AccountWindowController
 
+- (NSString *)windowTitle {
+    NSString *username = [self usernameFromAddress:self.SIPAddress];
+    if (username.length == 0) {
+        username = [self usernameFromAddress:self.accountDescription];
+    }
+    if (username.length == 0) {
+        username = self.accountDescription;
+    }
+    return [NSString stringWithFormat:@"SIPman - %@", username];
+}
+
+- (NSString *)usernameFromAddress:(NSString *)address {
+    NSString *username = [address stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+    if ([username hasPrefix:@"sip:"]) {
+        username = [username substringFromIndex:4];
+    }
+
+    NSRange displayNameStart = [username rangeOfString:@"<"];
+    NSRange displayNameEnd = [username rangeOfString:@">"];
+    if (displayNameStart.location != NSNotFound &&
+        displayNameEnd.location != NSNotFound &&
+        displayNameEnd.location > displayNameStart.location) {
+        NSRange addressRange = NSMakeRange(displayNameStart.location + 1,
+                                           displayNameEnd.location - displayNameStart.location - 1);
+        username = [username substringWithRange:addressRange];
+    }
+
+    NSRange domainSeparator = [username rangeOfString:@"@"];
+    if (domainSeparator.location == NSNotFound) {
+        return username;
+    }
+    return [username substringToIndex:domainSeparator.location];
+}
+
 - (BOOL)allowsCallDestinationInput {
     return self.accountViewController.allowsCallDestinationInput;
 }
@@ -67,7 +101,7 @@
 }
 
 - (void)windowDidLoad {
-    self.window.title = self.accountDescription;
+    self.window.title = self.windowTitle;
     self.window.frameAutosaveName = self.SIPAddress;
     self.window.excludedFromWindowsMenu = YES;
     self.window.toolbar = nil;

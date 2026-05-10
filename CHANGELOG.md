@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Updated account window titles to show `SIPman - username` without the
+  SIP domain, and bumped the build number to 164.
 - Removed the legacy availability toolbar from account windows, and bumped
   the build number to 163.
 - Split Settings into Account and Diagnostics tabs so each pane can use the
