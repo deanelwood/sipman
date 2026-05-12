@@ -66,6 +66,7 @@ final class SoftphoneMessageStoreTests: XCTestCase {
         sut.selectConversation(id: first.conversationId)
 
         XCTAssertEqual(sut.messages.map(\.id), ["first", "second"])
+        XCTAssertEqual(sut.messages.map(\.senderTitle), ["2002", "You"])
         XCTAssertEqual(sut.messages.map(\.body), ["First", "Second"])
         XCTAssertEqual(sut.messages.last?.deliveryState, "Sent")
         XCTAssertTrue(sut.messages.last?.isOutgoing == true)

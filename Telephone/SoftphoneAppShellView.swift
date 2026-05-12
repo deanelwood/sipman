@@ -123,7 +123,9 @@ struct SoftphoneAppShellView: View {
         HStack(spacing: 0) {
             SoftphoneSidebar(
                 selectedItem: $selectedItem,
-                isCollapsed: $isSidebarCollapsed
+                isCollapsed: $isSidebarCollapsed,
+                accountDisplayName: accountDisplayName,
+                sipAddress: sipAddress
             )
             Divider()
             VStack(spacing: 0) {
@@ -153,6 +155,7 @@ struct SoftphoneAppShellView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .ignoresSafeArea(.container, edges: .top)
         .frame(minWidth: 840, minHeight: 560)
         .foregroundStyle(SoftphoneTheme.text)
         .background(SoftphoneTheme.windowBackground)
@@ -171,6 +174,7 @@ struct SoftphoneAppShellView: View {
     private var appearanceMode: SoftphoneAppearanceMode {
         SoftphoneAppearanceMode(rawValue: appearanceModeRawValue) ?? .light
     }
+
 }
 
 enum SoftphoneNavigationItem: String, CaseIterable, Identifiable {
@@ -197,13 +201,13 @@ enum SoftphoneNavigationItem: String, CaseIterable, Identifiable {
     var systemImageName: String {
         switch self {
         case .keypad:
-            return "phone.fill"
+            return "phone"
         case .messages:
-            return "message.fill"
+            return "bubble.left"
         case .history:
-            return "clock.fill"
+            return "clock"
         case .settings:
-            return "gearshape.fill"
+            return "gearshape"
         }
     }
 }
@@ -258,48 +262,43 @@ private extension CallStatsQuality {
 private struct SoftphoneSidebar: View {
     @Binding var selectedItem: SoftphoneNavigationItem
     @Binding var isCollapsed: Bool
+    let accountDisplayName: String
+    let sipAddress: String
 
     var body: some View {
-        VStack(alignment: isCollapsed ? .center : .leading, spacing: 16) {
-            HStack(spacing: 9) {
-                Image(nsImage: NSApp.applicationIconImage)
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .frame(width: 34, height: 34)
-
-                if !isCollapsed {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("SIPMan")
-                            .font(.system(size: 13, weight: .semibold))
-                        Text("SIP softphone")
-                            .font(.system(size: 11))
-                            .foregroundStyle(SoftphoneTheme.muted)
-                    }
-                    .transition(.opacity.combined(with: .move(edge: .leading)))
+        VStack(alignment: isCollapsed ? .center : .leading, spacing: 20) {
+            if !isCollapsed {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("SIPMan")
+                        .font(.system(size: 14, weight: .semibold))
+                    Text(displayUsername)
+                        .font(.system(size: 11))
+                        .foregroundStyle(SoftphoneTheme.muted)
                 }
+                .transition(.opacity.combined(with: .move(edge: .leading)))
             }
 
-            VStack(spacing: 5) {
+            VStack(spacing: 3) {
                 ForEach(SoftphoneNavigationItem.allCases) { item in
                     Button {
                         selectedItem = item
                     } label: {
                         HStack(spacing: 10) {
                             Image(systemName: item.systemImageName)
-                                .frame(width: 20, height: 20)
+                                .font(.system(size: 15, weight: .regular))
+                                .frame(width: 18, height: 20)
                             if !isCollapsed {
                                 Text(item.title)
-                                    .font(.system(size: 13, weight: .semibold))
+                                    .font(.system(size: 13, weight: .regular))
                                 Spacer(minLength: 0)
                             }
                         }
                         .frame(maxWidth: .infinity, alignment: isCollapsed ? .center : .leading)
-                        .padding(.horizontal, isCollapsed ? 0 : 10)
-                        .frame(height: 40)
+                        .padding(.horizontal, isCollapsed ? 0 : 5)
+                        .frame(height: 36)
                         .foregroundStyle(selectedItem == item ? SoftphoneTheme.text : SoftphoneTheme.muted)
                         .background(selectedItem == item ? SoftphoneTheme.selectedControlBackground : Color.clear)
-                        .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     }
                     .buttonStyle(.plain)
                     .help(item.title)
@@ -308,9 +307,40 @@ private struct SoftphoneSidebar: View {
 
             Spacer()
         }
-        .padding(14)
-        .frame(width: isCollapsed ? 64 : 196)
+        .padding(.leading, isCollapsed ? 14 : 22)
+        .padding(.trailing, 16)
+        .padding(.top, 82)
+        .padding(.bottom, 16)
+        .frame(width: isCollapsed ? 64 : 300)
         .background(SoftphoneTheme.sidebarBackground)
+    }
+
+    private var displayUsername: String {
+        let username = usernameFromAddress(accountDisplayName)
+        if !username.isEmpty {
+            return username
+        }
+        let addressUsername = usernameFromAddress(sipAddress)
+        if !addressUsername.isEmpty {
+            return addressUsername
+        }
+        return "No account"
+    }
+
+    private func usernameFromAddress(_ value: String) -> String {
+        var result = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        if result.hasPrefix("sip:") {
+            result.removeFirst(4)
+        }
+        if let start = result.firstIndex(of: "<"),
+           let end = result.firstIndex(of: ">"),
+           start < end {
+            result = String(result[result.index(after: start)..<end])
+        }
+        if let at = result.firstIndex(of: "@") {
+            result = String(result[..<at])
+        }
+        return result
     }
 }
 
@@ -322,15 +352,14 @@ private struct SoftphoneTopStatusBar: View {
 
     var body: some View {
         HStack(spacing: 10) {
-            if selectedItem == .messages {
-                SoftphoneSearchFieldPlaceholder(height: 36, cornerRadius: 18, trailingPadding: 0)
-                    .frame(width: 300)
-            }
+            Text(selectedItem.title)
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(SoftphoneTheme.text)
             Spacer()
             SoftphonePill {
                 Circle()
                     .fill(registrationState.color)
-                    .frame(width: 9, height: 9)
+                    .frame(width: 7, height: 7)
                 Text(registrationState.title)
             }
             SoftphonePill {
@@ -338,7 +367,8 @@ private struct SoftphoneTopStatusBar: View {
             }
         }
         .padding(.horizontal, 24)
-        .frame(height: 56)
+        .padding(.top, 8)
+        .frame(height: 84)
     }
 
     private var displayAddress: String {
@@ -359,12 +389,14 @@ private struct SoftphonePill<Content: View>: View {
         HStack(spacing: 8) {
             content
         }
-        .font(.system(size: 13, weight: .semibold))
+        .font(.system(size: 12, weight: .semibold))
         .foregroundStyle(SoftphoneTheme.muted)
-        .padding(.horizontal, 13)
-        .frame(height: 36)
+        .padding(.horizontal, 12)
+        .frame(height: 32)
+        .fixedSize(horizontal: true, vertical: false)
         .background(SoftphoneTheme.controlBackground)
         .clipShape(Capsule())
+        .overlay(Capsule().stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -412,7 +444,7 @@ private struct SoftphoneMainContent: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(22)
+        .padding(selectedItem == .history || selectedItem == .messages ? 0 : 24)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
@@ -435,7 +467,7 @@ private enum SoftphoneCallingTab: String, CaseIterable, Identifiable {
     var systemImage: String {
         switch self {
         case .keypad:
-            return "circle.grid.3x3.fill"
+            return "circle.grid.3x3"
         case .contacts:
             return "person.crop.circle"
         }
@@ -630,10 +662,10 @@ private struct SoftphoneCallingScreen: View {
     @State private var selectedTab: SoftphoneCallingTab = .keypad
 
     var body: some View {
-        VStack(spacing: 14) {
+        VStack(spacing: 16) {
             if activeCall == nil {
                 SoftphoneCallingTabControl(selectedTab: $selectedTab)
-                    .frame(maxWidth: 360)
+                    .frame(maxWidth: 340)
             }
 
             Group {
@@ -669,36 +701,34 @@ private struct SoftphoneCallingScreen: View {
             }
         }
     }
+
 }
 
 private struct SoftphoneCallingTabControl: View {
     @Binding var selectedTab: SoftphoneCallingTab
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 2) {
             ForEach(SoftphoneCallingTab.allCases) { tab in
                 Button {
                     selectedTab = tab
                 } label: {
                     Label(tab.title, systemImage: tab.systemImage)
-                        .font(.system(size: 13, weight: .bold))
+                        .font(.system(size: 12, weight: .semibold))
                         .foregroundStyle(selectedTab == tab ? SoftphoneTheme.text : SoftphoneTheme.muted)
                         .frame(maxWidth: .infinity)
-                        .frame(height: 42)
+                        .frame(height: 34)
                         .background(selectedTab == tab ? SoftphoneTheme.selectedControlBackground : Color.clear)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 14, style: .continuous)
-                                .stroke(selectedTab == tab ? SoftphoneTheme.blue.opacity(0.34) : Color.clear, lineWidth: 1)
-                        )
-                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .help("Show \(tab.title.lowercased())")
             }
         }
-        .padding(4)
+        .padding(3)
         .background(SoftphoneTheme.fieldBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -709,9 +739,10 @@ private struct SoftphoneContactsScreen: View {
     @State private var query = ""
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 10) {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
                 SoftphoneSearchTextField(text: $query, placeholder: "Search contacts")
+                    .frame(width: 420)
                 Button {
                     contactStore.refreshIfAuthorized(force: true)
                 } label: {
@@ -721,13 +752,19 @@ private struct SoftphoneContactsScreen: View {
                             .frame(width: 34, height: 34)
                     } else {
                         Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 14, weight: .medium))
                             .frame(width: 34, height: 34)
                     }
                 }
                 .buttonStyle(.plain)
+                .foregroundStyle(SoftphoneTheme.muted)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
                 .help("Refresh contacts")
                 .disabled(contactStore.accessState != .authorized || contactStore.isSyncingContacts)
             }
+            .frame(maxWidth: .infinity)
 
             if contactStore.isSyncingContacts && contactStore.hasLoadedContacts {
                 Label("Syncing contacts", systemImage: "arrow.triangle.2.circlepath")
@@ -737,7 +774,7 @@ private struct SoftphoneContactsScreen: View {
 
             content
         }
-        .frame(maxWidth: 620)
+        .frame(maxWidth: 680)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .onAppear {
             contactStore.refreshIfAuthorized()
@@ -752,7 +789,8 @@ private struct SoftphoneContactsScreen: View {
         case .requesting:
             SoftphoneEmptyState(title: "Requesting contacts", subtitle: "Waiting for macOS permission.")
                 .background(SoftphoneTheme.rowBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         case .denied:
             VStack(spacing: 14) {
                 SoftphoneEmptyState(title: "Contacts unavailable", subtitle: "Enable Contacts access for SIPMan in System Settings.")
@@ -766,11 +804,13 @@ private struct SoftphoneContactsScreen: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(SoftphoneTheme.rowBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         case .failed(let message):
             SoftphoneEmptyState(title: "Contacts failed", subtitle: message)
                 .background(SoftphoneTheme.rowBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         case .authorized:
             let rows = contactStore.model.rows(matching: query)
             if contactStore.isSyncingContacts && !contactStore.hasLoadedContacts {
@@ -778,7 +818,8 @@ private struct SoftphoneContactsScreen: View {
             } else if rows.isEmpty {
                 SoftphoneEmptyState(title: emptyContactsTitle, subtitle: emptyContactsSubtitle)
                     .background(SoftphoneTheme.rowBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
             } else {
                 ScrollView {
                     LazyVStack(spacing: 6) {
@@ -842,7 +883,8 @@ private struct SoftphoneContactsAccessPrompt: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -860,7 +902,8 @@ private struct SoftphoneContactsSyncingView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -896,54 +939,58 @@ private struct SoftphoneContactRow: View {
             } label: {
                 Image(systemName: "phone.fill")
                     .foregroundStyle(.white)
-                    .frame(width: 42, height: 32)
+                    .frame(width: 38, height: 30)
                     .background(SoftphoneTheme.green)
-                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             }
             .buttonStyle(.plain)
             .help("Call \(row.displayNumber)")
         }
         .padding(.horizontal, 12)
-        .frame(height: 58)
+        .frame(height: 54)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
-private struct SoftphoneSearchTextField: NSViewRepresentable {
+private struct SoftphoneSearchTextField: View {
     @Binding var text: String
     let placeholder: String
+    @FocusState private var isFocused: Bool
 
-    func makeNSView(context: Context) -> NSSearchField {
-        let field = NSSearchField()
-        field.placeholderString = placeholder
-        field.delegate = context.coordinator
-        field.sendsSearchStringImmediately = true
-        field.bezelStyle = .roundedBezel
-        return field
-    }
-
-    func updateNSView(_ nsView: NSSearchField, context: Context) {
-        if nsView.stringValue != text {
-            nsView.stringValue = text
+    var body: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(SoftphoneTheme.placeholder)
+                .frame(width: 16)
+            TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(SoftphoneTheme.text)
+                .focused($isFocused)
+            if !text.isEmpty {
+                Button {
+                    text = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundStyle(SoftphoneTheme.placeholder)
+                }
+                .buttonStyle(.plain)
+                .help("Clear search")
+            }
         }
-        nsView.placeholderString = placeholder
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
-    }
-
-    final class Coordinator: NSObject, NSSearchFieldDelegate {
-        @Binding var text: String
-
-        init(text: Binding<String>) {
-            _text = text
-        }
-
-        func controlTextDidChange(_ notification: Notification) {
-            guard let field = notification.object as? NSSearchField else { return }
-            text = field.stringValue
+        .padding(.horizontal, 10)
+        .frame(height: 34)
+        .background(SoftphoneTheme.fieldBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        .onAppear {
+            DispatchQueue.main.async {
+                isFocused = false
+            }
         }
     }
 }
@@ -1007,9 +1054,10 @@ private struct SoftphoneActiveCallPanel: View {
                 SoftphoneCallStatsTable(rows: call.statsRows)
             }
         }
-        .padding(14)
+        .padding(12)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -1023,7 +1071,7 @@ private struct SoftphoneStatusIcon: View {
             .foregroundStyle(SoftphoneTheme.muted)
             .frame(width: 30, height: 30)
             .background(SoftphoneTheme.fieldBackground)
-            .clipShape(Circle())
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .help(help)
     }
 }
@@ -1053,7 +1101,8 @@ private struct SoftphoneCallStatsTable: View {
             }
         }
         .background(SoftphoneTheme.fieldBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -1130,7 +1179,7 @@ private struct SoftphoneKeypadScreen: View {
 
             callControls
         }
-        .frame(maxWidth: 390)
+        .frame(maxWidth: 350)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             SoftphoneKeyboardCaptureView { action in
@@ -1145,27 +1194,27 @@ private struct SoftphoneKeypadScreen: View {
     }
 
     private var verticalSpacing: CGFloat {
-        isInCall ? 10 : 18
+        isInCall ? 9 : 12
     }
 
     private var keyWidth: CGFloat {
-        118
+        104
     }
 
     private var keyHeight: CGFloat {
-        isInCall ? 56 : 66
+        isInCall ? 52 : 56
     }
 
     private var keySpacing: CGFloat {
-        isInCall ? 10 : 13
+        isInCall ? 9 : 10
     }
 
     private var keyLabelSpacing: CGFloat {
-        isInCall ? 2 : 6
+        isInCall ? 2 : 3
     }
 
     private var keyDigitFontSize: CGFloat {
-        isInCall ? 24 : 27
+        isInCall ? 22 : 24
     }
 
     private var keyLetterFontSize: CGFloat {
@@ -1177,7 +1226,7 @@ private struct SoftphoneKeypadScreen: View {
     }
 
     private var keyCornerRadius: CGFloat {
-        isInCall ? 18 : 22
+        8
     }
 
     private var keypadDisplay: some View {
@@ -1187,17 +1236,18 @@ private struct SoftphoneKeypadScreen: View {
             .lineLimit(1)
             .minimumScaleFactor(0.7)
             .frame(maxWidth: .infinity)
-            .frame(height: isInCall ? 42 : 64)
+            .frame(height: isInCall ? 40 : 50)
             .padding(.horizontal, isInCall ? 14 : 18)
             .background(SoftphoneTheme.fieldBackground)
-            .clipShape(RoundedRectangle(cornerRadius: isInCall ? 16 : 20, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 
     private var displayFontSize: CGFloat {
         if displayText == placeholderText {
-            return isInCall ? 17 : 22
+            return isInCall ? 16 : 20
         }
-        return isInCall ? 23 : 30
+        return isInCall ? 22 : 26
     }
 
     @ViewBuilder
@@ -1233,9 +1283,9 @@ private struct SoftphoneKeypadScreen: View {
                     Image(systemName: "phone.down.fill")
                         .font(.system(size: 20, weight: .bold))
                         .foregroundStyle(.white)
-                        .frame(width: 118, height: 48)
+                        .frame(width: 104, height: 44)
                         .background(SoftphoneTheme.red)
-                        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .help("Hang up")
@@ -1254,9 +1304,9 @@ private struct SoftphoneKeypadScreen: View {
                     Image(systemName: "phone.fill")
                         .font(.system(size: 24, weight: .bold))
                         .foregroundStyle(.white)
-                        .frame(width: 82, height: 56)
+                        .frame(width: 72, height: 46)
                         .background(dialPad.canCall ? SoftphoneTheme.green : SoftphoneTheme.placeholder)
-                        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
                 .buttonStyle(.plain)
                 .disabled(!dialPad.canCall)
@@ -1422,49 +1472,142 @@ private struct SoftphoneInlineCallHeader: View {
         .padding(.horizontal, 12)
         .frame(height: 56)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
 private struct SoftphoneMessagesScreen: View {
     @ObservedObject var messageStore: SoftphoneMessageStore
+    @State private var searchText = ""
+    @State private var selectedFilter: SoftphoneConversationFilter = .all
 
     var body: some View {
         HStack(spacing: 0) {
-            VStack(alignment: .leading, spacing: 10) {
-                if messageStore.conversations.isEmpty {
-                    SoftphoneEmptyState(title: "No messages", subtitle: "SIP MESSAGE conversations will appear here.")
+            VStack(alignment: .leading, spacing: 0) {
+                HStack {
+                    Text("Chats")
+                        .font(.system(size: 22, weight: .bold))
+                    Spacer()
+                    Button {
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                            .font(.system(size: 17, weight: .semibold))
+                            .frame(width: 30, height: 30)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(SoftphoneTheme.text)
+                    .help("New message")
+                    .disabled(true)
+                }
+                .padding(.horizontal, 18)
+                .padding(.top, 18)
+                .padding(.bottom, 14)
+
+                SoftphoneSearchTextField(text: $searchText, placeholder: "Search conversations")
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 14)
+
+                SoftphoneConversationFilterControl(selectedFilter: $selectedFilter)
+                    .padding(.horizontal, 18)
+                    .padding(.bottom, 12)
+
+                if filteredConversations.isEmpty {
+                    SoftphoneEmptyState(
+                        title: emptyTitle,
+                        subtitle: emptySubtitle
+                    )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
-                    ForEach(messageStore.conversations) { conversation in
-                        SoftphoneConversationRow(
-                            conversation: conversation,
-                            isSelected: conversation.id == messageStore.selectedConversationId
-                        ) {
-                            messageStore.selectConversation(id: conversation.id)
+                    ScrollView {
+                        LazyVStack(spacing: 0) {
+                            ForEach(filteredConversations) { conversation in
+                                SoftphoneConversationRow(
+                                    conversation: conversation,
+                                    isSelected: conversation.id == messageStore.selectedConversationId
+                                ) {
+                                    messageStore.selectConversation(id: conversation.id)
+                                }
+                            }
                         }
                     }
                 }
-                Spacer()
             }
-            .frame(width: 300)
+            .frame(width: 332)
+            .background(SoftphoneTheme.sidebarBackground)
             Divider()
             VStack(spacing: 0) {
                 if let selectedConversation = messageStore.conversations.first(where: { $0.id == messageStore.selectedConversationId }) {
                     SoftphoneMessageHeader(conversation: selectedConversation)
                     Divider()
                     ScrollView {
-                        LazyVStack(spacing: 10) {
+                        LazyVStack(spacing: 18) {
                             ForEach(messageStore.messages) { message in
                                 SoftphoneMessageBubble(message: message)
                             }
                         }
-                        .padding(18)
+                        .padding(.horizontal, 32)
+                        .padding(.vertical, 26)
                     }
+                    .background(SoftphoneTheme.messageCanvas)
                     SoftphoneMessageComposerPlaceholder()
                 } else {
                     SoftphoneEmptyState(title: "Select a conversation", subtitle: "SIP MESSAGE details will appear here.")
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(SoftphoneTheme.windowBackground)
+        }
+        .background(SoftphoneTheme.windowBackground)
+    }
+
+    private var filteredConversations: [SoftphoneMessageConversationRowModel] {
+        messageStore.conversations.filter { conversation in
+            selectedFilter.includes(conversation)
+                && (searchText.isEmpty
+                    || conversation.title.localizedCaseInsensitiveContains(searchText)
+                    || conversation.preview.localizedCaseInsensitiveContains(searchText))
+        }
+    }
+
+    private var emptyTitle: String {
+        messageStore.conversations.isEmpty ? "No messages" : "No matches"
+    }
+
+    private var emptySubtitle: String {
+        messageStore.conversations.isEmpty
+            ? "SIP MESSAGE conversations will appear here."
+            : "Try a different search or filter."
+    }
+}
+
+private enum SoftphoneConversationFilter: String, CaseIterable, Identifiable {
+    case all
+    case people
+    case groups
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all:
+            return "All"
+        case .people:
+            return "People"
+        case .groups:
+            return "Groups"
+        }
+    }
+
+    func includes(_ conversation: SoftphoneMessageConversationRowModel) -> Bool {
+        switch self {
+        case .all:
+            return true
+        case .people:
+            return !conversation.title.contains(",")
+        case .groups:
+            return conversation.title.contains(",")
         }
     }
 }
@@ -1476,7 +1619,7 @@ private struct SoftphoneHistoryScreen: View {
     @State private var selectedFilter: SoftphoneCallHistoryFilter = .all
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 0) {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text("History")
@@ -1488,9 +1631,17 @@ private struct SoftphoneHistoryScreen: View {
                 Spacer()
                 SoftphoneHistoryFilterControl(selectedFilter: $selectedFilter)
             }
+            .padding(.horizontal, 48)
+            .padding(.top, 48)
+            .padding(.bottom, 24)
             Divider()
             if filteredRows.isEmpty {
                 SoftphoneEmptyState(title: emptyStateTitle, subtitle: emptyStateSubtitle)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(SoftphoneTheme.rowBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+                    .padding(48)
             } else {
                 ScrollView {
                     LazyVStack(spacing: 6) {
@@ -1500,11 +1651,13 @@ private struct SoftphoneHistoryScreen: View {
                             }
                         }
                     }
-                    .padding(.vertical, 2)
+                    .padding(.horizontal, 48)
+                    .padding(.vertical, 28)
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            Spacer()
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var filteredRows: [SoftphoneCallHistoryRowModel] {
@@ -1580,13 +1733,14 @@ private struct SoftphoneSettingsScreen: View {
             Spacer()
         }
     }
+
 }
 
 private struct SoftphoneSettingsTabControl: View {
     @Binding var selectedTab: SoftphoneSettingsTab
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 2) {
             ForEach(SoftphoneSettingsTab.allCases) { tab in
                 Button {
                     selectedTab = tab
@@ -1598,9 +1752,10 @@ private struct SoftphoneSettingsTabControl: View {
                 .help("Show \(tab.title.lowercased()) settings")
             }
         }
-        .padding(4)
+        .padding(3)
         .background(SoftphoneTheme.fieldBackground)
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -1684,7 +1839,7 @@ private struct SoftphoneNATTraversalSettingsPane: View {
         VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 3) {
                 Text("NAT traversal")
-                    .font(.system(size: 13, weight: .bold))
+                .font(.system(size: 13, weight: .semibold))
                 Text("Optional ICE, STUN, and TURN settings.")
                     .font(.system(size: 12))
                     .foregroundStyle(SoftphoneTheme.muted)
@@ -1716,9 +1871,10 @@ private struct SoftphoneNATTraversalSettingsPane: View {
                 .help("Save NAT traversal settings")
             }
         }
-        .padding(14)
+        .padding(12)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -1730,13 +1886,13 @@ private struct SoftphoneAppearanceSettingsRow: View {
             Image(systemName: appearanceMode.isDarkModeEnabled ? "moon.fill" : "sun.max.fill")
                 .font(.system(size: 15, weight: .semibold))
                 .foregroundStyle(appearanceMode.isDarkModeEnabled ? SoftphoneTheme.blue : SoftphoneTheme.amber)
-                .frame(width: 34, height: 34)
+                .frame(width: 32, height: 32)
                 .background(SoftphoneTheme.fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
             VStack(alignment: .leading, spacing: 3) {
                 Text("Dark mode")
-                    .font(.system(size: 13, weight: .bold))
+                    .font(.system(size: 13, weight: .semibold))
                 Text("Use SIPMan's dark palette.")
                     .font(.system(size: 12))
                     .foregroundStyle(SoftphoneTheme.muted)
@@ -1748,9 +1904,10 @@ private struct SoftphoneAppearanceSettingsRow: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
         }
-        .padding(14)
+        .padding(12)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 
     private var appearanceMode: SoftphoneAppearanceMode {
@@ -1834,9 +1991,10 @@ private struct SoftphoneToolsSettingsPane: View {
                         SoftphoneEmptyState(title: "No SIP ping yet", subtitle: "Send OPTIONS to capture a response or timeout.")
                     }
                 }
-                .padding(14)
+                .padding(12)
                 .background(SoftphoneTheme.rowBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1874,7 +2032,8 @@ private struct SoftphoneEditableField: View {
                 .padding(.horizontal, 13)
                 .frame(height: 46)
                 .background(SoftphoneTheme.fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         }
     }
 }
@@ -1903,7 +2062,8 @@ private struct SoftphoneTransportPicker: View {
             .padding(4)
             .frame(height: 46)
             .background(SoftphoneTheme.fieldBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         }
     }
 }
@@ -1937,7 +2097,8 @@ private struct SoftphoneSIPPingResultPanel: View {
                     }
                     .frame(minHeight: 110, maxHeight: 170)
                     .background(SoftphoneTheme.fieldBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
                 }
             }
         }
@@ -1965,7 +2126,8 @@ private struct SoftphoneSIPLogSettingsPane: View {
             if diagnosticsStore.snapshot.sipLogEntries.isEmpty {
                 SoftphoneEmptyState(title: "No SIP log entries", subtitle: "PJSIP messages will appear here as the stack runs.")
                     .background(SoftphoneTheme.rowBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
             } else {
                 SoftphoneSIPLogPanel(entries: diagnosticsStore.snapshot.sipLogEntries)
             }
@@ -1990,7 +2152,8 @@ private struct SoftphoneSIPLogPanel: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(SoftphoneTheme.rowBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
             .onChange(of: entries.last?.id) { id in
                 guard let id else { return }
                 withAnimation(.easeOut(duration: 0.16)) {
@@ -2057,9 +2220,10 @@ private struct SoftphoneLiveCallDiagnosticsPane: View {
                 SoftphoneEmptyState(title: "No active call", subtitle: "Jitter, packet, RTP, and ICE diagnostics will appear during a live call.")
             }
         }
-        .padding(14)
+        .padding(12)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -2079,6 +2243,7 @@ private struct SoftphoneSearchFieldPlaceholder: View {
         .frame(height: height)
         .background(SoftphoneTheme.fieldBackground)
         .clipShape(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: cornerRadius, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         .padding(.trailing, trailingPadding)
     }
 }
@@ -2090,27 +2255,31 @@ private struct SoftphoneConversationRow: View {
 
     var body: some View {
         Button(action: onSelect) {
-            HStack(spacing: 11) {
+            HStack(spacing: 14) {
                 SoftphoneAvatar(initials: initials(for: conversation.title))
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     HStack {
                         Text(conversation.title)
-                            .font(.system(size: 13, weight: .semibold))
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(SoftphoneTheme.text)
+                            .lineLimit(1)
                         Spacer()
                         Text(conversation.date)
-                            .font(.system(size: 12, weight: .semibold))
+                            .font(.system(size: 12, weight: .medium))
                             .foregroundStyle(SoftphoneTheme.placeholder)
                     }
                     Text(conversation.preview)
-                        .font(.system(size: 12))
+                        .font(.system(size: 13))
                         .foregroundStyle(SoftphoneTheme.muted)
                         .lineLimit(1)
+                    Text("SMS")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundStyle(SoftphoneTheme.blue)
                 }
             }
-            .padding(10)
+            .padding(.horizontal, 18)
+            .frame(height: 88)
             .background(isSelected ? SoftphoneTheme.selectedControlBackground : Color.clear)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .padding(.trailing, 14)
         }
         .buttonStyle(.plain)
     }
@@ -2126,21 +2295,60 @@ private struct SoftphoneMessageHeader: View {
     let conversation: SoftphoneMessageConversationRowModel
 
     var body: some View {
-        HStack {
-            SoftphoneAvatar(initials: "#")
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(spacing: 16) {
+            SoftphoneAvatar(initials: initials(for: conversation.title), size: 44)
+            VStack(alignment: .leading, spacing: 5) {
                 Text(conversation.title)
-                    .font(.system(size: 15, weight: .semibold))
-                Text(conversation.id)
-                    .font(.system(size: 12, design: .monospaced))
-                    .foregroundStyle(SoftphoneTheme.muted)
+                    .font(.system(size: 22, weight: .bold))
+                    .foregroundStyle(SoftphoneTheme.text)
                     .lineLimit(1)
-                    .truncationMode(.middle)
+                HStack(spacing: 8) {
+                    Text(conversation.title)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundStyle(SoftphoneTheme.muted)
+                        .lineLimit(1)
+                    Text("SMS")
+                        .font(.system(size: 11, weight: .bold))
+                        .foregroundStyle(SoftphoneTheme.blue)
+                        .padding(.horizontal, 8)
+                        .frame(height: 20)
+                        .background(SoftphoneTheme.fieldBackground)
+                        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                }
             }
             Spacer()
+            HStack(spacing: 14) {
+                Button {
+                } label: {
+                    Image(systemName: "phone")
+                        .font(.system(size: 19, weight: .medium))
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(SoftphoneTheme.muted)
+                .help("Call conversation")
+                .disabled(true)
+
+                Button {
+                } label: {
+                    Image(systemName: "ellipsis")
+                        .font(.system(size: 21, weight: .bold))
+                        .frame(width: 30, height: 30)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(SoftphoneTheme.muted)
+                .help("Conversation options")
+                .disabled(true)
+            }
         }
-        .padding(.horizontal, 20)
-        .frame(height: 72)
+        .padding(.horizontal, 28)
+        .frame(height: 84)
+    }
+
+    private func initials(for value: String) -> String {
+        let parts = value.split(separator: " ").prefix(2)
+        let result = parts.compactMap(\.first).map(String.init).joined()
+        return result.isEmpty ? "?" : result.uppercased()
     }
 }
 
@@ -2150,21 +2358,34 @@ private struct SoftphoneMessageBubble: View {
     var body: some View {
         HStack {
             if message.isOutgoing {
-                Spacer(minLength: 52)
+                Spacer(minLength: 120)
             }
-            VStack(alignment: .leading, spacing: 6) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(message.senderTitle)
+                    .font(.system(size: 13, weight: .bold))
+                    .foregroundStyle(message.isOutgoing ? SoftphoneTheme.blue : SoftphoneTheme.text)
                 Text(message.body)
-                    .font(.system(size: 13))
-                Text("\(message.date) - \(message.deliveryState)")
-                    .font(.system(size: 10, weight: .semibold))
-                    .foregroundStyle(message.isOutgoing ? .white.opacity(0.72) : SoftphoneTheme.muted)
+                    .font(.system(size: 17, weight: .medium))
+                    .foregroundStyle(SoftphoneTheme.text)
+                    .fixedSize(horizontal: false, vertical: true)
+                HStack(spacing: 8) {
+                    if message.isOutgoing {
+                        Text(message.deliveryState)
+                    }
+                    Spacer()
+                    Text(message.date)
+                }
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(SoftphoneTheme.muted)
             }
-            .padding(12)
-            .background(message.isOutgoing ? SoftphoneTheme.blue : SoftphoneTheme.fieldBackground)
-            .foregroundStyle(message.isOutgoing ? .white : SoftphoneTheme.text)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
+            .frame(maxWidth: 560, alignment: .leading)
+            .background(message.isOutgoing ? SoftphoneTheme.outgoingMessageBubble : SoftphoneTheme.incomingMessageBubble)
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .shadow(color: .black.opacity(0.06), radius: 4, x: 0, y: 2)
             if !message.isOutgoing {
-                Spacer(minLength: 52)
+                Spacer(minLength: 120)
             }
         }
     }
@@ -2172,35 +2393,79 @@ private struct SoftphoneMessageBubble: View {
 
 private struct SoftphoneMessageComposerPlaceholder: View {
     var body: some View {
-        HStack {
-            Text("Message")
+        HStack(spacing: 12) {
+            Button {
+            } label: {
+                Image(systemName: "face.smiling")
+                    .font(.system(size: 19, weight: .medium))
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .foregroundStyle(SoftphoneTheme.muted)
+            .help("Emoji")
+            .disabled(true)
+
+            Text("SMS message")
+                .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(SoftphoneTheme.placeholder)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 15)
-                .frame(height: 46)
+                .padding(.horizontal, 18)
+                .frame(height: 50)
                 .background(SoftphoneTheme.fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .clipShape(Capsule())
+                .overlay(Capsule().stroke(SoftphoneTheme.blue, lineWidth: 1.8))
             Button {
             } label: {
                 Image(systemName: "paperplane.fill")
+                    .font(.system(size: 18, weight: .semibold))
+                    .frame(width: 48, height: 48)
             }
-            .buttonStyle(SoftphonePrimaryIconButtonStyle())
+            .buttonStyle(.plain)
+            .foregroundStyle(.white)
+            .background(SoftphoneTheme.sendButtonBackground)
+            .clipShape(Circle())
             .disabled(true)
+            .help("Send message")
         }
-        .padding(14)
+        .padding(.horizontal, 28)
+        .padding(.vertical, 16)
+        .background(SoftphoneTheme.windowBackground)
     }
 }
 
 private struct SoftphoneAvatar: View {
     let initials: String
+    var size: CGFloat = 36
 
     var body: some View {
         Text(initials)
-            .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(.white)
-            .frame(width: 42, height: 42)
-            .background(LinearGradient(colors: [.blue, .indigo], startPoint: .topLeading, endPoint: .bottomTrailing))
-            .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+            .font(.system(size: size > 40 ? 16 : 13, weight: .bold))
+            .foregroundStyle(SoftphoneTheme.text)
+            .frame(width: size, height: size)
+            .background(SoftphoneTheme.avatarBackground)
+            .clipShape(Circle())
+    }
+}
+
+private struct SoftphoneConversationFilterControl: View {
+    @Binding var selectedFilter: SoftphoneConversationFilter
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(SoftphoneConversationFilter.allCases) { filter in
+                Button {
+                    selectedFilter = filter
+                } label: {
+                    Text(filter.title)
+                        .softphoneSegment(isSelected: selectedFilter == filter)
+                }
+                .buttonStyle(.plain)
+                .help("Show \(filter.title.lowercased()) conversations")
+            }
+        }
+        .padding(3)
+        .background(SoftphoneTheme.fieldBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 
@@ -2208,7 +2473,7 @@ private struct SoftphoneHistoryFilterControl: View {
     @Binding var selectedFilter: SoftphoneCallHistoryFilter
 
     var body: some View {
-        HStack(spacing: 3) {
+        HStack(spacing: 2) {
             ForEach(SoftphoneCallHistoryFilter.allCases) { filter in
                 Button {
                     selectedFilter = filter
@@ -2220,9 +2485,10 @@ private struct SoftphoneHistoryFilterControl: View {
                 .help("Show \(filter.title.lowercased()) calls")
             }
         }
-        .padding(4)
+        .padding(3)
         .background(SoftphoneTheme.fieldBackground)
-        .clipShape(Capsule())
+        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -2234,9 +2500,9 @@ private struct SoftphoneCallHistoryRow: View {
         HStack(spacing: 12) {
             Image(systemName: row.symbolName)
                 .foregroundStyle(row.isMissed ? SoftphoneTheme.red : SoftphoneTheme.blue)
-                .frame(width: 42, height: 42)
+                .frame(width: 36, height: 36)
                 .background((row.isMissed ? SoftphoneTheme.red : SoftphoneTheme.blue).opacity(0.1))
-                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             VStack(alignment: .leading, spacing: 3) {
                 Text(row.title)
                     .font(.system(size: 14, weight: .semibold))
@@ -2252,9 +2518,10 @@ private struct SoftphoneCallHistoryRow: View {
             }
             .buttonStyle(SoftphonePrimaryIconButtonStyle(color: SoftphoneTheme.green))
         }
-        .padding(12)
+        .padding(10)
         .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -2265,13 +2532,13 @@ private struct SoftphoneEmptyState: View {
     var body: some View {
         VStack(spacing: 6) {
             Text(title)
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 14, weight: .semibold))
             Text(subtitle)
                 .font(.system(size: 13))
                 .foregroundStyle(SoftphoneTheme.muted)
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 46)
+        .padding(.vertical, 40)
     }
 }
 
@@ -2282,7 +2549,7 @@ private struct SoftphoneSectionHeader: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
-                .font(.system(size: 21, weight: .bold))
+                .font(.system(size: 20, weight: .semibold))
             Text(subtitle)
                 .font(.system(size: 13))
                 .foregroundStyle(SoftphoneTheme.muted)
@@ -2303,9 +2570,11 @@ private struct SoftphoneLabeledField: View {
             Text(isSecure && !value.isEmpty ? String(repeating: "*", count: value.count) : value)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, 13)
-                .frame(height: 46)
+                .font(.system(size: 13, weight: .medium))
+                .frame(height: 40)
                 .background(SoftphoneTheme.fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 15, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         }
     }
 }
@@ -2326,7 +2595,8 @@ private struct SoftphoneDiagnosticTile: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
         .background(SoftphoneTheme.fieldBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 }
 
@@ -2337,10 +2607,11 @@ private struct SoftphoneSecondaryButtonStyle: ButtonStyle {
         configuration.label
             .font(.system(size: 13, weight: .bold))
             .foregroundStyle(SoftphoneTheme.muted)
-            .frame(width: width, height: 48)
+            .frame(width: width, height: 40)
             .frame(maxWidth: width == nil ? .infinity : nil)
             .background(SoftphoneTheme.fieldBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
             .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }
@@ -2352,9 +2623,9 @@ private struct SoftphonePrimaryIconButtonStyle: ButtonStyle {
         configuration.label
             .font(.system(size: 16, weight: .bold))
             .foregroundStyle(.white)
-            .frame(width: 46, height: 46)
+            .frame(width: 38, height: 38)
             .background(color)
-            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
             .opacity(configuration.isPressed ? 0.72 : 1)
     }
 }
@@ -2362,29 +2633,35 @@ private struct SoftphonePrimaryIconButtonStyle: ButtonStyle {
 private extension View {
     func softphoneSegment(isSelected: Bool) -> some View {
         self
-            .font(.system(size: 12, weight: .bold))
+            .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(isSelected ? SoftphoneTheme.text : SoftphoneTheme.muted)
-            .padding(.horizontal, 11)
-            .frame(height: 29)
+            .padding(.horizontal, 10)
+            .frame(height: 28)
             .background(isSelected ? SoftphoneTheme.selectedControlBackground : Color.clear)
-            .clipShape(Capsule())
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
 private enum SoftphoneTheme {
-    static let text = adaptive(light: color(0.08, 0.10, 0.14), dark: color(0.90, 0.93, 0.96))
-    static let muted = adaptive(light: color(0.43, 0.46, 0.50), dark: color(0.62, 0.67, 0.73))
-    static let placeholder = adaptive(light: color(0.60, 0.64, 0.68), dark: color(0.45, 0.51, 0.58))
-    static let blue = adaptive(light: color(0.04, 0.52, 1.00), dark: color(0.34, 0.66, 1.00))
-    static let green = adaptive(light: color(0.19, 0.82, 0.35), dark: color(0.20, 0.78, 0.42))
-    static let red = adaptive(light: color(1.00, 0.27, 0.23), dark: color(1.00, 0.38, 0.34))
-    static let amber = adaptive(light: color(1.00, 0.62, 0.04), dark: color(1.00, 0.70, 0.22))
-    static let windowBackground = adaptive(light: color(0.94, 0.96, 0.98), dark: color(0.07, 0.09, 0.12))
-    static let sidebarBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.54), dark: color(0.10, 0.13, 0.17, 0.86))
-    static let controlBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.78), dark: color(0.14, 0.18, 0.23, 0.92))
-    static let selectedControlBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.92), dark: color(0.18, 0.23, 0.29, 0.96))
-    static let fieldBackground = adaptive(light: color(0.96, 0.97, 0.98), dark: color(0.11, 0.15, 0.20))
-    static let rowBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.56), dark: color(0.12, 0.16, 0.21, 0.88))
+    static let text = adaptive(light: color(0.10, 0.12, 0.16), dark: color(0.90, 0.93, 0.96))
+    static let muted = adaptive(light: color(0.39, 0.41, 0.44), dark: color(0.62, 0.67, 0.73))
+    static let placeholder = adaptive(light: color(0.62, 0.63, 0.65), dark: color(0.45, 0.51, 0.58))
+    static let blue = adaptive(light: color(0.25, 0.49, 0.86), dark: color(0.42, 0.65, 1.00))
+    static let green = adaptive(light: color(0.14, 0.68, 0.34), dark: color(0.20, 0.78, 0.42))
+    static let red = adaptive(light: color(0.88, 0.24, 0.22), dark: color(1.00, 0.38, 0.34))
+    static let amber = adaptive(light: color(0.90, 0.55, 0.12), dark: color(1.00, 0.70, 0.22))
+    static let windowBackground = adaptive(light: color(0.98, 0.98, 0.97), dark: color(0.07, 0.09, 0.12))
+    static let sidebarBackground = adaptive(light: color(0.96, 0.95, 0.93, 0.78), dark: color(0.10, 0.13, 0.17, 0.86))
+    static let controlBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.82), dark: color(0.14, 0.18, 0.23, 0.92))
+    static let selectedControlBackground = adaptive(light: color(0.91, 0.91, 0.90, 0.92), dark: color(0.18, 0.23, 0.29, 0.96))
+    static let fieldBackground = adaptive(light: color(0.96, 0.96, 0.95, 0.86), dark: color(0.11, 0.15, 0.20))
+    static let rowBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.68), dark: color(0.12, 0.16, 0.21, 0.88))
+    static let hairline = adaptive(light: color(0.83, 0.83, 0.82, 0.72), dark: color(0.23, 0.28, 0.34, 0.85))
+    static let messageCanvas = adaptive(light: color(0.94, 0.97, 0.98), dark: color(0.08, 0.12, 0.15))
+    static let incomingMessageBubble = adaptive(light: color(0.98, 0.99, 1.00, 0.94), dark: color(0.13, 0.18, 0.23, 0.96))
+    static let outgoingMessageBubble = adaptive(light: color(0.90, 0.96, 1.00, 0.96), dark: color(0.12, 0.23, 0.34, 0.96))
+    static let avatarBackground = adaptive(light: color(0.92, 0.93, 0.94), dark: color(0.20, 0.25, 0.31))
+    static let sendButtonBackground = adaptive(light: color(0.58, 0.70, 0.76), dark: color(0.35, 0.52, 0.62))
 
     private static func adaptive(light: NSColor, dark: NSColor) -> Color {
         let color = NSColor(name: nil) { appearance in

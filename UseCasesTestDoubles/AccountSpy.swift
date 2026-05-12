@@ -22,6 +22,7 @@ import UseCases
 public final class AccountSpy {
     public let uuid = ""
     public let domain = ""
+    public let username = ""
 
     public private(set) var didCallMakeCall = false
     public private(set) var invokedURI: URI?

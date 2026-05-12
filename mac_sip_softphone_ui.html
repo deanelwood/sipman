@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mac SIP Softphone Concept</title>
+  <style>
+    :root {
+      --bg: #eef1f5;
+      --window: rgba(255, 255, 255, 0.78);
+      --panel: rgba(255, 255, 255, 0.68);
+      --panel-strong: rgba(255, 255, 255, 0.9);
+      --line: rgba(80, 90, 110, 0.14);
+      --text: #151923;
+      --muted: #6d7480;
+      --muted-2: #9aa2ad;
+      --blue: #0a84ff;
+      --blue-soft: rgba(10, 132, 255, 0.12);
+      --green: #30d158;
+      --red: #ff453a;
+      --amber: #ff9f0a;
+      --shadow: 0 24px 70px rgba(38, 47, 70, 0.20);
+      --radius-xl: 26px;
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --font: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      font-family: var(--font);
+      color: var(--text);
+      background:
+        radial-gradient(circle at 15% 10%, rgba(10, 132, 255, 0.20), transparent 32%),
+        radial-gradient(circle at 85% 25%, rgba(191, 90, 242, 0.16), transparent 34%),
+        radial-gradient(circle at 50% 100%, rgba(48, 209, 88, 0.10), transparent 36%),
+        linear-gradient(135deg, #f7f8fb 0%, #e9edf3 100%);
+      padding: 38px;
+    }
+
+    .app-shell {
+      width: min(1120px, 100%);
+      height: min(760px, calc(100vh - 76px));
+      min-height: 650px;
+      display: grid;
+      grid-template-columns: 236px 1fr;
+      background: var(--window);
+      border: 1px solid rgba(255, 255, 255, 0.72);
+      border-radius: 30px;
+      overflow: hidden;
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(26px) saturate(140%);
+      -webkit-backdrop-filter: blur(26px) saturate(140%);
+      transition: grid-template-columns 220ms ease;
+    }
+
+    .app-shell.sidebar-collapsed {
+      grid-template-columns: 76px 1fr;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      padding: 18px 14px;
+      border-right: 1px solid var(--line);
+      background: rgba(246, 248, 251, 0.66);
+    }
+
+    .traffic-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      min-height: 26px;
+      padding: 0 2px 0 0;
+    }
+
+    .traffic-lights {
+      display: flex;
+      gap: 8px;
+      padding-left: 4px;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+    }
+
+    .dot.red { background: #ff5f57; }
+    .dot.yellow { background: #ffbd2e; }
+    .dot.green { background: #28c840; }
+
+    .sidebar-toggle {
+      border: 0;
+      width: 30px;
+      height: 30px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.8);
+      color: var(--muted);
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 8px 12px;
+    }
+
+    .brand-mark {
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      background: linear-gradient(145deg, #1c8dff, #7c5cff);
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 12px 24px rgba(10, 132, 255, 0.25);
+      flex: 0 0 auto;
+    }
+
+    .brand-text {
+      min-width: 0;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .brand-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+    }
+
+    .brand-subtitle {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .nav {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .nav-button {
+      appearance: none;
+      border: 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      padding: 11px 12px;
+      border-radius: 14px;
+      background: transparent;
+      color: var(--muted);
+      font-size: 14px;
+      font-weight: 600;
+      text-align: left;
+      cursor: pointer;
+      transition: background 140ms ease, color 140ms ease, transform 140ms ease;
+    }
+
+    .nav-button:hover {
+      background: rgba(255, 255, 255, 0.62);
+      color: var(--text);
+    }
+
+    .nav-button.active {
+      background: var(--panel-strong);
+      color: var(--text);
+      box-shadow: 0 8px 20px rgba(30, 40, 60, 0.08), inset 0 0 0 1px rgba(70,80,100,0.08);
+    }
+
+    .nav-icon {
+      width: 23px;
+      height: 23px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      flex: 0 0 auto;
+    }
+
+    .nav-label {
+      white-space: nowrap;
+      transition: opacity 160ms ease, transform 160ms ease;
+    }
+
+    .presence-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 0 4px rgba(48, 209, 88, 0.14);
+    }
+
+    .presence-dot.warning {
+      background: var(--amber);
+      box-shadow: 0 0 0 4px rgba(255, 159, 10, 0.14);
+    }
+
+    .sidebar-collapsed .brand-text,
+    .sidebar-collapsed .nav-label {
+      opacity: 0;
+      transform: translateX(-6px);
+      pointer-events: none;
+    }
+
+    .sidebar-collapsed .sidebar {
+      align-items: center;
+    }
+
+    .sidebar-collapsed .brand {
+      padding-inline: 0;
+    }
+
+    .sidebar-collapsed .nav-button {
+      justify-content: center;
+      padding-inline: 0;
+    }
+
+    .main {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      background: rgba(255, 255, 255, 0.30);
+    }
+
+    .topbar {
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 0 28px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.78);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+      font-size: 13px;
+      font-weight: 650;
+      color: var(--muted);
+    }
+
+    .pill.calling {
+      color: var(--text);
+      background: rgba(255,255,255,0.9);
+    }
+
+    .content {
+      flex: 1;
+      min-height: 0;
+      padding: 18px 22px 22px;
+      overflow: hidden;
+    }
+
+    .view {
+      display: none;
+      height: 100%;
+    }
+
+    .view.active {
+      display: block;
+    }
+
+    /* Keypad */
+    .keypad-layout {
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+
+    .dial-card {
+      width: min(390px, 100%);
+      padding: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+    }
+
+    .number-field {
+      min-height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 12px 18px;
+      border-radius: 20px;
+      background: rgba(246, 248, 251, 0.92);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+      font-size: 30px;
+      font-weight: 650;
+      letter-spacing: 0.01em;
+      color: #111827;
+    }
+
+    .number-placeholder {
+      color: var(--muted-2);
+      font-weight: 550;
+      font-size: 22px;
+    }
+
+    .keypad-grid {
+      margin-top: 18px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 13px;
+    }
+
+    .key {
+      height: 66px;
+      border: 0;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.88);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08), 0 10px 18px rgba(30,40,60,0.05);
+      cursor: pointer;
+      transition: transform 110ms ease, background 110ms ease;
+    }
+
+    .key:hover {
+      background: white;
+      transform: translateY(-1px);
+    }
+
+    .key:active {
+      transform: translateY(1px) scale(0.99);
+    }
+
+    .key-main {
+      display: block;
+      font-size: 27px;
+      line-height: 1;
+      font-weight: 560;
+      letter-spacing: -0.02em;
+    }
+
+    .key-sub {
+      display: block;
+      margin-top: 6px;
+      font-size: 10px;
+      font-weight: 750;
+      color: var(--muted-2);
+      letter-spacing: 0.16em;
+    }
+
+    .call-row {
+      margin-top: 16px;
+      display: grid;
+      grid-template-columns: 1fr 82px 1fr;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .ghost-button,
+    .delete-button {
+      height: 48px;
+      border: 0;
+      border-radius: 16px;
+      background: rgba(246, 248, 251, 0.86);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+      color: var(--muted);
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .call-button {
+      width: 82px;
+      height: 56px;
+      border: 0;
+      border-radius: 22px;
+      color: white;
+      background: linear-gradient(145deg, #35d96e, #20bd4f);
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 16px 26px rgba(32, 189, 79, 0.26);
+    }
+
+    /* Messages */
+    .messages-layout {
+      height: 100%;
+      display: grid;
+      grid-template-columns: 300px 1fr;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .conversation-list,
+    .chat-pane,
+    .settings-card,
+    .history-card {
+      min-height: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      overflow: hidden;
+    }
+
+    .search-wrap {
+      padding: 16px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .search {
+      width: 100%;
+      height: 42px;
+      border: 0;
+      outline: 0;
+      border-radius: 14px;
+      padding: 0 14px;
+      background: rgba(246,248,251,0.96);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+      font: inherit;
+      color: var(--text);
+    }
+
+    .conversation-items {
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      overflow: auto;
+      height: calc(100% - 75px);
+    }
+
+    .conversation {
+      display: grid;
+      grid-template-columns: 42px 1fr;
+      gap: 11px;
+      padding: 10px;
+      border-radius: 16px;
+      cursor: pointer;
+    }
+
+    .conversation.active {
+      background: white;
+      box-shadow: 0 8px 20px rgba(30,40,60,0.06), inset 0 0 0 1px rgba(70,80,100,0.06);
+    }
+
+    .avatar {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-weight: 760;
+      background: linear-gradient(145deg, #0a84ff, #5e5ce6);
+    }
+
+    .conversation-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      font-size: 13px;
+      font-weight: 720;
+    }
+
+    .time {
+      color: var(--muted-2);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .preview {
+      margin-top: 4px;
+      font-size: 12px;
+      color: var(--muted);
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .chat-pane {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .chat-header {
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.45);
+    }
+
+    .chat-person {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chat-name {
+      font-size: 15px;
+      font-weight: 760;
+    }
+
+    .chat-number {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .messages {
+      flex: 1;
+      padding: 22px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .bubble {
+      max-width: 62%;
+      padding: 11px 14px;
+      border-radius: 18px;
+      font-size: 14px;
+      line-height: 1.38;
+      box-shadow: 0 8px 18px rgba(30,40,60,0.06);
+    }
+
+    .bubble.in {
+      align-self: flex-start;
+      background: white;
+      border-bottom-left-radius: 7px;
+    }
+
+    .bubble.out {
+      align-self: flex-end;
+      color: white;
+      background: var(--blue);
+      border-bottom-right-radius: 7px;
+    }
+
+    .composer {
+      padding: 14px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      grid-template-columns: 1fr 46px;
+      gap: 10px;
+    }
+
+    .composer input {
+      height: 46px;
+      border: 0;
+      outline: 0;
+      border-radius: 16px;
+      padding: 0 15px;
+      background: rgba(246,248,251,0.96);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+      font: inherit;
+    }
+
+    .send-button {
+      border: 0;
+      border-radius: 16px;
+      background: var(--blue);
+      color: white;
+      font-size: 17px;
+      cursor: pointer;
+      box-shadow: 0 10px 20px rgba(10,132,255,0.24);
+    }
+
+    /* History */
+    .history-layout {
+      height: 100%;
+      display: grid;
+      place-items: center;
+    }
+
+    .history-card {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .card-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--line);
+      background: rgba(255,255,255,0.38);
+    }
+
+    .card-heading h2 {
+      margin: 0;
+      font-size: 21px;
+      letter-spacing: -0.02em;
+    }
+
+    .card-heading p {
+      margin: 5px 0 0;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .history-list {
+      padding: 8px;
+      overflow: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .call-item {
+      display: grid;
+      grid-template-columns: 42px 1fr auto;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 18px;
+      background: rgba(255,255,255,0.56);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.05);
+    }
+
+    .call-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+      background: rgba(10,132,255,0.10);
+      color: var(--blue);
+    }
+
+    .call-icon.missed {
+      background: rgba(255,69,58,0.10);
+      color: var(--red);
+    }
+
+    .call-name {
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .call-meta {
+      margin-top: 3px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .call-action {
+      width: 42px;
+      height: 42px;
+      border: 0;
+      border-radius: 15px;
+      background: rgba(246,248,251,0.94);
+      color: var(--green);
+      font-size: 18px;
+      cursor: pointer;
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+    }
+
+    .segmented {
+      display: inline-flex;
+      gap: 3px;
+      padding: 4px;
+      border-radius: 999px;
+      background: rgba(246,248,251,0.9);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+    }
+
+    .segment {
+      border: 0;
+      height: 29px;
+      padding: 0 11px;
+      border-radius: 999px;
+      background: transparent;
+      color: var(--muted);
+      font-weight: 700;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .segment.active {
+      background: white;
+      color: var(--text);
+      box-shadow: 0 5px 12px rgba(30,40,60,0.08);
+    }
+
+    /* Settings */
+    .settings-layout {
+      height: 100%;
+      overflow: auto;
+      padding: 0 2px;
+    }
+
+    .settings-stack {
+      width: 100%;
+      margin: 0;
+      display: grid;
+      grid-template-columns: minmax(360px, 0.9fr) minmax(360px, 1.1fr);
+      gap: 12px;
+      height: 100%;
+    }
+
+    .settings-card {
+      padding: 0;
+    }
+
+    .settings-section-body {
+      padding: 14px 16px 16px;
+    }
+
+    .account-form {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 15px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .field.full {
+      grid-column: 1 / -1;
+    }
+
+    .field label {
+      font-size: 12px;
+      font-weight: 760;
+      color: var(--muted);
+    }
+
+    .field input,
+    .field select {
+      height: 46px;
+      border: 0;
+      outline: 0;
+      border-radius: 15px;
+      padding: 0 13px;
+      background: rgba(246,248,251,0.98);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.09);
+      font: inherit;
+      color: var(--text);
+    }
+
+    .settings-actions {
+      margin-top: 22px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .secondary,
+    .primary {
+      height: 44px;
+      padding: 0 17px;
+      border: 0;
+      border-radius: 15px;
+      font-weight: 760;
+      cursor: pointer;
+    }
+
+    .secondary {
+      background: rgba(246,248,251,0.96);
+      color: var(--muted);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+    }
+
+    .primary {
+      background: var(--blue);
+      color: white;
+      box-shadow: 0 12px 22px rgba(10,132,255,0.23);
+    }
+
+    .diagnostics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .diagnostic-tile {
+      padding: 10px 11px;
+      border-radius: 17px;
+      background: rgba(246,248,251,0.84);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.07);
+    }
+
+    .diagnostic-label {
+      font-size: 11px;
+      color: var(--muted);
+      font-weight: 760;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .diagnostic-value {
+      margin-top: 7px;
+      font-size: 14px;
+      font-weight: 760;
+    }
+
+    .sip-log,
+    .debug-console {
+      border-radius: 18px;
+      overflow: hidden;
+      background: rgba(21,25,35,0.96);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+    }
+
+    .sip-log-header,
+    .debug-console-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 14px;
+      color: rgba(255,255,255,0.72);
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+      font-weight: 760;
+    }
+
+    .sip-log pre {
+      margin: 0;
+      height: 252px;
+      overflow: auto;
+      padding: 14px;
+      color: rgba(255,255,255,0.78);
+      font: 12px/1.45 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      white-space: pre-wrap;
+    }
+
+    /* In-call */
+    .in-call-layout {
+      height: 100%;
+      display: grid;
+      grid-template-rows: auto 1fr;
+      gap: 14px;
+      min-height: 0;
+    }
+
+    .call-stage {
+      display: grid;
+      grid-template-columns: minmax(260px, 0.78fr) minmax(380px, 1.22fr);
+      gap: 16px;
+      min-height: 0;
+    }
+
+    .call-summary {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      min-height: 0;
+      padding: 10px;
+    }
+
+    .call-avatar {
+      width: 92px;
+      height: 92px;
+      border-radius: 30px;
+      display: grid;
+      place-items: center;
+      color: white;
+      font-size: 30px;
+      font-weight: 780;
+      background: linear-gradient(145deg, #0a84ff, #5e5ce6);
+      box-shadow: 0 18px 34px rgba(10,132,255,0.22);
+    }
+
+    .call-party {
+      margin-top: 18px;
+      font-size: 24px;
+      font-weight: 780;
+      letter-spacing: -0.03em;
+    }
+
+    .call-number {
+      margin-top: 5px;
+      font-size: 13px;
+      color: var(--muted);
+      font-weight: 650;
+    }
+
+    .call-duration {
+      margin-top: 12px;
+      font-size: 32px;
+      font-weight: 670;
+      letter-spacing: -0.04em;
+    }
+
+    .call-state-line {
+      margin-top: 6px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .quality-chip {
+      margin-top: 16px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 34px;
+      padding: 0 13px;
+      border-radius: 999px;
+      background: rgba(48,209,88,0.12);
+      color: #1a7f37;
+      font-size: 13px;
+      font-weight: 760;
+      box-shadow: inset 0 0 0 1px rgba(48,209,88,0.18);
+    }
+
+    .call-controls {
+      margin-top: 26px;
+      display: grid;
+      grid-template-columns: repeat(3, 74px);
+      gap: 13px;
+      justify-content: center;
+    }
+
+    .round-control {
+      width: 74px;
+      height: 66px;
+      border: 0;
+      border-radius: 22px;
+      background: rgba(255,255,255,0.82);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08), 0 10px 20px rgba(30,40,60,0.06);
+      cursor: pointer;
+      color: var(--text);
+      font-weight: 760;
+      font-size: 12px;
+    }
+
+    .round-control span {
+      display: block;
+      font-size: 20px;
+      margin-bottom: 4px;
+    }
+
+    .hangup-button {
+      margin-top: 14px;
+      width: 170px;
+      height: 52px;
+      border: 0;
+      border-radius: 20px;
+      background: var(--red);
+      color: white;
+      font-size: 22px;
+      cursor: pointer;
+      box-shadow: 0 16px 26px rgba(255,69,58,0.23);
+    }
+
+    .debug-area {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .debug-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .debug-title h2 {
+      margin: 0;
+      font-size: 21px;
+      letter-spacing: -0.02em;
+    }
+
+    .debug-title p {
+      margin: 5px 0 0;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .debug-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .debug-stats {
+      min-height: 0;
+      overflow: auto;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.42);
+      box-shadow: inset 0 0 0 1px rgba(70,80,100,0.08);
+    }
+
+    .stats-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .stats-table th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      text-align: left;
+      padding: 9px 10px;
+      color: var(--muted);
+      background: rgba(246,248,251,0.96);
+      border-bottom: 1px solid var(--line);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    .stats-table td {
+      padding: 8px 10px;
+      border-bottom: 1px solid rgba(80,90,110,0.09);
+      vertical-align: top;
+    }
+
+    .stats-table td:first-child {
+      width: 34%;
+      font-weight: 740;
+      color: var(--text);
+    }
+
+    .stats-table td:nth-child(2),
+    .stats-table td:nth-child(3) {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      color: #293241;
+    }
+
+    .stats-table tr.warning-row td {
+      color: #9a6100;
+      background: rgba(255,159,10,0.08);
+    }
+
+    .stats-table tr.good-row td {
+      color: #1a7f37;
+      background: rgba(48,209,88,0.06);
+    }
+
+    @media (max-width: 980px) {
+      .call-stage { grid-template-columns: 1fr; }
+      .call-summary { min-height: 260px; }
+    }
+
+    @media (max-width: 860px) {
+      body { padding: 16px; }
+      .app-shell {
+        height: calc(100vh - 32px);
+        min-height: 680px;
+        grid-template-columns: 76px 1fr;
+      }
+      .brand-text,
+      .nav-label {
+        opacity: 0;
+        pointer-events: none;
+      }
+      .sidebar { align-items: center; }
+      .messages-layout { grid-template-columns: 1fr; }
+      .conversation-list { display: none; }
+      .account-form,
+      .diagnostics-grid,
+      .settings-stack { grid-template-columns: 1fr; }
+      .topbar { padding: 0 18px; }
+      .content { padding: 14px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app-shell" id="appShell">
+    <aside class="sidebar">
+      <div class="traffic-row">
+        <div class="traffic-lights" aria-label="Window controls">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+        </div>
+        <button class="sidebar-toggle" id="sidebarToggle" title="Hide sidebar">⌘</button>
+      </div>
+
+      <div class="brand">
+        <div class="brand-mark">S</div>
+        <div class="brand-text">
+          <div class="brand-title">Softphone</div>
+          <div class="brand-subtitle">SIP account ready</div>
+        </div>
+      </div>
+
+      <nav class="nav" aria-label="Primary">
+        <button class="nav-button active" data-view="keypad">
+          <span class="nav-icon">⌕</span>
+          <span class="nav-label">Keypad</span>
+        </button>
+        <button class="nav-button" data-view="messages">
+          <span class="nav-icon">✉</span>
+          <span class="nav-label">Messages</span>
+        </button>
+        <button class="nav-button" data-view="history">
+          <span class="nav-icon">↕</span>
+          <span class="nav-label">History</span>
+        </button>
+        <button class="nav-button" data-view="settings">
+          <span class="nav-icon">⚙</span>
+          <span class="nav-label">Settings</span>
+        </button>
+      </nav>
+    </aside>
+
+    <section class="main">
+      <header class="topbar">
+        <div class="top-actions">
+          <div class="pill" id="callStatusPill" hidden><span class="presence-dot warning"></span> In call · 02:18</div>
+          <div class="pill"><span class="presence-dot"></span> Registered</div>
+          <div class="pill">+44 20 7946 0000</div>
+        </div>
+      </header>
+
+      <div class="content">
+        <section class="view active" id="keypad">
+          <div class="keypad-layout">
+            <div class="dial-card">
+              <div class="number-field" id="numberField"><span class="number-placeholder">Enter number</span></div>
+
+              <div class="keypad-grid">
+                <button class="key" data-key="1"><span class="key-main">1</span><span class="key-sub">&nbsp;</span></button>
+                <button class="key" data-key="2"><span class="key-main">2</span><span class="key-sub">ABC</span></button>
+                <button class="key" data-key="3"><span class="key-main">3</span><span class="key-sub">DEF</span></button>
+                <button class="key" data-key="4"><span class="key-main">4</span><span class="key-sub">GHI</span></button>
+                <button class="key" data-key="5"><span class="key-main">5</span><span class="key-sub">JKL</span></button>
+                <button class="key" data-key="6"><span class="key-main">6</span><span class="key-sub">MNO</span></button>
+                <button class="key" data-key="7"><span class="key-main">7</span><span class="key-sub">PQRS</span></button>
+                <button class="key" data-key="8"><span class="key-main">8</span><span class="key-sub">TUV</span></button>
+                <button class="key" data-key="9"><span class="key-main">9</span><span class="key-sub">WXYZ</span></button>
+                <button class="key" data-key="*"><span class="key-main">*</span><span class="key-sub">&nbsp;</span></button>
+                <button class="key" data-key="0"><span class="key-main">0</span><span class="key-sub">+</span></button>
+                <button class="key" data-key="#"><span class="key-main">#</span><span class="key-sub">&nbsp;</span></button>
+              </div>
+
+              <div class="call-row">
+                <button class="ghost-button" id="clearButton">Clear</button>
+                <button class="call-button" title="Call" id="startCallButton">☎</button>
+                <button class="delete-button" id="deleteButton">⌫</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="messages">
+          <div class="messages-layout">
+            <aside class="conversation-list">
+              <div class="search-wrap">
+                <input class="search" placeholder="Search messages" />
+              </div>
+              <div class="conversation-items">
+                <div class="conversation active">
+                  <div class="avatar">AK</div>
+                  <div>
+                    <div class="conversation-top"><span>Anna Kowalski</span><span class="time">10:42</span></div>
+                    <div class="preview">Can you confirm the dial-in number?</div>
+                  </div>
+                </div>
+                <div class="conversation">
+                  <div class="avatar">MB</div>
+                  <div>
+                    <div class="conversation-top"><span>Mark Brookes</span><span class="time">09:18</span></div>
+                    <div class="preview">I’ll test the TLS account now.</div>
+                  </div>
+                </div>
+                <div class="conversation">
+                  <div class="avatar">JF</div>
+                  <div>
+                    <div class="conversation-top"><span>Julia Ford</span><span class="time">Yesterday</span></div>
+                    <div class="preview">Thanks — received.</div>
+                  </div>
+                </div>
+              </div>
+            </aside>
+
+            <section class="chat-pane">
+              <div class="chat-header">
+                <div class="chat-person">
+                  <div class="avatar">AK</div>
+                  <div>
+                    <div class="chat-name">Anna Kowalski</div>
+                    <div class="chat-number">+44 7700 900123</div>
+                  </div>
+                </div>
+                <button class="secondary show-call-view">Call</button>
+              </div>
+
+              <div class="messages">
+                <div class="bubble in">Morning — are you free for a quick test call?</div>
+                <div class="bubble out">Yes, give me two minutes and I’ll call from the softphone.</div>
+                <div class="bubble in">Perfect. Can you confirm the dial-in number?</div>
+                <div class="bubble out">Use +44 20 7946 0000. I’m registered over TLS now.</div>
+              </div>
+
+              <div class="composer">
+                <input placeholder="Message Anna" />
+                <button class="send-button">➤</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <section class="view" id="history">
+          <div class="history-layout">
+            <div class="history-card">
+              <div class="card-heading">
+                <div>
+                  <h2>History</h2>
+                  <p>Inbound and outbound SIP call history.</p>
+                </div>
+                <div class="segmented">
+                  <button class="segment active">All</button>
+                  <button class="segment">Inbound</button>
+                  <button class="segment">Outbound</button>
+                </div>
+              </div>
+
+              <div class="history-list">
+                <div class="call-item">
+                  <div class="call-icon">↗</div>
+                  <div>
+                    <div class="call-name">Anna Kowalski</div>
+                    <div class="call-meta">Outbound · +44 7700 900123 · Today, 10:44 · 03:21</div>
+                  </div>
+                  <button class="call-action show-call-view">☎</button>
+                </div>
+                <div class="call-item">
+                  <div class="call-icon">↙</div>
+                  <div>
+                    <div class="call-name">Mark Brookes</div>
+                    <div class="call-meta">Inbound · +44 7700 900456 · Today, 09:15 · 11:08</div>
+                  </div>
+                  <button class="call-action show-call-view">☎</button>
+                </div>
+                <div class="call-item">
+                  <div class="call-icon missed">↙</div>
+                  <div>
+                    <div class="call-name">Unknown caller</div>
+                    <div class="call-meta">Missed inbound · +44 20 7946 0172 · Yesterday, 16:32</div>
+                  </div>
+                  <button class="call-action show-call-view">☎</button>
+                </div>
+                <div class="call-item">
+                  <div class="call-icon">↗</div>
+                  <div>
+                    <div class="call-name">Julia Ford</div>
+                    <div class="call-meta">Outbound · +44 7700 900789 · Yesterday, 12:03 · 00:48</div>
+                  </div>
+                  <button class="call-action show-call-view">☎</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="settings">
+          <div class="settings-layout">
+            <div class="settings-stack">
+              <div class="settings-card">
+                <div class="card-heading">
+                  <div>
+                    <h2>Account</h2>
+                    <p>Configure the SIP account used for calls and messages.</p>
+                  </div>
+                  <div class="pill"><span class="presence-dot"></span> Registered</div>
+                </div>
+
+                <div class="settings-section-body">
+                  <form class="account-form">
+                    <div class="field">
+                      <label for="username">Username</label>
+                      <input id="username" value="1001" />
+                    </div>
+                    <div class="field">
+                      <label for="password">Password</label>
+                      <input id="password" type="password" value="supersecret" />
+                    </div>
+                    <div class="field full">
+                      <label for="domain">Domain</label>
+                      <input id="domain" value="sip.example.com" />
+                    </div>
+                    <div class="field">
+                      <label for="transport">Transport</label>
+                      <select id="transport">
+                        <option>UDP</option>
+                        <option>TCP</option>
+                        <option selected>TLS</option>
+                      </select>
+                    </div>
+                    <div class="field">
+                      <label for="port">Port</label>
+                      <input id="port" value="5061" />
+                    </div>
+                  </form>
+
+                  <div class="settings-actions">
+                    <button class="secondary">Test registration</button>
+                    <button class="primary">Save changes</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="settings-card">
+                <div class="card-heading">
+                  <div>
+                    <h2>Diagnostics</h2>
+                    <p>Engineering information for SIP registration and troubleshooting.</p>
+                  </div>
+                  <button class="secondary">Export SIP log</button>
+                </div>
+
+                <div class="settings-section-body">
+                  <div class="diagnostics-grid">
+                    <div class="diagnostic-tile">
+                      <div class="diagnostic-label">Registration</div>
+                      <div class="diagnostic-value">200 OK</div>
+                    </div>
+                    <div class="diagnostic-tile">
+                      <div class="diagnostic-label">Last registered</div>
+                      <div class="diagnostic-value">10:41:22</div>
+                    </div>
+                    <div class="diagnostic-tile">
+                      <div class="diagnostic-label">Transport</div>
+                      <div class="diagnostic-value">TLS · 5061</div>
+                    </div>
+                  </div>
+
+                  <div class="sip-log">
+                    <div class="sip-log-header">
+                      <span>Rolling SIP log</span>
+                      <span>Last 250 lines</span>
+                    </div>
+                    <pre>10:41:21.104 → REGISTER sip:sip.example.com SIP/2.0
+10:41:21.138 ← SIP/2.0 401 Unauthorized
+10:41:21.142 → REGISTER sip:sip.example.com SIP/2.0
+10:41:21.188 ← SIP/2.0 200 OK
+10:42:03.021 → OPTIONS sip:sip.example.com SIP/2.0
+10:42:03.044 ← SIP/2.0 200 OK
+10:44:10.502 → INVITE sip:+447700900123@sip.example.com SIP/2.0</pre>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="view" id="inCall">
+          <div class="in-call-layout">
+            <div class="debug-toolbar">
+              <div class="debug-title">
+                <h2>Active call</h2>
+                <p>Connected media with live PJSIP diagnostics.</p>
+              </div>
+              <div class="debug-actions">
+                <button class="secondary" id="toggleDebugStats">Hide debug stats</button>
+                <button class="secondary">Export call diagnostics</button>
+              </div>
+            </div>
+
+            <div class="call-stage">
+              <section class="call-summary">
+                <div class="call-avatar">AK</div>
+                <div class="call-party">Anna Kowalski</div>
+                <div class="call-number">+44 7700 900123</div>
+                <div class="call-duration">02:18</div>
+                <div class="call-state-line">Connected · opus / 48000 Hz</div>
+                <div class="quality-chip"><span class="presence-dot"></span> Quality: Good</div>
+
+                <div class="call-controls">
+                  <button class="round-control"><span>🎙</span>Mute</button>
+                  <button class="round-control"><span>⌗</span>DTMF</button>
+                  <button class="round-control"><span>⏸</span>Hold</button>
+                </div>
+                <button class="hangup-button" id="endCallButton">☎</button>
+              </section>
+
+              <section class="debug-area" id="debugStatsArea">
+                <div class="debug-console">
+                  <div class="debug-console-header">
+                    <span>Debug call stats</span>
+                    <span>Refreshes every 1s · Metric / Live / Peak</span>
+                  </div>
+                </div>
+
+                <div class="debug-stats">
+                  <table class="stats-table">
+                    <thead>
+                      <tr>
+                        <th>Metric</th>
+                        <th>Live</th>
+                        <th>Peak</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr class="good-row"><td>Connection</td><td>Wi-Fi</td><td></td></tr>
+                      <tr><td>Codec</td><td>opus / 48000 Hz</td><td></td></tr>
+                      <tr><td>Local SDP RTP</td><td>10.0.1.42:40122</td><td></td></tr>
+                      <tr class="warning-row"><td>Local SDP address warning</td><td>private IPv4 advertised</td><td></td></tr>
+                      <tr><td>Remote SDP RTP</td><td>198.51.100.24:18820</td><td></td></tr>
+                      <tr><td>Local RTP</td><td>192.168.1.44:40122</td><td></td></tr>
+                      <tr><td>Remote RTP</td><td>198.51.100.24:18820</td><td></td></tr>
+                      <tr><td>Selected RTP destination</td><td>198.51.100.24:18820</td><td></td></tr>
+                      <tr><td>Source RTP</td><td>198.51.100.24:18820</td><td></td></tr>
+                      <tr><td>ICE active</td><td>true</td><td></td></tr>
+                      <tr><td>ICE state</td><td>Negotiation Success</td><td></td></tr>
+                      <tr><td>ICE role</td><td>Controlled</td><td></td></tr>
+                      <tr><td>ICE RTP pair</td><td>local srflx 203.0.113.5:62000 → remote host 198.51.100.24:18820</td><td></td></tr>
+                      <tr><td>ICE RTP path type</td><td>direct NAT</td><td></td></tr>
+                      <tr><td>TURN used</td><td>false</td><td></td></tr>
+                      <tr><td>RX packets</td><td>421</td><td>421</td></tr>
+                      <tr><td>RX bytes</td><td>68472</td><td>68472</td></tr>
+                      <tr><td>RX loss</td><td>0</td><td>0</td></tr>
+                      <tr><td>RX jitter</td><td>7.8 ms</td><td>12.4 ms</td></tr>
+                      <tr><td>SRTP auth failures</td><td>0</td><td>0</td></tr>
+                      <tr><td>TX packets</td><td>418</td><td>418</td></tr>
+                      <tr><td>TX bytes</td><td>67716</td><td>67716</td></tr>
+                      <tr><td>TX loss</td><td>0</td><td>0</td></tr>
+                      <tr><td>TX jitter</td><td>6.2 ms</td><td>10.1 ms</td></tr>
+                      <tr><td>RTT</td><td>42.0 ms</td><td>58.0 ms</td></tr>
+                      <tr><td>JBuf avg</td><td>38 ms</td><td>54 ms</td></tr>
+                      <tr><td>JBuf lost</td><td>0</td><td>0</td></tr>
+                      <tr><td>JBuf discard</td><td>0</td><td>1</td></tr>
+                      <tr><td>JBuf empty</td><td>0</td><td>0</td></tr>
+                      <tr><td>Network changes</td><td>[]</td><td></td></tr>
+                      <tr><td>Audio path changes</td><td>[{"route":"MacBook Microphone","t":"10:44:11"}]</td><td></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </div>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const appShell = document.getElementById('appShell');
+    const sidebarToggle = document.getElementById('sidebarToggle');
+    const navButtons = document.querySelectorAll('.nav-button');
+    const views = document.querySelectorAll('.view');
+    const numberField = document.getElementById('numberField');
+    const keypadButtons = document.querySelectorAll('.key');
+    const clearButton = document.getElementById('clearButton');
+    const deleteButton = document.getElementById('deleteButton');
+    const startCallButton = document.getElementById('startCallButton');
+    const endCallButton = document.getElementById('endCallButton');
+    const callStatusPill = document.getElementById('callStatusPill');
+    const toggleDebugStats = document.getElementById('toggleDebugStats');
+    const debugStatsArea = document.getElementById('debugStatsArea');
+    const callLaunchers = document.querySelectorAll('.show-call-view');
+
+    let numberValue = '';
+    let previousView = 'keypad';
+
+    function renderNumber() {
+      numberField.innerHTML = numberValue
+        ? numberValue
+        : '<span class="number-placeholder">Enter number</span>';
+    }
+
+    function activateView(viewId, updateNav = true) {
+      views.forEach(view => view.classList.toggle('active', view.id === viewId));
+      if (updateNav) {
+        navButtons.forEach(button => button.classList.toggle('active', button.dataset.view === viewId));
+      }
+    }
+
+    function showCallView() {
+      const current = document.querySelector('.view.active');
+      previousView = current && current.id !== 'inCall' ? current.id : 'keypad';
+      activateView('inCall', false);
+      callStatusPill.hidden = false;
+    }
+
+    function endCall() {
+      callStatusPill.hidden = true;
+      activateView(previousView, true);
+    }
+
+    sidebarToggle.addEventListener('click', () => {
+      appShell.classList.toggle('sidebar-collapsed');
+    });
+
+    navButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const viewId = button.dataset.view;
+        previousView = viewId;
+        callStatusPill.hidden = true;
+        activateView(viewId, true);
+      });
+    });
+
+    keypadButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const key = button.dataset.key;
+        if (key === '0' && numberValue.endsWith('0')) return;
+        numberValue += key;
+        renderNumber();
+      });
+    });
+
+    clearButton.addEventListener('click', () => {
+      numberValue = '';
+      renderNumber();
+    });
+
+    deleteButton.addEventListener('click', () => {
+      numberValue = numberValue.slice(0, -1);
+      renderNumber();
+    });
+
+    startCallButton.addEventListener('click', showCallView);
+    endCallButton.addEventListener('click', endCall);
+    callLaunchers.forEach(button => button.addEventListener('click', showCallView));
+
+    toggleDebugStats.addEventListener('click', () => {
+      const hidden = debugStatsArea.style.display === 'none';
+      debugStatsArea.style.display = hidden ? 'flex' : 'none';
+      toggleDebugStats.textContent = hidden ? 'Hide debug stats' : 'Show debug stats';
+    });
+  </script>
+</body>
+</html>

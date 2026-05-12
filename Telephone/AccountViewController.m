@@ -152,7 +152,7 @@ static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
 
 - (void)showSoftphoneAppShell {
     self.softphoneAppShellView = [SoftphoneAppShellViewFactory makeViewWithCallTarget:self
-                                                                   accountDisplayName:self.account.domain
+                                                                   accountDisplayName:self.account.username
                                                                            sipAddress:([self softphoneSIPAccount].SIPAddress ?: self.account.domain)
                                                                    callHistoryStore:self.softphoneCallHistoryStore
                                                                        messageStore:self.softphoneMessageStore

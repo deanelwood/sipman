@@ -21,6 +21,7 @@ import Foundation
 @objc public protocol Account: Sendable {
     var uuid: String { get }
     var domain: String { get }
+    var username: String { get }
 
     @MainActor
     func makeCall(to uri: URI, label: String)

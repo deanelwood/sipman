@@ -21,10 +21,12 @@ import UseCases
 public final class SimpleAccount {
     public let uuid: String
     public let domain: String
+    public let username: String
 
-    public init(uuid: String, domain: String) {
+    public init(uuid: String, domain: String, username: String = "") {
         self.uuid = uuid
         self.domain = domain
+        self.username = username
     }
 }
 

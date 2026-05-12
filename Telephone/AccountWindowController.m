@@ -105,6 +105,10 @@
     self.window.frameAutosaveName = self.SIPAddress;
     self.window.excludedFromWindowsMenu = YES;
     self.window.toolbar = nil;
+    self.window.titleVisibility = NSWindowTitleHidden;
+    self.window.titlebarAppearsTransparent = YES;
+    self.window.styleMask |= NSWindowStyleMaskFullSizeContentView;
+    self.window.movableByWindowBackground = YES;
 
     [self.window.contentView addSubview:self.accountViewController.view];
     self.accountViewController.view.translatesAutoresizingMaskIntoConstraints = NO;

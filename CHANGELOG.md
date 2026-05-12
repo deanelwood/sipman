@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Refined the Messages screen into a chat-style layout with conversation search
+  and filters, cleaner message cards, a stronger conversation header, and
+  bumped the build number to 186.
 - Moved CodeQL analysis to GitHub's macOS 26 arm64 runner so Swift analysis
   uses a current Xcode/macOS SDK toolchain.
 - Made the SIP OPTIONS Tools pane scroll within the Settings area and reduced

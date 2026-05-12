@@ -59,7 +59,7 @@ extern const NSInteger kAKSIPAccountRegistrationExpireTimeNotSpecified;
 @property(nonatomic, readonly) NSString *realm;
 
 // Authentication user name.
-@property(nonatomic, readonly) NSString *username;
+@property(nonatomic, readonly, copy) NSString *username;
 
 @property(nonatomic, readonly, copy) NSString *domain;
 

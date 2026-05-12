@@ -27,6 +27,7 @@ struct SoftphoneMessageConversationRowModel: Equatable, Identifiable {
 
 struct SoftphoneMessageBubbleModel: Equatable, Identifiable {
     let id: String
+    let senderTitle: String
     let body: String
     let date: String
     let isOutgoing: Bool
@@ -113,6 +114,7 @@ final class SoftphoneMessageStore: NSObject, ObservableObject {
             .map { record in
                 SoftphoneMessageBubbleModel(
                     id: record.identifier,
+                    senderTitle: senderTitle(for: record),
                     body: record.content.body,
                     date: dateFormatter.string(from: record.date),
                     isOutgoing: record.direction == .outgoing,
@@ -127,6 +129,15 @@ final class SoftphoneMessageStore: NSObject, ObservableObject {
             return record.sender.ak_prettyFormattedPhoneNumber
         case .outgoing:
             return record.recipients.map(\.ak_prettyFormattedPhoneNumber).joined(separator: ", ")
+        }
+    }
+
+    private func senderTitle(for record: SIPMessageRecord) -> String {
+        switch record.direction {
+        case .incoming:
+            return record.sender.ak_prettyFormattedPhoneNumber
+        case .outgoing:
+            return "You"
         }
     }
 }

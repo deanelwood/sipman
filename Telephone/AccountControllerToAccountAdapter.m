@@ -45,6 +45,10 @@
     return self.controller.account.domain;
 }
 
+- (NSString *)username {
+    return self.controller.account.username;
+}
+
 - (void)makeCallTo:(URI *)uri label:(NSString *)label {
     [self.controller makeCallToURI:[AKSIPURI SIPURIWithUser:uri.user host:uri.host displayName:uri.displayName] phoneLabel:label];
 }
