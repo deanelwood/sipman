@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Made a long press on the keypad `0` key enter `+`, and bumped the build
+  number to 196.
 - Added an eye button to the Settings password field for temporarily revealing
   or hiding the entered password, and bumped the build number to 195.
 - Reduced the main title/status bar height and vertically centered its contents,

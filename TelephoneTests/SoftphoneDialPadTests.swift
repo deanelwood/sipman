@@ -61,6 +61,19 @@ final class SoftphoneDialPadTests: XCTestCase {
         XCTAssertFalse(sut.canCall)
     }
 
+    func testZeroKeyHasPlusLongPressValue() {
+        let zeroKey = SoftphoneKeypadKey.dialingKeys.first { $0.value == "0" }
+
+        XCTAssertEqual(zeroKey?.letters, "+")
+        XCTAssertEqual(zeroKey?.longPressValue, "+")
+    }
+
+    func testOtherKeypadKeysDoNotHaveLongPressValues() {
+        let nonZeroKeys = SoftphoneKeypadKey.dialingKeys.filter { $0.value != "0" }
+
+        XCTAssertTrue(nonZeroKeys.allSatisfy { $0.longPressValue == nil })
+    }
+
     func testKeyboardActionAppendsDialableCharacters() {
         XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: "1", keyCode: 18), .append("1"))
         XCTAssertEqual(SoftphoneKeypadKeyboardAction(characters: "*", keyCode: 67), .append("*"))

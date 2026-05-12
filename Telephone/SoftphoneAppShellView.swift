@@ -1126,12 +1126,7 @@ private struct SoftphoneKeypadScreen: View {
     let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
 
-    private let keys = [
-        ("1", ""), ("2", "ABC"), ("3", "DEF"),
-        ("4", "GHI"), ("5", "JKL"), ("6", "MNO"),
-        ("7", "PQRS"), ("8", "TUV"), ("9", "WXYZ"),
-        ("*", ""), ("0", "+"), ("#", "")
-    ]
+    private let keys = SoftphoneKeypadKey.dialingKeys
 
     var body: some View {
         VStack(spacing: verticalSpacing) {
@@ -1144,23 +1139,21 @@ private struct SoftphoneKeypadScreen: View {
             }
 
             LazyVGrid(columns: Array(repeating: GridItem(.fixed(keyWidth), spacing: keySpacing), count: 3), spacing: keySpacing) {
-                ForEach(keys, id: \.0) { key in
-                    Button {
-                        appendKeypadValue(key.0)
-                    } label: {
-                        VStack(spacing: keyLabelSpacing) {
-                            Text(key.0)
-                                .font(.system(size: keyDigitFontSize, weight: .medium))
-                            Text(key.1)
-                                .font(.system(size: keyLetterFontSize, weight: .bold))
-                                .foregroundStyle(SoftphoneTheme.placeholder)
-                                .frame(height: keyLetterHeight)
-                        }
-                        .frame(width: keyWidth, height: keyHeight)
-                        .background(SoftphoneTheme.controlBackground)
-                        .clipShape(RoundedRectangle(cornerRadius: keyCornerRadius, style: .continuous))
+                ForEach(keys) { key in
+                    SoftphoneKeypadButton(
+                        key: key,
+                        keyWidth: keyWidth,
+                        keyHeight: keyHeight,
+                        keyLabelSpacing: keyLabelSpacing,
+                        keyDigitFontSize: keyDigitFontSize,
+                        keyLetterFontSize: keyLetterFontSize,
+                        keyLetterHeight: keyLetterHeight,
+                        keyCornerRadius: keyCornerRadius
+                    ) {
+                        appendKeypadValue(key.value)
+                    } onLongPress: {
+                        appendKeypadValue(key.longPressValue ?? key.value)
                     }
-                    .buttonStyle(.plain)
                 }
             }
 
@@ -1337,6 +1330,54 @@ private struct SoftphoneKeypadScreen: View {
         } else {
             dialPad.append(value)
         }
+    }
+}
+
+private struct SoftphoneKeypadButton: View {
+    let key: SoftphoneKeypadKey
+    let keyWidth: CGFloat
+    let keyHeight: CGFloat
+    let keyLabelSpacing: CGFloat
+    let keyDigitFontSize: CGFloat
+    let keyLetterFontSize: CGFloat
+    let keyLetterHeight: CGFloat
+    let keyCornerRadius: CGFloat
+    let onTap: () -> Void
+    let onLongPress: () -> Void
+
+    var body: some View {
+        VStack(spacing: keyLabelSpacing) {
+            Text(key.value)
+                .font(.system(size: keyDigitFontSize, weight: .medium))
+            Text(key.letters)
+                .font(.system(size: keyLetterFontSize, weight: .bold))
+                .foregroundStyle(SoftphoneTheme.placeholder)
+                .frame(height: keyLetterHeight)
+        }
+        .frame(width: keyWidth, height: keyHeight)
+        .background(SoftphoneTheme.controlBackground)
+        .clipShape(RoundedRectangle(cornerRadius: keyCornerRadius, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: keyCornerRadius, style: .continuous))
+        .gesture(
+            LongPressGesture(minimumDuration: 0.45)
+                .exclusively(before: TapGesture())
+                .onEnded { value in
+                    switch value {
+                    case .first:
+                        onLongPress()
+                    case .second:
+                        onTap()
+                    }
+                }
+        )
+        .accessibilityLabel(key.letters.isEmpty ? key.value : "\(key.value) \(key.letters)")
+        .accessibilityAddTraits(.isButton)
+        .help(helpText)
+    }
+
+    private var helpText: String {
+        guard let longPressValue = key.longPressValue else { return key.value }
+        return "Hold for \(longPressValue)"
     }
 }
 

@@ -39,6 +39,29 @@ struct SoftphoneDialPad: Equatable {
     }
 }
 
+struct SoftphoneKeypadKey: Equatable, Identifiable {
+    let value: String
+    let letters: String
+    let longPressValue: String?
+
+    var id: String { value }
+
+    static let dialingKeys = [
+        SoftphoneKeypadKey(value: "1", letters: "", longPressValue: nil),
+        SoftphoneKeypadKey(value: "2", letters: "ABC", longPressValue: nil),
+        SoftphoneKeypadKey(value: "3", letters: "DEF", longPressValue: nil),
+        SoftphoneKeypadKey(value: "4", letters: "GHI", longPressValue: nil),
+        SoftphoneKeypadKey(value: "5", letters: "JKL", longPressValue: nil),
+        SoftphoneKeypadKey(value: "6", letters: "MNO", longPressValue: nil),
+        SoftphoneKeypadKey(value: "7", letters: "PQRS", longPressValue: nil),
+        SoftphoneKeypadKey(value: "8", letters: "TUV", longPressValue: nil),
+        SoftphoneKeypadKey(value: "9", letters: "WXYZ", longPressValue: nil),
+        SoftphoneKeypadKey(value: "*", letters: "", longPressValue: nil),
+        SoftphoneKeypadKey(value: "0", letters: "+", longPressValue: "+"),
+        SoftphoneKeypadKey(value: "#", letters: "", longPressValue: nil)
+    ]
+}
+
 enum SoftphoneKeypadKeyboardAction: Equatable {
     case append(String)
     case deleteLast
