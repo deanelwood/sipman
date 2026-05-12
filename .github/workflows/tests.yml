@@ -1,0 +1,47 @@
+name: Tests
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Shared XCTest Suite
+    runs-on: macos-26
+    timeout-minutes: 90
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Cache SIPMan dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            .sipman-deps
+            ThirdParty/Opus
+            ThirdParty/LibreSSL/bin
+            ThirdParty/LibreSSL/include
+            ThirdParty/LibreSSL/lib
+            ThirdParty/LibreSSL/share
+            ThirdParty/PJSIP/bin
+            ThirdParty/PJSIP/include
+            ThirdParty/PJSIP/lib
+            ThirdParty/PJSIP/share
+          key: sipman-deps-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/bootstrap-third-party.sh', 'ThirdParty/PJSIP/config_site.h', 'ThirdParty/PJSIP/patches/**') }}
+          restore-keys: |
+            sipman-deps-${{ runner.os }}-${{ runner.arch }}-
+
+      - name: Bootstrap third-party dependencies
+        run: scripts/bootstrap-third-party.sh --work-dir "$GITHUB_WORKSPACE/.sipman-deps"
+
+      - name: Run shared test schemes
+        run: scripts/test.sh --derived-data "$RUNNER_TEMP/sipman-deriveddata"

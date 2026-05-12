@@ -1,5 +1,9 @@
 # SIPMan
 
+[![Build](https://github.com/deanelwood/sipman/actions/workflows/build.yml/badge.svg)](https://github.com/deanelwood/sipman/actions/workflows/build.yml)
+[![Tests](https://github.com/deanelwood/sipman/actions/workflows/tests.yml/badge.svg)](https://github.com/deanelwood/sipman/actions/workflows/tests.yml)
+[![CodeQL](https://github.com/deanelwood/sipman/actions/workflows/codeql.yml/badge.svg)](https://github.com/deanelwood/sipman/actions/workflows/codeql.yml)
+
 SIPMan is a native macOS SIP softphone for engineers who need a small,
 practical tool for testing and operating SIP systems in the field.
 
@@ -30,7 +34,8 @@ server logs, and monitoring tools during live investigations.
 - Handles active calls in the main window with DTMF, mute, duration, and
   hang-up controls.
 - Tracks recent inbound, outbound, and missed calls.
-- Provides a SIP MESSAGE data model and conversation UI foundation.
+- Sends and receives SIP MESSAGE traffic with local conversation history and
+  delivery-state tracking.
 - Surfaces account diagnostics, in-call media statistics, and a rolling
   live SIP log from PJSIP.
 - Stores SIP credentials in the macOS Keychain.
@@ -41,7 +46,8 @@ The main window is a single compact shell:
 
 - **Keypad** is the default workflow for entering numbers and starting
   calls.
-- **Messages** is the future SIP MESSAGE conversation area.
+- **Messages** provides a compact SIP MESSAGE conversation view with a focused
+  composer.
 - **History** shows recent call activity with basic direction filters.
 - **Settings** contains account configuration, diagnostics, and the live
   SIP log.
