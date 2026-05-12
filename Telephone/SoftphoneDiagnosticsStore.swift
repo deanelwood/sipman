@@ -560,8 +560,6 @@ private enum SoftphoneSIPFlowParser {
         let headers = headers(from: lines.dropFirst())
         let cseq = headers["cseq"] ?? ""
         let cseqMethod = cseq.split(separator: " ").last.map(String.init)?.uppercased() ?? ""
-        let callID = headers["call-id"] ?? headers["i"] ?? ""
-        let branch = branchValue(from: headers["via"] ?? headers["v"] ?? "")
         let isResponse = firstLine.uppercased().hasPrefix("SIP/2.0")
         let method = isResponse ? cseqMethod : firstLine.split(separator: " ").first.map(String.init)?.uppercased() ?? ""
         guard !method.isEmpty else { return nil }
@@ -570,17 +568,11 @@ private enum SoftphoneSIPFlowParser {
         if isResponse {
             let parts = firstLine.split(separator: " ", maxSplits: 2).map(String.init)
             let code = parts.count > 1 ? parts[1] : "Response"
-            let reason = parts.count > 2 ? " \(parts[2])" : ""
-            caption = "\(code)\(reason) · \(method)"
+            let reason = parts.count > 2 ? " \(parts[2].uppercased())" : ""
+            caption = "\(code)\(reason)"
         } else {
             caption = method
         }
-
-        let detail = [
-            cseq.isEmpty ? nil : "CSeq \(cseq)",
-            callID.isEmpty ? nil : "Call-ID \(short(callID))",
-            branch.isEmpty ? nil : "branch \(short(branch))"
-        ].compactMap { $0 }.joined(separator: " · ")
 
         return SoftphoneParsedSIPFlowEvent(
             recordedAt: entry.recordedAt,
@@ -588,7 +580,7 @@ private enum SoftphoneSIPFlowParser {
             direction: direction,
             method: method,
             caption: caption,
-            detail: detail,
+            detail: portDisplay(firstLine: firstLine, headers: headers),
             searchText: message.lowercased()
         )
     }
@@ -603,14 +595,45 @@ private enum SoftphoneSIPFlowParser {
         }
     }
 
-    private static func branchValue(from via: String) -> String {
-        guard let range = via.range(of: "branch=", options: .caseInsensitive) else { return "" }
-        let suffix = via[range.upperBound...]
-        return String(suffix.prefix { !$0.isWhitespace && $0 != ";" })
+    private static func portDisplay(firstLine: String, headers: [String: String]) -> String {
+        let searchable = [firstLine] + [
+            headers["via"],
+            headers["v"],
+            headers["contact"],
+            headers["m"]
+        ].compactMap { $0 }
+
+        for text in searchable {
+            if let port = ports(in: text).first {
+                return ":\(port)"
+            }
+        }
+        return ""
     }
 
-    private static func short(_ value: String) -> String {
-        guard value.count > 16 else { return value }
-        return "\(value.prefix(8))...\(value.suffix(4))"
+    private static func ports(in text: String) -> [String] {
+        var ports: [String] = []
+        var index = text.startIndex
+        while let colon = text[index...].firstIndex(of: ":") {
+            var cursor = text.index(after: colon)
+            var digits = ""
+            while cursor < text.endIndex, text[cursor].isNumber, digits.count < 5 {
+                digits.append(text[cursor])
+                cursor = text.index(after: cursor)
+            }
+
+            if digits.count >= 2,
+               Int(digits).map({ (1...65535).contains($0) }) == true,
+               isPortBoundary(cursor, in: text) {
+                ports.append(digits)
+            }
+            index = cursor
+        }
+        return ports
+    }
+
+    private static func isPortBoundary(_ index: String.Index, in text: String) -> Bool {
+        guard index < text.endIndex else { return true }
+        return [";", ">", " ", "\t", "\r", "\n"].contains(text[index])
     }
 }

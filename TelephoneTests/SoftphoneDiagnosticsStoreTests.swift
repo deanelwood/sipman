@@ -238,7 +238,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
                     CSeq: 1 INVITE
                     From: <sip:1001@example.com>
                     To: <sip:07508011111@example.com>
-                    Via: SIP/2.0/UDP local;branch=z9hG4bK-one
+                    Via: SIP/2.0/UDP local:5060;branch=z9hG4bK-one
                     """
                 ),
                 sipLogEntry(
@@ -250,14 +250,15 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
                     CSeq: 1 INVITE
                     From: <sip:1001@example.com>
                     To: <sip:07508011111@example.com>
-                    Via: SIP/2.0/UDP local;branch=z9hG4bK-one
+                    Via: SIP/2.0/UDP local:5060;branch=z9hG4bK-one
                     """
                 )
             ])
         )
 
         XCTAssertEqual(diagram.lanes, ["1001@example.com", "example.com", "07508 011111"])
-        XCTAssertEqual(diagram.events.map(\.caption), ["INVITE", "180 Ringing · INVITE"])
+        XCTAssertEqual(diagram.events.map(\.caption), ["INVITE", "180 RINGING"])
+        XCTAssertEqual(diagram.events.map(\.detail), [":5060", ":5060"])
         XCTAssertEqual(diagram.events.map(\.sourceLaneIndex), [0, 1])
         XCTAssertEqual(diagram.events.map(\.destinationLaneIndex), [1, 0])
     }
@@ -271,7 +272,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
         CSeq: 1 INVITE
         From: <sip:1001@example.com>
         To: <sip:07508011111@example.com>
-        Via: SIP/2.0/UDP local;branch=z9hG4bK-one
+        Via: SIP/2.0/UDP local:5060;branch=z9hG4bK-one
         """
 
         let diagram = SoftphoneSIPFlowDiagramFactory.make(

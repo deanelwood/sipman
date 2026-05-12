@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Simplified SIP Flow Diagram row labels to emphasize the SIP message type with
+  only compact port metadata when available, bumping the build number to 209.
 - Added a first History row SIP Flow Diagram context-menu action backed by a
   scoped SIP log parser, dedicated diagram window, copy/save actions, and parser
   tests, bumping the build number to 208.
