@@ -931,7 +931,7 @@ private struct SoftphoneFavouritesScreen: View {
             content
         }
         .frame(maxWidth: 680)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear {
             contactStore.refreshIfAuthorized()
         }
@@ -962,10 +962,7 @@ private struct SoftphoneFavouritesScreen: View {
             if contactStore.isSyncingContacts && !contactStore.hasLoadedContacts {
                 SoftphoneContactsSyncingView()
             } else if rows.isEmpty {
-                SoftphoneEmptyState(title: emptyFavouritesTitle, subtitle: emptyFavouritesSubtitle)
-                    .background(SoftphoneTheme.rowBackground)
-                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+                SoftphoneFavouritesEmptyState()
             } else {
                 ScrollView {
                     LazyVStack(spacing: 6) {
@@ -986,13 +983,14 @@ private struct SoftphoneFavouritesScreen: View {
             }
         }
     }
+}
 
-    private var emptyFavouritesTitle: String {
-        query.isEmpty ? "No favourites" : "No favourites found"
-    }
-
-    private var emptyFavouritesSubtitle: String {
-        query.isEmpty ? "No starred contacts." : "No favourites match this search."
+private struct SoftphoneFavouritesEmptyState: View {
+    var body: some View {
+        Text("No favourites")
+            .font(.system(size: 14, weight: .semibold))
+            .foregroundStyle(SoftphoneTheme.muted)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
 }
 

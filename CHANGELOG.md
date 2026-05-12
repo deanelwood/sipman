@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Top-aligned the Favourites search controls with Contacts and simplified the
+  empty Favourites page to centered "No favourites" text, bumping the build
+  number to 207.
 - Aligned the keypad screen number field, keypad grid, and bottom controls to a
   shared width with a more rounded number field, and bumped the build number to
   206.
