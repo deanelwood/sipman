@@ -97,6 +97,14 @@ struct SoftphoneCallingContactRowModel: Equatable, Identifiable {
     let label: String
     let number: String
     let displayNumber: String
+
+    var favouriteIDs: Set<String> {
+        [id, Self.id(name: name, label: label, number: displayNumber)]
+    }
+
+    static func id(name: String, label: String, number: String) -> String {
+        "\(name)|\(label)|\(number)"
+    }
 }
 
 struct SoftphoneCallingContactsModel: Equatable {
@@ -124,7 +132,7 @@ struct SoftphoneCallingContactsModel: Equatable {
     }
 
     func rows(withIDs ids: Set<String>, matching query: String) -> [SoftphoneCallingContactRowModel] {
-        rows(matching: query).filter { ids.contains($0.id) }
+        rows(matching: query).filter { !ids.isDisjoint(with: $0.favouriteIDs) }
     }
 
     private static func rows(for contact: Contact) -> [SoftphoneCallingContactRowModel] {
@@ -133,10 +141,12 @@ struct SoftphoneCallingContactsModel: Equatable {
             guard !number.isEmpty else { return nil }
             let displayNumber = number.ak_prettyFormattedPhoneNumber
             let name = contact.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            let displayName = name.isEmpty ? displayNumber : name
+            let displayLabel = phone.label.isEmpty ? "phone" : phone.label
             return SoftphoneCallingContactRowModel(
-                id: "\(name)|\(phone.label)|\(number)",
-                name: name.isEmpty ? displayNumber : name,
-                label: phone.label.isEmpty ? "phone" : phone.label,
+                id: SoftphoneCallingContactRowModel.id(name: displayName, label: displayLabel, number: number),
+                name: displayName,
+                label: displayLabel,
                 number: number,
                 displayNumber: displayNumber
             )
@@ -172,14 +182,26 @@ struct SoftphoneContactFavourites: Equatable {
     }
 
     func contains(_ row: SoftphoneCallingContactRowModel) -> Bool {
-        ids.contains(row.id)
+        !ids.isDisjoint(with: row.favouriteIDs)
+    }
+
+    func contains(id: String) -> Bool {
+        ids.contains(id)
     }
 
     mutating func toggle(_ row: SoftphoneCallingContactRowModel) {
-        if ids.contains(row.id) {
-            ids.remove(row.id)
+        if contains(row) {
+            row.favouriteIDs.forEach { ids.remove($0) }
         } else {
             ids.insert(row.id)
+        }
+    }
+
+    mutating func toggle(id: String) {
+        if ids.contains(id) {
+            ids.remove(id)
+        } else {
+            ids.insert(id)
         }
     }
 }

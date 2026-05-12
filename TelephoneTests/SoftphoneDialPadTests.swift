@@ -147,6 +147,20 @@ final class SoftphoneDialPadTests: XCTestCase {
         XCTAssertTrue(sut.rows(withIDs: [bob.id], matching: "alice").isEmpty)
     }
 
+    func testCallingContactsModelMatchesFavouriteRowsByDisplayNumberID() {
+        let sut = SoftphoneCallingContactsModel(contacts: [
+            Contact(name: "Alice", phones: [Contact.Phone(number: "020 7946 0018", label: "work")], emails: [])
+        ])
+        let alice = sut.rows.first!
+        let displayID = SoftphoneCallingContactRowModel.id(
+            name: "Alice",
+            label: "work",
+            number: alice.displayNumber
+        )
+
+        XCTAssertEqual(sut.rows(withIDs: [displayID], matching: "").map(\.name), ["Alice"])
+    }
+
     func testContactFavouritesToggleAddsAndRemovesRows() {
         let row = SoftphoneCallingContactRowModel(
             id: "Jane|mobile|123",
@@ -174,5 +188,18 @@ final class SoftphoneDialPadTests: XCTestCase {
 
     func testContactFavouritesTreatInvalidStoredValueAsEmpty() {
         XCTAssertEqual(SoftphoneContactFavourites(rawValue: "not json"), SoftphoneContactFavourites())
+    }
+
+    func testContactFavouritesContainRowsByDisplayNumberID() {
+        let row = SoftphoneCallingContactRowModel(
+            id: "Jane|mobile|02079460018",
+            name: "Jane",
+            label: "mobile",
+            number: "02079460018",
+            displayNumber: "020 7946 0018"
+        )
+        let sut = SoftphoneContactFavourites(ids: ["Jane|mobile|020 7946 0018"])
+
+        XCTAssertTrue(sut.contains(row))
     }
 }

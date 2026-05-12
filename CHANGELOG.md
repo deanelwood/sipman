@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added History row stars so calls can be added to or removed from Favourites,
+  and bumped the build number to 201.
 - Replaced the app icon with a simpler grey-gradient phone icon and bumped
   the build number to 200.
 - Removed the Live SIP Log subtitle from Settings and bumped the build number

@@ -21,6 +21,7 @@ struct SoftphoneCallHistoryRowModel: Equatable, Identifiable {
     let id: String
     let title: String
     let address: String
+    let label: String
     let occurredAt: Date
     let date: String
     let duration: String
@@ -44,6 +45,16 @@ struct SoftphoneCallHistoryRowModel: Equatable, Identifiable {
             return "phone.down.fill"
         }
         return isIncoming ? "phone.arrow.down.left.fill" : "phone.arrow.up.right.fill"
+    }
+
+    var favouriteContactID: String? {
+        let trimmedAddress = address.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedAddress.isEmpty else { return nil }
+        return SoftphoneCallingContactRowModel.id(
+            name: title,
+            label: label.isEmpty ? "phone" : label,
+            number: trimmedAddress
+        )
     }
 }
 
@@ -163,6 +174,7 @@ private extension SoftphoneCallHistoryRowModel {
             id: record.identifier,
             title: record.contact.title,
             address: record.contact.address,
+            label: record.contact.label,
             occurredAt: record.occurredAt,
             date: record.date,
             duration: record.duration,

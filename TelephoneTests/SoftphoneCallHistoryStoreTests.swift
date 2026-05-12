@@ -47,6 +47,7 @@ final class SoftphoneCallHistoryStoreTests: XCTestCase {
                     id: "record-1",
                     title: "Alice",
                     address: "+447700900123",
+                    label: "mobile",
                     occurredAt: occurredAt,
                     date: "Today, 12:00",
                     duration: "01:23",
@@ -62,6 +63,7 @@ final class SoftphoneCallHistoryStoreTests: XCTestCase {
             id: "any",
             title: "Alice",
             address: "+447700900123",
+            label: "mobile",
             occurredAt: Date(timeIntervalSince1970: 1_777_771_200),
             date: "Today",
             duration: "",
@@ -72,6 +74,22 @@ final class SoftphoneCallHistoryStoreTests: XCTestCase {
         XCTAssertEqual(sut.directionTitle, "Missed")
         XCTAssertEqual(sut.symbolName, "phone.down.fill")
         XCTAssertEqual(sut.detail, "+447700900123 - Today")
+    }
+
+    func testRowBuildsFavouriteContactIDFromDisplayContact() {
+        let sut = SoftphoneCallHistoryRowModel(
+            id: "any",
+            title: "Alice",
+            address: "+44 7700 900123",
+            label: "mobile",
+            occurredAt: Date(timeIntervalSince1970: 1_777_771_200),
+            date: "Today",
+            duration: "",
+            isIncoming: true,
+            isMissed: false
+        )
+
+        XCTAssertEqual(sut.favouriteContactID, "Alice|mobile|+44 7700 900123")
     }
 
     func testFiltersRowsByDirection() {

@@ -1771,6 +1771,7 @@ private struct SoftphoneHistoryScreen: View {
     let onPickRecord: (String) -> Void
 
     @State private var selectedFilter: SoftphoneCallHistoryFilter = .all
+    @AppStorage(SoftphoneContactFavourites.storageKey) private var favouriteContactIDsRawValue = SoftphoneContactFavourites().rawValue
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -1800,7 +1801,13 @@ private struct SoftphoneHistoryScreen: View {
                                 .padding(.top, section == historySections.first ? 0 : 14)
 
                             ForEach(section.rows) { row in
-                                SoftphoneCallHistoryRow(row: row) {
+                                SoftphoneCallHistoryRow(
+                                    row: row,
+                                    isFavourite: isFavourite(row),
+                                    onToggleFavourite: {
+                                        toggleFavourite(row)
+                                    }
+                                ) {
                                     onPickRecord(row.id)
                                 }
                             }
@@ -1821,6 +1828,22 @@ private struct SoftphoneHistoryScreen: View {
 
     private var historySections: [SoftphoneCallHistorySectionModel] {
         callHistoryStore.sections(matching: selectedFilter)
+    }
+
+    private var favourites: SoftphoneContactFavourites {
+        SoftphoneContactFavourites(rawValue: favouriteContactIDsRawValue)
+    }
+
+    private func isFavourite(_ row: SoftphoneCallHistoryRowModel) -> Bool {
+        guard let favouriteContactID = row.favouriteContactID else { return false }
+        return favourites.contains(id: favouriteContactID)
+    }
+
+    private func toggleFavourite(_ row: SoftphoneCallHistoryRowModel) {
+        guard let favouriteContactID = row.favouriteContactID else { return }
+        var updatedFavourites = favourites
+        updatedFavourites.toggle(id: favouriteContactID)
+        favouriteContactIDsRawValue = updatedFavourites.rawValue
     }
 
     private var emptyStateTitle: String {
@@ -2855,6 +2878,8 @@ private struct SoftphoneHistoryFilterControl: View {
 
 private struct SoftphoneCallHistoryRow: View {
     let row: SoftphoneCallHistoryRowModel
+    let isFavourite: Bool
+    let onToggleFavourite: () -> Void
     let onCall: () -> Void
 
     var body: some View {
@@ -2872,6 +2897,21 @@ private struct SoftphoneCallHistoryRow: View {
                     .foregroundStyle(SoftphoneTheme.muted)
             }
             Spacer()
+            if row.favouriteContactID != nil {
+                Button {
+                    onToggleFavourite()
+                } label: {
+                    Image(systemName: isFavourite ? "star.fill" : "star")
+                        .font(.system(size: 15, weight: .semibold))
+                        .foregroundStyle(isFavourite ? SoftphoneTheme.gold : SoftphoneTheme.muted)
+                        .frame(width: 34, height: 30)
+                }
+                .buttonStyle(.plain)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+                .help(isFavourite ? "Remove favourite" : "Add favourite")
+            }
             Button {
                 onCall()
             } label: {
