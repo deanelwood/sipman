@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Removed the pale edge from the app icon by regenerating the grey-gradient
+  phone icon artwork, and bumped the build number to 202.
 - Added History row stars so calls can be added to or removed from Favourites,
   and bumped the build number to 201.
 - Replaced the app icon with a simpler grey-gradient phone icon and bumped
