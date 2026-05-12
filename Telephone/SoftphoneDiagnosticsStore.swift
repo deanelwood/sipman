@@ -407,19 +407,18 @@ enum SoftphoneSIPFlowDiagramFactory {
         row: SoftphoneCallHistoryRowModel,
         snapshot: SoftphoneDiagnosticsSnapshot
     ) -> SoftphoneSIPFlowDiagramModel {
-        let localLane = localLaneTitle(snapshot: snapshot)
-        let proxyLane = snapshot.domain.isEmpty ? "Proxy / registrar" : snapshot.domain
-        let remoteLane = row.address.isEmpty ? row.title : row.address
-        let lanes = [localLane, proxyLane, remoteLane]
         let parsedEvents = SoftphoneSIPFlowParser.parse(entries: snapshot.sipLogEntries)
         let scopedEvents = scope(parsedEvents, to: row)
+        let localLane = firstLocalEndpoint(in: scopedEvents) ?? localLaneTitle(snapshot: snapshot)
+        let peerLane = firstPeerEndpoint(in: scopedEvents) ?? peerLaneTitle(snapshot: snapshot)
+        let lanes = [localLane, peerLane]
 
         return SoftphoneSIPFlowDiagramModel(
             title: "SIP Flow",
             subtitle: "\(row.directionTitle) call with \(row.title) - \(row.date)",
             lanes: lanes,
             events: markRetransmits(scopedEvents.map { event in
-                event.model(usesProxyLane: usesProxyLane(for: event, snapshot: snapshot))
+                event.model()
             })
         )
     }
@@ -432,6 +431,13 @@ enum SoftphoneSIPFlowDiagramFactory {
             return "\(snapshot.username)@\(snapshot.domain)"
         }
         return "Local"
+    }
+
+    private static func peerLaneTitle(snapshot: SoftphoneDiagnosticsSnapshot) -> String {
+        if !snapshot.domain.isEmpty {
+            return snapshot.domain
+        }
+        return "SIP server"
     }
 
     private static func scope(_ events: [SoftphoneParsedSIPFlowEvent], to row: SoftphoneCallHistoryRowModel) -> [SoftphoneParsedSIPFlowEvent] {
@@ -458,9 +464,12 @@ enum SoftphoneSIPFlowDiagramFactory {
         }
     }
 
-    private static func usesProxyLane(for event: SoftphoneParsedSIPFlowEvent, snapshot: SoftphoneDiagnosticsSnapshot) -> Bool {
-        event.method == "REGISTER" ||
-            (!snapshot.domain.isEmpty && event.searchText.localizedCaseInsensitiveContains(snapshot.domain))
+    private static func firstLocalEndpoint(in events: [SoftphoneParsedSIPFlowEvent]) -> String? {
+        events.compactMap(\.localEndpoint).first { !$0.isEmpty }
+    }
+
+    private static func firstPeerEndpoint(in events: [SoftphoneParsedSIPFlowEvent]) -> String? {
+        events.compactMap(\.peerEndpoint).first { !$0.isEmpty }
     }
 
     private static func markRetransmits(_ events: [SoftphoneSIPFlowEventModel]) -> [SoftphoneSIPFlowEventModel] {
@@ -493,6 +502,8 @@ private struct SoftphoneParsedSIPFlowEvent: Equatable {
     let method: String
     let caption: String
     let detail: String
+    let localEndpoint: String?
+    let peerEndpoint: String?
     let searchText: String
 
     func matches(row: SoftphoneCallHistoryRowModel) -> Bool {
@@ -508,8 +519,7 @@ private struct SoftphoneParsedSIPFlowEvent: Equatable {
             .contains { searchText.localizedCaseInsensitiveContains($0) }
     }
 
-    func model(usesProxyLane: Bool) -> SoftphoneSIPFlowEventModel {
-        let peerLaneIndex = usesProxyLane ? 1 : 2
+    func model() -> SoftphoneSIPFlowEventModel {
         switch direction {
         case .outbound:
             return SoftphoneSIPFlowEventModel(
@@ -517,7 +527,7 @@ private struct SoftphoneParsedSIPFlowEvent: Equatable {
                 caption: caption,
                 detail: detail,
                 sourceLaneIndex: 0,
-                destinationLaneIndex: peerLaneIndex,
+                destinationLaneIndex: 1,
                 isRetransmit: false
             )
         case .inbound:
@@ -525,7 +535,7 @@ private struct SoftphoneParsedSIPFlowEvent: Equatable {
                 timestamp: timestamp,
                 caption: caption,
                 detail: detail,
-                sourceLaneIndex: peerLaneIndex,
+                sourceLaneIndex: 1,
                 destinationLaneIndex: 0,
                 isRetransmit: false
             )
@@ -551,7 +561,8 @@ private enum SoftphoneSIPFlowParser {
             return nil
         }
 
-        let lines = message
+        let envelope = envelope(from: message)
+        let lines = envelope.message
             .split(whereSeparator: \.isNewline)
             .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty }
@@ -581,8 +592,62 @@ private enum SoftphoneSIPFlowParser {
             method: method,
             caption: caption,
             detail: portDisplay(firstLine: firstLine, headers: headers),
-            searchText: message.lowercased()
+            localEndpoint: localEndpoint(direction: direction, envelope: envelope, headers: headers),
+            peerEndpoint: peerEndpoint(direction: direction, envelope: envelope),
+            searchText: envelope.message.lowercased()
         )
+    }
+
+    private struct Envelope {
+        let sourceEndpoint: String?
+        let destinationEndpoint: String?
+        let message: String
+    }
+
+    private static func envelope(from message: String) -> Envelope {
+        guard message.hasPrefix("["),
+              let closingBracket = message.firstIndex(of: "]") else {
+            return Envelope(sourceEndpoint: nil, destinationEndpoint: nil, message: message)
+        }
+
+        let endpointText = String(message[message.index(after: message.startIndex)..<closingBracket])
+        let parts = endpointText.components(separatedBy: " -> ")
+        guard parts.count == 2 else {
+            return Envelope(sourceEndpoint: nil, destinationEndpoint: nil, message: message)
+        }
+
+        let bodyStart = message.index(after: closingBracket)
+        let body = String(message[bodyStart...]).trimmingCharacters(in: .whitespacesAndNewlines)
+        return Envelope(
+            sourceEndpoint: trim(parts[0]),
+            destinationEndpoint: trim(parts[1]),
+            message: body
+        )
+    }
+
+    private static func localEndpoint(
+        direction: SoftphoneParsedSIPFlowEvent.Direction,
+        envelope: Envelope,
+        headers: [String: String]
+    ) -> String? {
+        switch direction {
+        case .outbound:
+            return firstNonEmpty(envelope.sourceEndpoint, sentByEndpoint(from: headers))
+        case .inbound:
+            return firstNonEmpty(envelope.destinationEndpoint, sentByEndpoint(from: headers))
+        }
+    }
+
+    private static func peerEndpoint(
+        direction: SoftphoneParsedSIPFlowEvent.Direction,
+        envelope: Envelope
+    ) -> String? {
+        switch direction {
+        case .outbound:
+            return envelope.destinationEndpoint
+        case .inbound:
+            return envelope.sourceEndpoint
+        }
     }
 
     private static func headers(from lines: ArraySlice<String>) -> [String: String] {
@@ -609,6 +674,22 @@ private enum SoftphoneSIPFlowParser {
             }
         }
         return ""
+    }
+
+    private static func sentByEndpoint(from headers: [String: String]) -> String? {
+        guard let via = headers["via"] ?? headers["v"] else { return nil }
+        let parts = via.split(separator: " ", maxSplits: 1).map(String.init)
+        guard parts.count > 1 else { return nil }
+        let endpoint = parts[1].split(separator: ";", maxSplits: 1).first.map(String.init).map(trim) ?? ""
+        return endpoint.isEmpty ? nil : endpoint
+    }
+
+    private static func firstNonEmpty(_ values: String?...) -> String? {
+        values.compactMap { $0.map(trim) }.first { !$0.isEmpty }
+    }
+
+    private static func trim(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     private static func ports(in text: String) -> [String] {

@@ -187,21 +187,77 @@ static void SoftphonePublishSIPLogLine(int level, const char *data, int len) {
     }
 }
 
-static void SoftphonePublishSIPMessage(const char *direction, const char *data, int len) {
+static void SoftphoneFormatHostPortEndpoint(const pjsip_host_port *hostPort, char *buffer, size_t size) {
+    if (buffer == NULL || size == 0) {
+        return;
+    }
+
+    buffer[0] = '\0';
+    if (hostPort == NULL || hostPort->host.slen <= 0) {
+        return;
+    }
+
+    int hostLength = (int)MIN(hostPort->host.slen, (pj_ssize_t)PJ_INET6_ADDRSTRLEN);
+    if (hostPort->port > 0) {
+        snprintf(buffer, size, "%.*s:%d", hostLength, hostPort->host.ptr, hostPort->port);
+    } else {
+        snprintf(buffer, size, "%.*s", hostLength, hostPort->host.ptr);
+    }
+}
+
+static void SoftphoneFormatSockaddrEndpoint(const pj_sockaddr_t *address, char *buffer, size_t size) {
+    if (buffer == NULL || size == 0) {
+        return;
+    }
+
+    buffer[0] = '\0';
+    if (address == NULL || !pj_sockaddr_has_addr(address)) {
+        return;
+    }
+
+    pj_sockaddr_print(address, buffer, (int)size, 3);
+}
+
+static void SoftphoneFormatTransportLocalEndpoint(pjsip_transport *transport, char *buffer, size_t size) {
+    if (buffer == NULL || size == 0) {
+        return;
+    }
+
+    buffer[0] = '\0';
+    if (transport == NULL) {
+        return;
+    }
+
+    SoftphoneFormatHostPortEndpoint(&transport->local_name, buffer, size);
+    if (buffer[0] == '\0') {
+        SoftphoneFormatSockaddrEndpoint((const pj_sockaddr_t *)&transport->local_addr, buffer, size);
+    }
+}
+
+static void SoftphonePublishSIPMessage(const char *direction, const char *sourceEndpoint, const char *destinationEndpoint, const char *data, int len) {
     if (data == NULL || len <= 0) {
         return;
     }
 
     int prefixLength = (int)strlen(direction);
-    char *bytes = malloc((size_t)(prefixLength + len + 1));
+    int envelopeLength = 0;
+    if (sourceEndpoint != NULL && sourceEndpoint[0] != '\0' &&
+        destinationEndpoint != NULL && destinationEndpoint[0] != '\0') {
+        envelopeLength = snprintf(NULL, 0, "[%s -> %s] ", sourceEndpoint, destinationEndpoint);
+    }
+
+    char *bytes = malloc((size_t)(prefixLength + envelopeLength + len + 1));
     if (bytes == NULL) {
         return;
     }
     memcpy(bytes, direction, (size_t)prefixLength);
-    memcpy(bytes + prefixLength, data, (size_t)len);
-    bytes[prefixLength + len] = '\n';
+    if (envelopeLength > 0) {
+        snprintf(bytes + prefixLength, (size_t)envelopeLength + 1, "[%s -> %s] ", sourceEndpoint, destinationEndpoint);
+    }
+    memcpy(bytes + prefixLength + envelopeLength, data, (size_t)len);
+    bytes[prefixLength + envelopeLength + len] = '\n';
 
-    SoftphonePublishSIPLogLine(5, bytes, prefixLength + len + 1);
+    SoftphonePublishSIPLogLine(5, bytes, prefixLength + envelopeLength + len + 1);
     free(bytes);
 }
 
@@ -210,28 +266,53 @@ static void SoftphonePublishSIPTXMessage(const char *direction, pjsip_tx_data *t
         return;
     }
 
+    char sourceEndpoint[PJ_INET6_ADDRSTRLEN + 16] = "";
+    char destinationEndpoint[PJ_INET6_ADDRSTRLEN + 16] = "";
+    SoftphoneFormatTransportLocalEndpoint(tdata->tp_info.transport, sourceEndpoint, sizeof(sourceEndpoint));
+    if (tdata->tp_info.dst_name[0] != '\0' && tdata->tp_info.dst_port > 0) {
+        snprintf(destinationEndpoint, sizeof(destinationEndpoint), "%s:%d", tdata->tp_info.dst_name, tdata->tp_info.dst_port);
+    } else {
+        SoftphoneFormatSockaddrEndpoint((const pj_sockaddr_t *)&tdata->tp_info.dst_addr, destinationEndpoint, sizeof(destinationEndpoint));
+    }
+
     if (tdata->buf.start != NULL && tdata->buf.cur > tdata->buf.start) {
-        SoftphonePublishSIPMessage(direction, tdata->buf.start, (int)(tdata->buf.cur - tdata->buf.start));
+        SoftphonePublishSIPMessage(direction, sourceEndpoint, destinationEndpoint, tdata->buf.start, (int)(tdata->buf.cur - tdata->buf.start));
         return;
     }
 
     char buffer[PJSIP_MAX_PKT_LEN];
     pj_ssize_t length = pjsip_msg_print(tdata->msg, buffer, sizeof(buffer));
     if (length > 0) {
-        SoftphonePublishSIPMessage(direction, buffer, (int)length);
+        SoftphonePublishSIPMessage(direction, sourceEndpoint, destinationEndpoint, buffer, (int)length);
     }
 }
 
 static pj_bool_t SoftphoneSIPLogModuleOnRXRequest(pjsip_rx_data *rdata) {
     if (rdata != NULL && rdata->msg_info.msg_buf != NULL && rdata->msg_info.len > 0) {
-        SoftphonePublishSIPMessage("<<< ", rdata->msg_info.msg_buf, rdata->msg_info.len);
+        char sourceEndpoint[PJ_INET6_ADDRSTRLEN + 16] = "";
+        char destinationEndpoint[PJ_INET6_ADDRSTRLEN + 16] = "";
+        if (rdata->pkt_info.src_name[0] != '\0' && rdata->pkt_info.src_port > 0) {
+            snprintf(sourceEndpoint, sizeof(sourceEndpoint), "%s:%d", rdata->pkt_info.src_name, rdata->pkt_info.src_port);
+        } else {
+            SoftphoneFormatSockaddrEndpoint((const pj_sockaddr_t *)&rdata->pkt_info.src_addr, sourceEndpoint, sizeof(sourceEndpoint));
+        }
+        SoftphoneFormatTransportLocalEndpoint(rdata->tp_info.transport, destinationEndpoint, sizeof(destinationEndpoint));
+        SoftphonePublishSIPMessage("<<< ", sourceEndpoint, destinationEndpoint, rdata->msg_info.msg_buf, rdata->msg_info.len);
     }
     return PJ_FALSE;
 }
 
 static pj_bool_t SoftphoneSIPLogModuleOnRXResponse(pjsip_rx_data *rdata) {
     if (rdata != NULL && rdata->msg_info.msg_buf != NULL && rdata->msg_info.len > 0) {
-        SoftphonePublishSIPMessage("<<< ", rdata->msg_info.msg_buf, rdata->msg_info.len);
+        char sourceEndpoint[PJ_INET6_ADDRSTRLEN + 16] = "";
+        char destinationEndpoint[PJ_INET6_ADDRSTRLEN + 16] = "";
+        if (rdata->pkt_info.src_name[0] != '\0' && rdata->pkt_info.src_port > 0) {
+            snprintf(sourceEndpoint, sizeof(sourceEndpoint), "%s:%d", rdata->pkt_info.src_name, rdata->pkt_info.src_port);
+        } else {
+            SoftphoneFormatSockaddrEndpoint((const pj_sockaddr_t *)&rdata->pkt_info.src_addr, sourceEndpoint, sizeof(sourceEndpoint));
+        }
+        SoftphoneFormatTransportLocalEndpoint(rdata->tp_info.transport, destinationEndpoint, sizeof(destinationEndpoint));
+        SoftphonePublishSIPMessage("<<< ", sourceEndpoint, destinationEndpoint, rdata->msg_info.msg_buf, rdata->msg_info.len);
     }
     return PJ_FALSE;
 }

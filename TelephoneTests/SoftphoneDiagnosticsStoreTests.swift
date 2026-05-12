@@ -233,7 +233,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
                     recordedAt: occurredAt.addingTimeInterval(1),
                     timestamp: "12:00:01",
                     message: """
-                    >>> INVITE sip:07508011111@example.com SIP/2.0
+                    >>> [192.168.1.25:5060 -> 203.0.113.10:5060] INVITE sip:07508011111@example.com SIP/2.0
                     Call-ID: call-1
                     CSeq: 1 INVITE
                     From: <sip:1001@example.com>
@@ -245,7 +245,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
                     recordedAt: occurredAt.addingTimeInterval(2),
                     timestamp: "12:00:02",
                     message: """
-                    <<< SIP/2.0 180 Ringing
+                    <<< [203.0.113.10:5060 -> 192.168.1.25:5060] SIP/2.0 180 Ringing
                     Call-ID: call-1
                     CSeq: 1 INVITE
                     From: <sip:1001@example.com>
@@ -256,7 +256,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
             ])
         )
 
-        XCTAssertEqual(diagram.lanes, ["1001@example.com", "example.com", "07508 011111"])
+        XCTAssertEqual(diagram.lanes, ["192.168.1.25:5060", "203.0.113.10:5060"])
         XCTAssertEqual(diagram.events.map(\.caption), ["INVITE", "180 RINGING"])
         XCTAssertEqual(diagram.events.map(\.detail), [":5060", ":5060"])
         XCTAssertEqual(diagram.events.map(\.sourceLaneIndex), [0, 1])
@@ -267,7 +267,7 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
         let occurredAt = Date(timeIntervalSince1970: 1_777_771_200)
         let row = callHistoryRow(occurredAt: occurredAt)
         let duplicateInvite = """
-        >>> INVITE sip:07508011111@example.com SIP/2.0
+        >>> [192.168.1.25:5060 -> 203.0.113.10:5060] INVITE sip:07508011111@example.com SIP/2.0
         Call-ID: call-1
         CSeq: 1 INVITE
         From: <sip:1001@example.com>

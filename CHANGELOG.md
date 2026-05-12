@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Updated SIP Flow Diagram lanes to use captured SIP transport endpoints
+  instead of the dialed phone number, and enriched new SIP logs with packet
+  source/destination metadata, bumping the build number to 211.
 - Added a dedicated left-side timestamp column to SIP Flow Diagram rows and
   kept arrow metadata focused on retransmits/ports, bumping the build number to
   210.

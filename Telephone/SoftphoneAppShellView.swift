@@ -2007,7 +2007,7 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
             let top: CGFloat = 62
             let bottom: CGFloat = 28
             let rowHeight: CGFloat = 44
-            let laneXs = lanePositions(width: size.width)
+            let laneXs = lanePositions(width: size.width, laneCount: diagram.lanes.count)
             let diagramHeight = top + CGFloat(diagram.events.count) * rowHeight + bottom
 
             context.draw(
@@ -2077,8 +2077,17 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
         62 + CGFloat(max(eventCount, 1)) * 44 + 28
     }
 
-    private func lanePositions(width: CGFloat) -> [CGFloat] {
-        [width * 0.23, width * 0.57, width * 0.91]
+    private func lanePositions(width: CGFloat, laneCount: Int) -> [CGFloat] {
+        switch laneCount {
+        case 0:
+            return []
+        case 1:
+            return [width * 0.57]
+        case 2:
+            return [width * 0.28, width * 0.86]
+        default:
+            return [width * 0.23, width * 0.57, width * 0.91]
+        }
     }
 
     private func drawArrow(from start: CGPoint, to end: CGPoint, in context: inout GraphicsContext) {
