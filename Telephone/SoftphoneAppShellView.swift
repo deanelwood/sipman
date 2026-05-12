@@ -1998,7 +1998,7 @@ private struct SoftphoneSIPFlowDiagramWindow: View {
 }
 
 private struct SoftphoneSIPFlowDiagramCanvas: View {
-    static let preferredWidth: CGFloat = 780
+    static let preferredWidth: CGFloat = 840
 
     let diagram: SoftphoneSIPFlowDiagramModel
 
@@ -2009,6 +2009,14 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
             let rowHeight: CGFloat = 44
             let laneXs = lanePositions(width: size.width)
             let diagramHeight = top + CGFloat(diagram.events.count) * rowHeight + bottom
+
+            context.draw(
+                Text("Time")
+                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                    .foregroundColor(SoftphoneTheme.muted),
+                at: CGPoint(x: 54, y: 22),
+                anchor: .trailing
+            )
 
             for (index, lane) in diagram.lanes.enumerated() {
                 let x = laneXs[index]
@@ -2027,6 +2035,14 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
 
             for (index, event) in diagram.events.enumerated() {
                 let y = top + CGFloat(index) * rowHeight
+                context.draw(
+                    Text(event.timestamp)
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .foregroundColor(SoftphoneTheme.muted),
+                    at: CGPoint(x: 54, y: y),
+                    anchor: .trailing
+                )
+
                 let start = CGPoint(x: laneXs[event.sourceLaneIndex], y: y)
                 let end = CGPoint(x: laneXs[event.destinationLaneIndex], y: y)
                 drawArrow(from: start, to: end, in: &context)
@@ -2040,16 +2056,18 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
                     anchor: .center
                 )
 
-                let detail = [event.timestamp, event.isRetransmit ? "retransmit" : nil, event.detail.isEmpty ? nil : event.detail]
+                let detail = [event.isRetransmit ? "retransmit" : nil, event.detail.isEmpty ? nil : event.detail]
                     .compactMap { $0 }
                     .joined(separator: " · ")
-                context.draw(
-                    Text(detail)
-                        .font(.system(size: 10, weight: .regular, design: .monospaced))
-                        .foregroundColor(SoftphoneTheme.muted),
-                    at: CGPoint(x: (start.x + end.x) / 2, y: y + 11),
-                    anchor: .center
-                )
+                if !detail.isEmpty {
+                    context.draw(
+                        Text(detail)
+                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .foregroundColor(SoftphoneTheme.muted),
+                        at: CGPoint(x: (start.x + end.x) / 2, y: y + 11),
+                        anchor: .center
+                    )
+                }
             }
         }
         .frame(width: Self.preferredWidth, height: Self.height(forEventCount: diagram.events.count))
@@ -2060,7 +2078,7 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
     }
 
     private func lanePositions(width: CGFloat) -> [CGFloat] {
-        [width * 0.14, width * 0.5, width * 0.86]
+        [width * 0.23, width * 0.57, width * 0.91]
     }
 
     private func drawArrow(from start: CGPoint, to end: CGPoint, in context: inout GraphicsContext) {

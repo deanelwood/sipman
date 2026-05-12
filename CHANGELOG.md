@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added a dedicated left-side timestamp column to SIP Flow Diagram rows and
+  kept arrow metadata focused on retransmits/ports, bumping the build number to
+  210.
 - Simplified SIP Flow Diagram row labels to emphasize the SIP message type with
   only compact port metadata when available, bumping the build number to 209.
 - Added a first History row SIP Flow Diagram context-menu action backed by a
