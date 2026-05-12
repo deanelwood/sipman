@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Removed the Live SIP Log subtitle from Settings and bumped the build number
+  to 199.
 - Added a Favourites tab to Calling, with tappable contact-row stars that
   persist starred phone numbers, and bumped the build number to 198.
 - Fixed the SwiftUI registration status pill so registration attempts show

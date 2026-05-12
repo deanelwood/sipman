@@ -2494,7 +2494,7 @@ private struct SoftphoneSIPLogSettingsPane: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
-                SoftphoneSectionHeader(title: "Live SIP Log", subtitle: "Rolling PJSIP stack output.")
+                SoftphoneSectionHeader(title: "Live SIP Log", subtitle: "")
                 Spacer()
                 Button {
                     diagnosticsStore.clearSIPLog()
@@ -2911,9 +2911,11 @@ private struct SoftphoneSectionHeader: View {
         VStack(alignment: .leading, spacing: 4) {
             Text(title)
                 .font(.system(size: 20, weight: .semibold))
-            Text(subtitle)
-                .font(.system(size: 13))
-                .foregroundStyle(SoftphoneTheme.muted)
+            if !subtitle.isEmpty {
+                Text(subtitle)
+                    .font(.system(size: 13))
+                    .foregroundStyle(SoftphoneTheme.muted)
+            }
         }
     }
 }
