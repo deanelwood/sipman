@@ -155,6 +155,18 @@ static NSString *SoftphoneRegistrarString(NSString *domain, NSString *existingRe
     [self hideLegacyAccountViews];
 }
 
+- (void)showUnavailableState {
+    self.softphoneAllowsCallDestinationInput = YES;
+    [self.softphoneDiagnosticsStore markRegistrationFailed];
+    [self hideLegacyAccountViews];
+}
+
+- (void)showConnectingState {
+    self.softphoneAllowsCallDestinationInput = NO;
+    [self.softphoneDiagnosticsStore markRegistering];
+    [self hideLegacyAccountViews];
+}
+
 - (void)showInactiveStateAnimated:(BOOL)animated {
     self.softphoneAllowsCallDestinationInput = NO;
     [self.softphoneDiagnosticsStore markOffline];

@@ -49,6 +49,16 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
         XCTAssertNotEqual(sut.snapshot.lastRegistration, "--")
     }
 
+    func testCanMarkRegisteringAndFailed() {
+        let sut = makeStore()
+
+        sut.markRegistering()
+        XCTAssertEqual(sut.snapshot.registrationState, .registering)
+
+        sut.markRegistrationFailed()
+        XCTAssertEqual(sut.snapshot.registrationState, .failed)
+    }
+
     func testCanUpdateTransport() {
         let sut = makeStore()
 

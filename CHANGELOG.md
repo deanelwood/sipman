@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Fixed the SwiftUI registration status pill so registration attempts show
+  Registering and failed/unavailable accounts show Registration failed instead
+  of Registered, and bumped the build number to 197.
 - Made a long press on the keypad `0` key enter `+`, and bumped the build
   number to 196.
 - Added an eye button to the Settings password field for temporarily revealing

@@ -46,6 +46,8 @@ NS_ASSUME_NONNULL_BEGIN
                           callControlTarget:(id<SoftphoneCallControlling>)callControlTarget;
 
 - (void)showActiveState;
+- (void)showUnavailableState;
+- (void)showConnectingState;
 - (void)showInactiveStateAnimated:(BOOL)animated;
 
 - (void)makeCallToDestination:(NSString *)destination;

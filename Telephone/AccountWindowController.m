@@ -138,7 +138,7 @@
     self.availableStateItem.state = NSControlStateValueOff;
     self.unavailableStateItem.state = NSControlStateValueOn;
 
-    [self.accountViewController showActiveState];
+    [self.accountViewController showUnavailableState];
 }
 
 - (void)showOfflineStateAnimated:(BOOL)animated {
@@ -158,6 +158,7 @@
 - (void)showConnectingState {
     [[self accountStatePopUp] setTitle:
      NSLocalizedString(@"Connecting...", @"Account registration Connecting... menu item.")];
+    [self.accountViewController showConnectingState];
 }
 
 - (void)makeCallToDestination:(NSString *)destination {

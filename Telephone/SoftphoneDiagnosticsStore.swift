@@ -159,6 +159,10 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
         ))
     }
 
+    @objc func markRegistering() {
+        update(registrationState: .registering, lastRegistration: snapshot.lastRegistration)
+    }
+
     @objc func markOffline() {
         update(registrationState: .offline, lastRegistration: snapshot.lastRegistration)
     }
