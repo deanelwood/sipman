@@ -18,14 +18,23 @@
 
 #import "AccountViewController.h"
 
+@import UseCases;
+
 #import "ActiveAccountViewController.h"
+#import "AKKeychain.h"
 #import "AKSIPAccount.h"
 #import "AKSIPUserAgent.h"
 #import "PreferencesControllerNotifications.h"
 
 #import "Telephone-Swift.h"
 
+static NSString * const SoftphoneAccountPasswordKey = @"Password";
 static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view);
+static NSString *SoftphoneTrimmedString(id value);
+static NSUInteger SoftphoneIndexOfAccountWithUUID(NSString *uuid, NSArray<NSDictionary *> *accounts);
+static NSString *SoftphoneKeychainServiceForAccount(NSDictionary *account);
+static NSString *SoftphoneDisplayAddress(NSString *sipAddress, NSString *username, NSString *domain);
+static NSString *SoftphonePasswordStatus(NSString *username);
 static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
 
 @interface AccountViewController () <SoftphoneCallTarget>
@@ -264,6 +273,53 @@ static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
                                                         object:self];
 }
 
+- (void)softphoneSaveAccountSettings:(NSDictionary<NSString *,id> *)settings {
+    NSString *sipAddress = SoftphoneTrimmedString(settings[AKSIPAccountKeys.sipAddress]);
+    NSString *domain = SoftphoneTrimmedString(settings[AKSIPAccountKeys.domain]);
+    NSString *username = SoftphoneTrimmedString(settings[AKSIPAccountKeys.username]);
+    NSString *newPassword = [settings[SoftphoneAccountPasswordKey] isKindOfClass:[NSString class]] ? settings[SoftphoneAccountPasswordKey] : @"";
+    if (domain.length == 0 || username.length == 0) {
+        return;
+    }
+
+    NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
+    NSMutableArray<NSDictionary *> *savedAccounts = [[defaults arrayForKey:UserDefaultsKeys.accounts] mutableCopy];
+    NSUInteger accountIndex = SoftphoneIndexOfAccountWithUUID(self.account.uuid, savedAccounts);
+    if (accountIndex == NSNotFound) {
+        return;
+    }
+
+    NSMutableDictionary *accountDict = [savedAccounts[accountIndex] mutableCopy];
+    NSString *oldUsername = SoftphoneTrimmedString(accountDict[AKSIPAccountKeys.username]);
+    NSString *oldService = SoftphoneKeychainServiceForAccount(accountDict);
+    NSString *existingPassword = oldUsername.length > 0 ? [AKKeychain passwordForService:oldService account:oldUsername] : nil;
+
+    accountDict[AKSIPAccountKeys.sipAddress] = sipAddress;
+    accountDict[AKSIPAccountKeys.domain] = domain;
+    accountDict[AKSIPAccountKeys.username] = username;
+    savedAccounts[accountIndex] = accountDict;
+    [defaults setObject:savedAccounts forKey:UserDefaultsKeys.accounts];
+
+    NSString *effectivePassword = newPassword.length > 0 ? newPassword : existingPassword;
+    if (username.length > 0 && effectivePassword.length > 0) {
+        [AKKeychain addItemWithService:SoftphoneKeychainServiceForAccount(accountDict)
+                               account:username
+                              password:effectivePassword];
+    }
+    [[self softphoneSIPAccount] updateUsername:username];
+
+    NSString *displayAddress = SoftphoneDisplayAddress(sipAddress, username, domain);
+    [self.softphoneDiagnosticsStore updateAccountSettingsWithDomain:domain
+                                                         sipAddress:displayAddress
+                                                           username:username
+                                                     passwordStatus:SoftphonePasswordStatus(username)];
+}
+
+- (void)softphoneLogOutAccount {
+    [self.callControlTarget unregisterAccount];
+    [self.softphoneDiagnosticsStore markOffline];
+}
+
 @end
 
 static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view) {
@@ -272,6 +328,42 @@ static NSArray<NSLayoutConstraint *> *FullSizeConstraintsForView(NSView *view) {
     [result addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"H:|[view]|" options:0 metrics:nil views:views]];
     [result addObjectsFromArray:[NSLayoutConstraint constraintsWithVisualFormat:@"V:|[view]|" options:0 metrics:nil views:views]];
     return result;
+}
+
+static NSString *SoftphoneTrimmedString(id value) {
+    if (![value isKindOfClass:[NSString class]]) {
+        return @"";
+    }
+    return [(NSString *)value stringByTrimmingCharactersInSet:NSCharacterSet.whitespaceAndNewlineCharacterSet];
+}
+
+static NSUInteger SoftphoneIndexOfAccountWithUUID(NSString *uuid, NSArray<NSDictionary *> *accounts) {
+    if (uuid.length == 0) {
+        return NSNotFound;
+    }
+    for (NSUInteger index = 0; index < accounts.count; index++) {
+        if ([accounts[index][AKSIPAccountKeys.uuid] isEqualToString:uuid]) {
+            return index;
+        }
+    }
+    return NSNotFound;
+}
+
+static NSString *SoftphoneKeychainServiceForAccount(NSDictionary *account) {
+    NSString *registrar = SoftphoneTrimmedString(account[AKSIPAccountKeys.registrar]);
+    NSString *domain = SoftphoneTrimmedString(account[AKSIPAccountKeys.domain]);
+    return [NSString stringWithFormat:@"SIP: %@", registrar.length > 0 ? registrar : domain];
+}
+
+static NSString *SoftphoneDisplayAddress(NSString *sipAddress, NSString *username, NSString *domain) {
+    if (sipAddress.length > 0) {
+        return sipAddress;
+    }
+    return [[SIPAddress alloc] initWithUser:username host:domain].stringValue;
+}
+
+static NSString *SoftphonePasswordStatus(NSString *username) {
+    return username.length > 0 ? @"Stored in Keychain" : @"Not configured";
 }
 
 static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port) {

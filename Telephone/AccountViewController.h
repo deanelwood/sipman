@@ -31,6 +31,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)toggleMicrophoneMuteForCallWithIdentifier:(NSString *)identifier;
 - (void)toggleHoldForCallWithIdentifier:(NSString *)identifier;
 - (void)sendDTMFDigits:(NSString *)digits forCallWithIdentifier:(NSString *)identifier;
+- (void)unregisterAccount;
 
 @end
 

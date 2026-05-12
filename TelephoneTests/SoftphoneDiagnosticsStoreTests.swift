@@ -190,6 +190,22 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
         XCTAssertTrue(sut.snapshot.usesICE)
     }
 
+    func testCanUpdateAccountSettings() {
+        let sut = makeStore()
+
+        sut.updateAccountSettings(
+            domain: "sip.example.net",
+            sipAddress: "2002@sip.example.net",
+            username: "2002",
+            passwordStatus: "Updated"
+        )
+
+        XCTAssertEqual(sut.snapshot.domain, "sip.example.net")
+        XCTAssertEqual(sut.snapshot.sipAddress, "2002@sip.example.net")
+        XCTAssertEqual(sut.snapshot.username, "2002")
+        XCTAssertEqual(sut.snapshot.passwordStatus, "Updated")
+    }
+
     func testServerAddressNormalizesHostAndPort() {
         XCTAssertEqual(SoftphoneServerAddress(" stun.example.com:3478 ").host, "stun.example.com")
         XCTAssertEqual(SoftphoneServerAddress(" stun.example.com:3478 ").port, 3478)

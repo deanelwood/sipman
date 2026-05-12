@@ -205,6 +205,25 @@ final class SoftphoneDiagnosticsStore: NSObject, ObservableObject {
         )
     }
 
+    @objc func updateAccountSettings(domain: String, sipAddress: String, username: String, passwordStatus: String) {
+        snapshot = SoftphoneDiagnosticsSnapshot(
+            accountUUID: snapshot.accountUUID,
+            domain: domain,
+            sipAddress: sipAddress,
+            username: username,
+            passwordStatus: passwordStatus,
+            registrationState: snapshot.registrationState,
+            transport: snapshot.transport,
+            port: snapshot.port,
+            stunServerAddress: snapshot.stunServerAddress,
+            turnServerAddress: snapshot.turnServerAddress,
+            usesICE: snapshot.usesICE,
+            lastRegistration: snapshot.lastRegistration,
+            activeCall: snapshot.activeCall,
+            sipLogEntries: snapshot.sipLogEntries
+        )
+    }
+
     @objc func updateActiveCall(
         identifier: String,
         remoteParty: String,

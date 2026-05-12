@@ -43,6 +43,14 @@ protocol SoftphoneCallTarget: AnyObject {
     )
     @objc(softphoneSaveNetworkSettings:)
     func softphoneSaveNetworkSettings(_ settings: [String: Any])
+    @objc(softphoneSaveAccountSettings:)
+    func softphoneSaveAccountSettings(_ settings: [String: Any])
+    @objc(softphoneLogOutAccount)
+    func softphoneLogOutAccount()
+}
+
+private enum SoftphoneAccountSettingsKey {
+    static let password = "Password"
 }
 
 @objcMembers
@@ -89,6 +97,12 @@ final class SoftphoneAppShellViewFactory: NSObject {
                 },
                 onSaveNetworkSettings: { [weak callTarget] settings in
                     callTarget?.softphoneSaveNetworkSettings(settings)
+                },
+                onSaveAccountSettings: { [weak callTarget] settings in
+                    callTarget?.softphoneSaveAccountSettings(settings)
+                },
+                onLogOut: { [weak callTarget] in
+                    callTarget?.softphoneLogOutAccount()
                 }
             )
         )
@@ -112,6 +126,8 @@ struct SoftphoneAppShellView: View {
     let onSendDTMFDigit: (String, String) -> Void
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
     let onSaveNetworkSettings: ([String: Any]) -> Void
+    let onSaveAccountSettings: ([String: Any]) -> Void
+    let onLogOut: () -> Void
 
     @AppStorage(SoftphoneAppearance.userDefaultsKey) private var appearanceModeRawValue = SoftphoneAppearanceMode.light.rawValue
     @State private var selectedItem: SoftphoneNavigationItem = .keypad
@@ -126,8 +142,8 @@ struct SoftphoneAppShellView: View {
                 SoftphoneTopStatusBar(
                     selectedItem: selectedItem,
                     registrationState: diagnosticsStore.snapshot.registrationState,
-                    accountDisplayName: accountDisplayName,
-                    sipAddress: sipAddress
+                    accountDisplayName: diagnosticsStore.snapshot.username.isEmpty ? accountDisplayName : diagnosticsStore.snapshot.username,
+                    sipAddress: diagnosticsStore.snapshot.sipAddress.isEmpty ? sipAddress : diagnosticsStore.snapshot.sipAddress
                 )
                 Divider()
                 SoftphoneMainContent(
@@ -144,7 +160,9 @@ struct SoftphoneAppShellView: View {
                     onToggleHold: onToggleHold,
                     onSendDTMFDigit: onSendDTMFDigit,
                     onSIPPing: onSIPPing,
-                    onSaveNetworkSettings: onSaveNetworkSettings
+                    onSaveNetworkSettings: onSaveNetworkSettings,
+                    onSaveAccountSettings: onSaveAccountSettings,
+                    onLogOut: onLogOut
                 )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -361,6 +379,8 @@ private struct SoftphoneMainContent: View {
     let onSendDTMFDigit: (String, String) -> Void
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
     let onSaveNetworkSettings: ([String: Any]) -> Void
+    let onSaveAccountSettings: ([String: Any]) -> Void
+    let onLogOut: () -> Void
 
     var body: some View {
         Group {
@@ -384,7 +404,9 @@ private struct SoftphoneMainContent: View {
                 SoftphoneSettingsScreen(
                     diagnosticsStore: diagnosticsStore,
                     onSIPPing: onSIPPing,
-                    onSaveNetworkSettings: onSaveNetworkSettings
+                    onSaveNetworkSettings: onSaveNetworkSettings,
+                    onSaveAccountSettings: onSaveAccountSettings,
+                    onLogOut: onLogOut
                 )
             }
         }
@@ -1651,6 +1673,8 @@ private struct SoftphoneSettingsScreen: View {
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
     let onSaveNetworkSettings: ([String: Any]) -> Void
+    let onSaveAccountSettings: ([String: Any]) -> Void
+    let onLogOut: () -> Void
 
     @State private var selectedTab: SoftphoneSettingsTab = .account
 
@@ -1662,7 +1686,9 @@ private struct SoftphoneSettingsScreen: View {
             case .account:
                 SoftphoneAccountSettingsPane(
                     diagnosticsStore: diagnosticsStore,
-                    onSaveNetworkSettings: onSaveNetworkSettings
+                    onSaveNetworkSettings: onSaveNetworkSettings,
+                    onSaveAccountSettings: onSaveAccountSettings,
+                    onLogOut: onLogOut
                 )
             case .diagnostics:
                 SoftphoneDiagnosticsSettingsPane(diagnosticsStore: diagnosticsStore)
@@ -1704,7 +1730,13 @@ private struct SoftphoneSettingsTabControl: View {
 private struct SoftphoneAccountSettingsPane: View {
     @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
     let onSaveNetworkSettings: ([String: Any]) -> Void
+    let onSaveAccountSettings: ([String: Any]) -> Void
+    let onLogOut: () -> Void
 
+    @State private var sipAddress = ""
+    @State private var accountDomain = ""
+    @State private var username = ""
+    @State private var password = ""
     @State private var stunServerAddress = ""
     @State private var turnServerAddress = ""
     @State private var usesICE = false
@@ -1713,19 +1745,61 @@ private struct SoftphoneAccountSettingsPane: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
                 SoftphoneSectionHeader(title: "Account", subtitle: "SIP account configuration.")
-                HStack(spacing: 12) {
-                    SoftphoneLabeledField(label: "SIP address", value: diagnosticsStore.snapshot.sipAddress)
-                    SoftphoneLabeledField(label: "Domain", value: diagnosticsStore.snapshot.domain)
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack(spacing: 12) {
+                        SoftphoneEditableField(
+                            label: "SIP address",
+                            placeholder: "user@example.com",
+                            text: $sipAddress
+                        )
+                        SoftphoneEditableField(
+                            label: "Domain",
+                            placeholder: "example.com",
+                            text: $accountDomain
+                        )
+                    }
+                    HStack(spacing: 12) {
+                        SoftphoneEditableField(
+                            label: "Username",
+                            placeholder: "user",
+                            text: $username
+                        )
+                        SoftphoneSecureEditableField(
+                            label: "Password",
+                            placeholder: diagnosticsStore.snapshot.passwordStatus,
+                            text: $password
+                        )
+                    }
+                    HStack(spacing: 12) {
+                        SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
+                        SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
+                    }
+                    SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
+                    HStack(spacing: 10) {
+                        Button {
+                            saveAccountSettings()
+                        } label: {
+                            Label("Save Account", systemImage: "checkmark")
+                        }
+                        .buttonStyle(SoftphoneSecondaryButtonStyle(width: 144))
+                        .disabled(!canSaveAccountSettings)
+                        .help("Save account details")
+
+                        Button {
+                            onLogOut()
+                        } label: {
+                            Label("Log Out", systemImage: "rectangle.portrait.and.arrow.right")
+                        }
+                        .buttonStyle(SoftphoneSecondaryButtonStyle(width: 118, foregroundColor: SoftphoneTheme.red))
+                        .help("Log out of this SIP account")
+
+                        Spacer()
+                    }
                 }
-                HStack(spacing: 12) {
-                    SoftphoneLabeledField(label: "Username", value: diagnosticsStore.snapshot.username)
-                    SoftphoneLabeledField(label: "Password", value: diagnosticsStore.snapshot.passwordStatus)
-                }
-                HStack(spacing: 12) {
-                    SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
-                    SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
-                }
-                SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
+                .padding(12)
+                .background(SoftphoneTheme.rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
 
                 SoftphoneNATTraversalSettingsPane(
                     stunServerAddress: $stunServerAddress,
@@ -1739,16 +1813,50 @@ private struct SoftphoneAccountSettingsPane: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .onAppear(perform: resetNetworkSettings)
+        .onAppear {
+            resetAccountSettings()
+            resetNetworkSettings()
+        }
+        .onChange(of: diagnosticsStore.snapshot.sipAddress) { _ in resetAccountSettings() }
+        .onChange(of: diagnosticsStore.snapshot.domain) { _ in resetAccountSettings() }
+        .onChange(of: diagnosticsStore.snapshot.username) { _ in resetAccountSettings() }
         .onChange(of: diagnosticsStore.snapshot.stunServerAddress) { _ in resetNetworkSettings() }
         .onChange(of: diagnosticsStore.snapshot.turnServerAddress) { _ in resetNetworkSettings() }
         .onChange(of: diagnosticsStore.snapshot.usesICE) { _ in resetNetworkSettings() }
+    }
+
+    private var canSaveAccountSettings: Bool {
+        !accountDomain.trimmed.isEmpty && !username.trimmed.isEmpty && hasAccountSettingsChanges
+    }
+
+    private var hasAccountSettingsChanges: Bool {
+        sipAddress.trimmed != diagnosticsStore.snapshot.sipAddress ||
+            accountDomain.trimmed != diagnosticsStore.snapshot.domain ||
+            username.trimmed != diagnosticsStore.snapshot.username ||
+            !password.isEmpty
     }
 
     private var hasNetworkSettingsChanges: Bool {
         SoftphoneServerAddress(stunServerAddress).displayValue != diagnosticsStore.snapshot.stunServerAddress ||
             SoftphoneServerAddress(turnServerAddress).displayValue != diagnosticsStore.snapshot.turnServerAddress ||
             usesICE != diagnosticsStore.snapshot.usesICE
+    }
+
+    private func resetAccountSettings() {
+        sipAddress = diagnosticsStore.snapshot.sipAddress
+        accountDomain = diagnosticsStore.snapshot.domain
+        username = diagnosticsStore.snapshot.username
+        password = ""
+    }
+
+    private func saveAccountSettings() {
+        onSaveAccountSettings([
+            AKSIPAccountKeys.sipAddress: sipAddress.trimmed,
+            AKSIPAccountKeys.domain: accountDomain.trimmed,
+            AKSIPAccountKeys.username: username.trimmed,
+            SoftphoneAccountSettingsKey.password: password
+        ])
+        password = ""
     }
 
     private func resetNetworkSettings() {
@@ -2004,6 +2112,28 @@ private struct SoftphoneEditableField: View {
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(SoftphoneTheme.muted)
             TextField(placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .font(.system(size: 14, weight: .semibold))
+                .padding(.horizontal, 13)
+                .frame(height: 46)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        }
+    }
+}
+
+private struct SoftphoneSecureEditableField: View {
+    let label: String
+    let placeholder: String
+    @Binding var text: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text(label)
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(SoftphoneTheme.muted)
+            SecureField(placeholder, text: $text)
                 .textFieldStyle(.plain)
                 .font(.system(size: 14, weight: .semibold))
                 .padding(.horizontal, 13)
@@ -2579,11 +2709,12 @@ private struct SoftphoneDiagnosticTile: View {
 
 private struct SoftphoneSecondaryButtonStyle: ButtonStyle {
     var width: CGFloat?
+    var foregroundColor: Color = SoftphoneTheme.muted
 
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
             .font(.system(size: 13, weight: .bold))
-            .foregroundStyle(SoftphoneTheme.muted)
+            .foregroundStyle(foregroundColor)
             .frame(width: width, height: 40)
             .frame(maxWidth: width == nil ? .infinity : nil)
             .background(SoftphoneTheme.fieldBackground)
@@ -2616,6 +2747,12 @@ private extension View {
             .frame(height: 28)
             .background(isSelected ? SoftphoneTheme.selectedControlBackground : Color.clear)
             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+private extension String {
+    var trimmed: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 

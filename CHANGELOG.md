@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added Settings controls for editing SIP account details and logging out of
+  the active account, and bumped the build number to 190.
 - Simplified Messages and History page headers by removing duplicate titles,
   centering filters, tightening empty states, and bumped the build number to 189.
 - Changed the primary navigation sidebar to an icon-only rail so the main app
