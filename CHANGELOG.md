@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Replaced the app icon with a simpler grey-gradient phone icon and bumped
+  the build number to 200.
 - Removed the Live SIP Log subtitle from Settings and bumped the build number
   to 199.
 - Added a Favourites tab to Calling, with tappable contact-row stars that
