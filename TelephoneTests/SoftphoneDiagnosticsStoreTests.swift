@@ -223,6 +223,68 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
         XCTAssertEqual(SoftphoneServerAddress(host: "turn.example.com", port: 70000).displayValue, "turn.example.com")
     }
 
+    func testSIPFlowDiagramParsesScopedCallMessages() {
+        let occurredAt = Date(timeIntervalSince1970: 1_777_771_200)
+        let row = callHistoryRow(occurredAt: occurredAt)
+        let diagram = SoftphoneSIPFlowDiagramFactory.make(
+            row: row,
+            snapshot: makeSnapshot(sipLogEntries: [
+                sipLogEntry(
+                    recordedAt: occurredAt.addingTimeInterval(1),
+                    timestamp: "12:00:01",
+                    message: """
+                    >>> INVITE sip:07508011111@example.com SIP/2.0
+                    Call-ID: call-1
+                    CSeq: 1 INVITE
+                    From: <sip:1001@example.com>
+                    To: <sip:07508011111@example.com>
+                    Via: SIP/2.0/UDP local;branch=z9hG4bK-one
+                    """
+                ),
+                sipLogEntry(
+                    recordedAt: occurredAt.addingTimeInterval(2),
+                    timestamp: "12:00:02",
+                    message: """
+                    <<< SIP/2.0 180 Ringing
+                    Call-ID: call-1
+                    CSeq: 1 INVITE
+                    From: <sip:1001@example.com>
+                    To: <sip:07508011111@example.com>
+                    Via: SIP/2.0/UDP local;branch=z9hG4bK-one
+                    """
+                )
+            ])
+        )
+
+        XCTAssertEqual(diagram.lanes, ["1001@example.com", "example.com", "07508 011111"])
+        XCTAssertEqual(diagram.events.map(\.caption), ["INVITE", "180 Ringing · INVITE"])
+        XCTAssertEqual(diagram.events.map(\.sourceLaneIndex), [0, 1])
+        XCTAssertEqual(diagram.events.map(\.destinationLaneIndex), [1, 0])
+    }
+
+    func testSIPFlowDiagramMarksRetransmits() {
+        let occurredAt = Date(timeIntervalSince1970: 1_777_771_200)
+        let row = callHistoryRow(occurredAt: occurredAt)
+        let duplicateInvite = """
+        >>> INVITE sip:07508011111@example.com SIP/2.0
+        Call-ID: call-1
+        CSeq: 1 INVITE
+        From: <sip:1001@example.com>
+        To: <sip:07508011111@example.com>
+        Via: SIP/2.0/UDP local;branch=z9hG4bK-one
+        """
+
+        let diagram = SoftphoneSIPFlowDiagramFactory.make(
+            row: row,
+            snapshot: makeSnapshot(sipLogEntries: [
+                sipLogEntry(recordedAt: occurredAt.addingTimeInterval(1), timestamp: "12:00:01", message: duplicateInvite),
+                sipLogEntry(recordedAt: occurredAt.addingTimeInterval(2), timestamp: "12:00:02", message: duplicateInvite)
+            ])
+        )
+
+        XCTAssertEqual(diagram.events.map(\.isRetransmit), [false, true])
+    }
+
     private func makeStore() -> SoftphoneDiagnosticsStore {
         SoftphoneDiagnosticsStore(
             accountUUID: "account-1",
@@ -242,6 +304,49 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
             rows: [CallStatsRow(metric: metric, live: live, numericLiveValue: NSNumber(value: numericValue))],
             quality: .good,
             sample: nil
+        )
+    }
+
+    private func callHistoryRow(occurredAt: Date) -> SoftphoneCallHistoryRowModel {
+        SoftphoneCallHistoryRowModel(
+            id: "record-1",
+            title: "07508 011111",
+            address: "07508 011111",
+            label: "phone",
+            occurredAt: occurredAt,
+            date: "Today, 12:00",
+            duration: "00:20",
+            isIncoming: false,
+            isMissed: false
+        )
+    }
+
+    private func makeSnapshot(sipLogEntries: [SoftphoneSIPLogEntryModel]) -> SoftphoneDiagnosticsSnapshot {
+        SoftphoneDiagnosticsSnapshot(
+            accountUUID: "account-1",
+            domain: "example.com",
+            sipAddress: "1001@example.com",
+            username: "1001",
+            passwordStatus: "Stored in Keychain",
+            registrationState: .registered,
+            transport: "UDP",
+            port: "5060",
+            stunServerAddress: "",
+            turnServerAddress: "",
+            usesICE: false,
+            lastRegistration: "12:00:00",
+            activeCall: nil,
+            sipLogEntries: sipLogEntries
+        )
+    }
+
+    private func sipLogEntry(recordedAt: Date, timestamp: String, message: String) -> SoftphoneSIPLogEntryModel {
+        SoftphoneSIPLogEntryModel(
+            id: UUID(),
+            recordedAt: recordedAt,
+            timestamp: timestamp,
+            level: 5,
+            message: message
         )
     }
 }

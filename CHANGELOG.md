@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Added a first History row SIP Flow Diagram context-menu action backed by a
+  scoped SIP log parser, dedicated diagram window, copy/save actions, and parser
+  tests, bumping the build number to 208.
 - Top-aligned the Favourites search controls with Contacts and simplified the
   empty Favourites page to centered "No favourites" text, bumping the build
   number to 207.

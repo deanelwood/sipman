@@ -18,6 +18,7 @@
 import AppKit
 import Contacts
 import SwiftUI
+import UniformTypeIdentifiers
 import UseCases
 
 @objc
@@ -419,7 +420,11 @@ private struct SoftphoneMainContent: View {
             case .messages:
                 SoftphoneMessagesScreen(messageStore: messageStore)
             case .history:
-                SoftphoneHistoryScreen(callHistoryStore: callHistoryStore, onPickRecord: onPickCallHistoryRecord)
+                SoftphoneHistoryScreen(
+                    callHistoryStore: callHistoryStore,
+                    diagnosticsStore: diagnosticsStore,
+                    onPickRecord: onPickCallHistoryRecord
+                )
             case .settings:
                 SoftphoneSettingsScreen(
                     diagnosticsStore: diagnosticsStore,
@@ -1773,6 +1778,7 @@ private struct SoftphoneMessagesScreen: View {
 
 private struct SoftphoneHistoryScreen: View {
     @ObservedObject var callHistoryStore: SoftphoneCallHistoryStore
+    @ObservedObject var diagnosticsStore: SoftphoneDiagnosticsStore
     let onPickRecord: (String) -> Void
 
     @State private var selectedFilter: SoftphoneCallHistoryFilter = .all
@@ -1814,6 +1820,16 @@ private struct SoftphoneHistoryScreen: View {
                                     }
                                 ) {
                                     onPickRecord(row.id)
+                                }
+                                .contextMenu {
+                                    Button("Flow Diagram...") {
+                                        SoftphoneSIPFlowDiagramWindowRegistry.shared.open(
+                                            diagram: SoftphoneSIPFlowDiagramFactory.make(
+                                                row: row,
+                                                snapshot: diagnosticsStore.snapshot
+                                            )
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -1857,6 +1873,210 @@ private struct SoftphoneHistoryScreen: View {
 
     private var emptyStateSubtitle: String {
         selectedFilter == .all ? "Completed and missed calls will appear here." : "Calls matching this filter will appear here."
+    }
+}
+
+@MainActor
+private final class SoftphoneSIPFlowDiagramWindowRegistry: NSObject, NSWindowDelegate {
+    static let shared = SoftphoneSIPFlowDiagramWindowRegistry()
+
+    private var controllers: [NSWindowController] = []
+
+    func open(diagram: SoftphoneSIPFlowDiagramModel) {
+        let content = SoftphoneSIPFlowDiagramWindow(diagram: diagram)
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 860, height: 620),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "SIP Flow Diagram"
+        window.contentView = NSHostingView(rootView: content)
+        window.center()
+        window.delegate = self
+
+        let controller = NSWindowController(window: window)
+        controllers.append(controller)
+        controller.showWindow(nil)
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        guard let closingWindow = notification.object as? NSWindow else { return }
+        controllers.removeAll { $0.window === closingWindow }
+    }
+}
+
+private struct SoftphoneSIPFlowDiagramWindow: View {
+    let diagram: SoftphoneSIPFlowDiagramModel
+
+    @State private var zoom: CGFloat = 1
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 10) {
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(diagram.title)
+                        .font(.system(size: 15, weight: .bold))
+                    Text(diagram.subtitle)
+                        .font(.system(size: 12))
+                        .foregroundStyle(SoftphoneTheme.muted)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Button {
+                    zoom = max(0.7, zoom - 0.1)
+                } label: {
+                    Image(systemName: "minus.magnifyingglass")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help("Zoom out")
+
+                Button {
+                    zoom = min(1.6, zoom + 0.1)
+                } label: {
+                    Image(systemName: "plus.magnifyingglass")
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .help("Zoom in")
+
+                Button("Copy") {
+                    copyReport()
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle(width: 74))
+                .help("Copy the flow as text")
+
+                Button("Save...") {
+                    saveReport()
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle(width: 78))
+                .help("Save the flow as text")
+            }
+            .padding(14)
+            .background(SoftphoneTheme.rowBackground)
+
+            Divider()
+
+            if diagram.events.isEmpty {
+                SoftphoneEmptyState(title: "No SIP messages found", subtitle: "The retained SIP log does not contain signaling for this history row.")
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView([.horizontal, .vertical]) {
+                    SoftphoneSIPFlowDiagramCanvas(diagram: diagram)
+                        .scaleEffect(zoom, anchor: .topLeading)
+                        .frame(
+                            width: SoftphoneSIPFlowDiagramCanvas.preferredWidth * zoom,
+                            height: SoftphoneSIPFlowDiagramCanvas.height(forEventCount: diagram.events.count) * zoom,
+                            alignment: .topLeading
+                        )
+                        .padding(18)
+                }
+                .background(SoftphoneTheme.windowBackground)
+            }
+        }
+        .frame(minWidth: 720, minHeight: 480)
+    }
+
+    private func copyReport() {
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(diagram.textReport, forType: .string)
+    }
+
+    private func saveReport() {
+        let panel = NSSavePanel()
+        panel.allowedContentTypes = [.plainText]
+        panel.nameFieldStringValue = "sip-flow.txt"
+        panel.begin { response in
+            guard response == .OK, let url = panel.url else { return }
+            try? diagram.textReport.write(to: url, atomically: true, encoding: .utf8)
+        }
+    }
+}
+
+private struct SoftphoneSIPFlowDiagramCanvas: View {
+    static let preferredWidth: CGFloat = 780
+
+    let diagram: SoftphoneSIPFlowDiagramModel
+
+    var body: some View {
+        Canvas { context, size in
+            let top: CGFloat = 62
+            let bottom: CGFloat = 28
+            let rowHeight: CGFloat = 44
+            let laneXs = lanePositions(width: size.width)
+            let diagramHeight = top + CGFloat(diagram.events.count) * rowHeight + bottom
+
+            for (index, lane) in diagram.lanes.enumerated() {
+                let x = laneXs[index]
+                var lanePath = Path()
+                lanePath.move(to: CGPoint(x: x, y: top - 22))
+                lanePath.addLine(to: CGPoint(x: x, y: diagramHeight - bottom))
+                context.stroke(lanePath, with: .color(SoftphoneTheme.hairline), lineWidth: 1)
+                context.draw(
+                    Text(lane)
+                        .font(.system(size: 12, weight: .bold))
+                        .foregroundColor(SoftphoneTheme.text),
+                    at: CGPoint(x: x, y: 22),
+                    anchor: .center
+                )
+            }
+
+            for (index, event) in diagram.events.enumerated() {
+                let y = top + CGFloat(index) * rowHeight
+                let start = CGPoint(x: laneXs[event.sourceLaneIndex], y: y)
+                let end = CGPoint(x: laneXs[event.destinationLaneIndex], y: y)
+                drawArrow(from: start, to: end, in: &context)
+
+                let labelPoint = CGPoint(x: (start.x + end.x) / 2, y: y - 10)
+                context.draw(
+                    Text(event.caption)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(SoftphoneTheme.text),
+                    at: labelPoint,
+                    anchor: .center
+                )
+
+                let detail = [event.timestamp, event.isRetransmit ? "retransmit" : nil, event.detail.isEmpty ? nil : event.detail]
+                    .compactMap { $0 }
+                    .joined(separator: " · ")
+                context.draw(
+                    Text(detail)
+                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                        .foregroundColor(SoftphoneTheme.muted),
+                    at: CGPoint(x: (start.x + end.x) / 2, y: y + 11),
+                    anchor: .center
+                )
+            }
+        }
+        .frame(width: Self.preferredWidth, height: Self.height(forEventCount: diagram.events.count))
+    }
+
+    static func height(forEventCount eventCount: Int) -> CGFloat {
+        62 + CGFloat(max(eventCount, 1)) * 44 + 28
+    }
+
+    private func lanePositions(width: CGFloat) -> [CGFloat] {
+        [width * 0.14, width * 0.5, width * 0.86]
+    }
+
+    private func drawArrow(from start: CGPoint, to end: CGPoint, in context: inout GraphicsContext) {
+        let direction: CGFloat = end.x >= start.x ? 1 : -1
+        let lineEnd = CGPoint(x: end.x - (direction * 10), y: end.y)
+        var path = Path()
+        path.move(to: start)
+        path.addLine(to: lineEnd)
+        context.stroke(path, with: .color(SoftphoneTheme.blue), lineWidth: 1.5)
+
+        var head = Path()
+        head.move(to: end)
+        head.addLine(to: CGPoint(x: end.x - direction * 10, y: end.y - 5))
+        head.addLine(to: CGPoint(x: end.x - direction * 10, y: end.y + 5))
+        head.closeSubpath()
+        context.fill(head, with: .color(SoftphoneTheme.blue))
     }
 }
 
