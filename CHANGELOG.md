@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Changed the primary navigation sidebar to an icon-only rail so the main app
+  content has more room, and bumped the build number to 188.
 - Added a Settings version label backed by the app bundle version, clarified
   version-bump guidance for future changes, and bumped the build number to 187.
 - Refined the Messages screen into a chat-style layout with conversation search

@@ -115,18 +115,12 @@ struct SoftphoneAppShellView: View {
 
     @AppStorage(SoftphoneAppearance.userDefaultsKey) private var appearanceModeRawValue = SoftphoneAppearanceMode.light.rawValue
     @State private var selectedItem: SoftphoneNavigationItem = .keypad
-    @State private var isSidebarCollapsed = false
     @State private var dialPad = SoftphoneDialPad()
     @State private var hadActiveCall = false
 
     var body: some View {
         HStack(spacing: 0) {
-            SoftphoneSidebar(
-                selectedItem: $selectedItem,
-                isCollapsed: $isSidebarCollapsed,
-                accountDisplayName: accountDisplayName,
-                sipAddress: sipAddress
-            )
+            SoftphoneSidebar(selectedItem: $selectedItem)
             Divider()
             VStack(spacing: 0) {
                 SoftphoneTopStatusBar(
@@ -261,23 +255,9 @@ private extension CallStatsQuality {
 
 private struct SoftphoneSidebar: View {
     @Binding var selectedItem: SoftphoneNavigationItem
-    @Binding var isCollapsed: Bool
-    let accountDisplayName: String
-    let sipAddress: String
 
     var body: some View {
-        VStack(alignment: isCollapsed ? .center : .leading, spacing: 20) {
-            if !isCollapsed {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("SIPMan")
-                        .font(.system(size: 14, weight: .semibold))
-                    Text(displayUsername)
-                        .font(.system(size: 11))
-                        .foregroundStyle(SoftphoneTheme.muted)
-                }
-                .transition(.opacity.combined(with: .move(edge: .leading)))
-            }
-
+        VStack(alignment: .center, spacing: 20) {
             VStack(spacing: 3) {
                 ForEach(SoftphoneNavigationItem.allCases) { item in
                     Button {
@@ -287,14 +267,8 @@ private struct SoftphoneSidebar: View {
                             Image(systemName: item.systemImageName)
                                 .font(.system(size: 15, weight: .regular))
                                 .frame(width: 18, height: 20)
-                            if !isCollapsed {
-                                Text(item.title)
-                                    .font(.system(size: 13, weight: .regular))
-                                Spacer(minLength: 0)
-                            }
                         }
-                        .frame(maxWidth: .infinity, alignment: isCollapsed ? .center : .leading)
-                        .padding(.horizontal, isCollapsed ? 0 : 5)
+                        .frame(maxWidth: .infinity, alignment: .center)
                         .frame(height: 36)
                         .foregroundStyle(selectedItem == item ? SoftphoneTheme.text : SoftphoneTheme.muted)
                         .background(selectedItem == item ? SoftphoneTheme.selectedControlBackground : Color.clear)
@@ -307,40 +281,11 @@ private struct SoftphoneSidebar: View {
 
             Spacer()
         }
-        .padding(.leading, isCollapsed ? 14 : 22)
-        .padding(.trailing, 16)
+        .padding(.horizontal, 14)
         .padding(.top, 82)
         .padding(.bottom, 16)
-        .frame(width: isCollapsed ? 64 : 300)
+        .frame(width: 64)
         .background(SoftphoneTheme.sidebarBackground)
-    }
-
-    private var displayUsername: String {
-        let username = usernameFromAddress(accountDisplayName)
-        if !username.isEmpty {
-            return username
-        }
-        let addressUsername = usernameFromAddress(sipAddress)
-        if !addressUsername.isEmpty {
-            return addressUsername
-        }
-        return "No account"
-    }
-
-    private func usernameFromAddress(_ value: String) -> String {
-        var result = value.trimmingCharacters(in: .whitespacesAndNewlines)
-        if result.hasPrefix("sip:") {
-            result.removeFirst(4)
-        }
-        if let start = result.firstIndex(of: "<"),
-           let end = result.firstIndex(of: ">"),
-           start < end {
-            result = String(result[result.index(after: start)..<end])
-        }
-        if let at = result.firstIndex(of: "@") {
-            result = String(result[..<at])
-        }
-        return result
     }
 }
 
