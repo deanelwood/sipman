@@ -44,6 +44,7 @@ nonisolated extension CallHistoryViewPresenter: ContactCallHistoryRecordGetAllUs
         return PresentationCallHistoryRecord(
             identifier: record.origin.identifier,
             contact: PresentationContact(contact: record.contact, color: contactColor(for: record)),
+            occurredAt: record.origin.date,
             date: dateFormatter.string(from: record.origin.date),
             duration: durationFormatter.string(from: TimeInterval(record.origin.duration)) ?? "",
             isIncoming: record.origin.isIncoming,

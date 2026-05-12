@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Grouped the History call list with human date labels such as Today,
+  Yesterday, and Last week, and bumped the build number to 191.
 - Added Settings controls for editing SIP account details and logging out of
   the active account, and bumped the build number to 190.
 - Simplified Messages and History page headers by removing duplicate titles,

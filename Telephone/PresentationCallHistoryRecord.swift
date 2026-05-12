@@ -22,6 +22,7 @@ import UseCases
 final class PresentationCallHistoryRecord: NSObject {
     let identifier: String
     @objc let contact: PresentationContact
+    @objc let occurredAt: Date
     @objc let date: String
     @objc let duration: String
     @objc let isIncoming: Bool
@@ -30,6 +31,7 @@ final class PresentationCallHistoryRecord: NSObject {
     init(
         identifier: String,
         contact: PresentationContact,
+        occurredAt: Date,
         date: String,
         duration: String,
         isIncoming: Bool,
@@ -37,6 +39,7 @@ final class PresentationCallHistoryRecord: NSObject {
     ) {
         self.identifier = identifier
         self.contact = contact
+        self.occurredAt = occurredAt
         self.date = date
         self.duration = duration
         self.isIncoming = isIncoming
@@ -65,6 +68,7 @@ extension PresentationCallHistoryRecord {
         return
             identifier == record.identifier &&
             contact == record.contact &&
+            occurredAt == record.occurredAt &&
             date == record.date &&
             duration == record.duration &&
             isIncoming == record.isIncoming &&

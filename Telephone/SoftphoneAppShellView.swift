@@ -1608,10 +1608,18 @@ private struct SoftphoneHistoryScreen: View {
                     .padding(48)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: 6) {
-                        ForEach(filteredRows) { row in
-                            SoftphoneCallHistoryRow(row: row) {
-                                onPickRecord(row.id)
+                    LazyVStack(alignment: .leading, spacing: 6) {
+                        ForEach(historySections) { section in
+                            Text(section.title)
+                                .font(.system(size: 11, weight: .bold))
+                                .foregroundStyle(SoftphoneTheme.muted)
+                                .padding(.horizontal, 4)
+                                .padding(.top, section == historySections.first ? 0 : 14)
+
+                            ForEach(section.rows) { row in
+                                SoftphoneCallHistoryRow(row: row) {
+                                    onPickRecord(row.id)
+                                }
                             }
                         }
                     }
@@ -1626,6 +1634,10 @@ private struct SoftphoneHistoryScreen: View {
 
     private var filteredRows: [SoftphoneCallHistoryRowModel] {
         callHistoryStore.rows(matching: selectedFilter)
+    }
+
+    private var historySections: [SoftphoneCallHistorySectionModel] {
+        callHistoryStore.sections(matching: selectedFilter)
     }
 
     private var emptyStateTitle: String {

@@ -139,6 +139,7 @@ private func makePresentationCallHistoryRecord(contact: MatchedContact, record: 
     return PresentationCallHistoryRecord(
         identifier: record.identifier,
         contact: makePresentationContact(contact: contact, color: contactColor(for: record)),
+        occurredAt: record.date,
         date: ShortRelativeDateTimeFormatter().string(from: record.date),
         duration: DurationFormatter().string(from: TimeInterval(record.duration))!,
         isIncoming: record.isIncoming,

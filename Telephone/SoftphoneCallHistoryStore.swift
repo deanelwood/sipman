@@ -21,6 +21,7 @@ struct SoftphoneCallHistoryRowModel: Equatable, Identifiable {
     let id: String
     let title: String
     let address: String
+    let occurredAt: Date
     let date: String
     let duration: String
     let isIncoming: Bool
@@ -44,6 +45,13 @@ struct SoftphoneCallHistoryRowModel: Equatable, Identifiable {
         }
         return isIncoming ? "phone.arrow.down.left.fill" : "phone.arrow.up.right.fill"
     }
+}
+
+struct SoftphoneCallHistorySectionModel: Equatable, Identifiable {
+    let title: String
+    let rows: [SoftphoneCallHistoryRowModel]
+
+    var id: String { title }
 }
 
 enum SoftphoneCallHistoryFilter: String, CaseIterable, Identifiable {
@@ -84,6 +92,63 @@ final class SoftphoneCallHistoryStore: NSObject, ObservableObject {
             return rows.filter { !$0.isIncoming }
         }
     }
+
+    func sections(
+        matching filter: SoftphoneCallHistoryFilter,
+        calendar: Calendar = .current,
+        now: Date = Date()
+    ) -> [SoftphoneCallHistorySectionModel] {
+        rows(matching: filter).reduce(into: []) { sections, row in
+            let title = sectionTitle(for: row.occurredAt, calendar: calendar, now: now)
+            if let lastSection = sections.indices.last, sections[lastSection].title == title {
+                sections[lastSection] = SoftphoneCallHistorySectionModel(
+                    title: title,
+                    rows: sections[lastSection].rows + [row]
+                )
+            } else {
+                sections.append(SoftphoneCallHistorySectionModel(title: title, rows: [row]))
+            }
+        }
+    }
+
+    private func sectionTitle(for date: Date, calendar: Calendar, now: Date) -> String {
+        if calendar.isDate(date, inSameDayAs: now) {
+            return "Today"
+        }
+        if let yesterday = calendar.date(byAdding: .day, value: -1, to: now),
+           calendar.isDate(date, inSameDayAs: yesterday) {
+            return "Yesterday"
+        }
+        if let currentWeek = calendar.dateInterval(of: .weekOfYear, for: now),
+           currentWeek.contains(date) {
+            return "This week"
+        }
+        if let currentWeek = calendar.dateInterval(of: .weekOfYear, for: now),
+           let previousWeekStart = calendar.date(byAdding: .weekOfYear, value: -1, to: currentWeek.start),
+           let previousWeek = calendar.dateInterval(of: .weekOfYear, for: previousWeekStart),
+           previousWeek.contains(date) {
+            return "Last week"
+        }
+        if let currentMonth = calendar.dateInterval(of: .month, for: now),
+           currentMonth.contains(date) {
+            return "This month"
+        }
+        if let currentMonth = calendar.dateInterval(of: .month, for: now),
+           let previousMonthStart = calendar.date(byAdding: .month, value: -1, to: currentMonth.start),
+           let previousMonth = calendar.dateInterval(of: .month, for: previousMonthStart),
+           previousMonth.contains(date) {
+            return "Last month"
+        }
+        return Self.monthYearFormatter(calendar: calendar).string(from: date)
+    }
+
+    private static func monthYearFormatter(calendar: Calendar) -> DateFormatter {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = calendar.locale ?? Locale.current
+        formatter.dateFormat = "LLLL yyyy"
+        return formatter
+    }
 }
 
 extension SoftphoneCallHistoryStore: CallHistoryView {
@@ -98,6 +163,7 @@ private extension SoftphoneCallHistoryRowModel {
             id: record.identifier,
             title: record.contact.title,
             address: record.contact.address,
+            occurredAt: record.occurredAt,
             date: record.date,
             duration: record.duration,
             isIncoming: record.isIncoming,
