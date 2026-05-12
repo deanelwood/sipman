@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Aligned the keypad screen number field, keypad grid, and bottom controls to a
+  shared width with a more rounded number field, and bumped the build number to
+  206.
 - Hid the Settings Account UUID row and tightened the Account form with a
   compact Transport menu, Port field, and account actions on one row, bumping
   the build number to 205.

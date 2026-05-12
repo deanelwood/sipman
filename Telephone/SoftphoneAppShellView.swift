@@ -1318,10 +1318,11 @@ private struct SoftphoneKeypadScreen: View {
                     }
                 }
             }
+            .frame(width: keypadBlockWidth)
 
             callControls
         }
-        .frame(maxWidth: 350)
+        .frame(width: keypadBlockWidth)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
             SoftphoneKeyboardCaptureView { action in
@@ -1339,8 +1340,12 @@ private struct SoftphoneKeypadScreen: View {
         isInCall ? 9 : 12
     }
 
+    private var keypadBlockWidth: CGFloat {
+        350
+    }
+
     private var keyWidth: CGFloat {
-        104
+        (keypadBlockWidth - (keySpacing * 2)) / 3
     }
 
     private var keyHeight: CGFloat {
@@ -1377,12 +1382,12 @@ private struct SoftphoneKeypadScreen: View {
             .foregroundStyle(displayText == placeholderText ? SoftphoneTheme.placeholder : SoftphoneTheme.text)
             .lineLimit(1)
             .minimumScaleFactor(0.7)
-            .frame(maxWidth: .infinity)
-            .frame(height: isInCall ? 40 : 50)
             .padding(.horizontal, isInCall ? 14 : 18)
+            .frame(width: keypadBlockWidth)
+            .frame(height: isInCall ? 40 : 50)
             .background(SoftphoneTheme.fieldBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
     }
 
     private var displayFontSize: CGFloat {
@@ -1432,6 +1437,7 @@ private struct SoftphoneKeypadScreen: View {
                 .buttonStyle(.plain)
                 .help("Hang up")
             }
+            .frame(width: keypadBlockWidth)
         } else {
             HStack(spacing: 12) {
                 Button("Clear") {
@@ -1458,6 +1464,7 @@ private struct SoftphoneKeypadScreen: View {
                 }
                 .buttonStyle(SoftphoneSecondaryButtonStyle())
             }
+            .frame(width: keypadBlockWidth)
         }
     }
 
