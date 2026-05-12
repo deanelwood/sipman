@@ -439,6 +439,7 @@ private struct SoftphoneMainContent: View {
 private enum SoftphoneCallingTab: String, CaseIterable, Identifiable {
     case keypad
     case contacts
+    case favourites
 
     var id: String { rawValue }
 
@@ -448,6 +449,8 @@ private enum SoftphoneCallingTab: String, CaseIterable, Identifiable {
             return "Keypad"
         case .contacts:
             return "Contacts"
+        case .favourites:
+            return "Favourites"
         }
     }
 
@@ -457,6 +460,8 @@ private enum SoftphoneCallingTab: String, CaseIterable, Identifiable {
             return "circle.grid.3x3"
         case .contacts:
             return "person.crop.circle"
+        case .favourites:
+            return "star"
         }
     }
 }
@@ -647,12 +652,13 @@ private struct SoftphoneCallingScreen: View {
     let onSendDTMFDigit: (String, String) -> Void
 
     @State private var selectedTab: SoftphoneCallingTab = .keypad
+    @AppStorage(SoftphoneContactFavourites.storageKey) private var favouriteContactIDsRawValue = SoftphoneContactFavourites().rawValue
 
     var body: some View {
         VStack(spacing: 16) {
             if activeCall == nil {
                 SoftphoneCallingTabControl(selectedTab: $selectedTab)
-                    .frame(maxWidth: 340)
+                    .frame(maxWidth: 430)
             }
 
             Group {
@@ -667,7 +673,19 @@ private struct SoftphoneCallingScreen: View {
                         onSendDTMFDigit: onSendDTMFDigit
                     )
                 } else if selectedTab == .contacts {
-                    SoftphoneContactsScreen(contactStore: contactStore, onCall: onCall)
+                    SoftphoneContactsScreen(
+                        contactStore: contactStore,
+                        favourites: favourites,
+                        onToggleFavourite: toggleFavourite,
+                        onCall: onCall
+                    )
+                } else if selectedTab == .favourites {
+                    SoftphoneFavouritesScreen(
+                        contactStore: contactStore,
+                        favourites: favourites,
+                        onToggleFavourite: toggleFavourite,
+                        onCall: onCall
+                    )
                 } else {
                     SoftphoneKeypadScreen(
                         dialPad: $dialPad,
@@ -687,6 +705,16 @@ private struct SoftphoneCallingScreen: View {
                 selectedTab = .keypad
             }
         }
+    }
+
+    private var favourites: SoftphoneContactFavourites {
+        SoftphoneContactFavourites(rawValue: favouriteContactIDsRawValue)
+    }
+
+    private func toggleFavourite(_ row: SoftphoneCallingContactRowModel) {
+        var updatedFavourites = favourites
+        updatedFavourites.toggle(row)
+        favouriteContactIDsRawValue = updatedFavourites.rawValue
     }
 
 }
@@ -721,6 +749,8 @@ private struct SoftphoneCallingTabControl: View {
 
 private struct SoftphoneContactsScreen: View {
     @ObservedObject var contactStore: SoftphoneContactBrowserStore
+    let favourites: SoftphoneContactFavourites
+    let onToggleFavourite: (SoftphoneCallingContactRowModel) -> Void
     let onCall: (String) -> Void
 
     @State private var query = ""
@@ -811,7 +841,13 @@ private struct SoftphoneContactsScreen: View {
                 ScrollView {
                     LazyVStack(spacing: 6) {
                         ForEach(rows) { row in
-                            SoftphoneContactRow(row: row) {
+                            SoftphoneContactRow(
+                                row: row,
+                                isFavourite: favourites.contains(row),
+                                onToggleFavourite: {
+                                    onToggleFavourite(row)
+                                }
+                            ) {
                                 onCall(row.number)
                             }
                         }
@@ -847,6 +883,116 @@ private struct SoftphoneContactsScreen: View {
             return
         }
         NSWorkspace.shared.open(url)
+    }
+}
+
+private struct SoftphoneFavouritesScreen: View {
+    @ObservedObject var contactStore: SoftphoneContactBrowserStore
+    let favourites: SoftphoneContactFavourites
+    let onToggleFavourite: (SoftphoneCallingContactRowModel) -> Void
+    let onCall: (String) -> Void
+
+    @State private var query = ""
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 8) {
+                SoftphoneSearchTextField(text: $query, placeholder: "Search favourites")
+                    .frame(width: 420)
+                Button {
+                    contactStore.refreshIfAuthorized(force: true)
+                } label: {
+                    if contactStore.isSyncingContacts {
+                        ProgressView()
+                            .controlSize(.small)
+                            .frame(width: 34, height: 34)
+                    } else {
+                        Image(systemName: "arrow.clockwise")
+                            .font(.system(size: 14, weight: .medium))
+                            .frame(width: 34, height: 34)
+                    }
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(SoftphoneTheme.muted)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+                .help("Refresh contacts")
+                .disabled(contactStore.accessState != .authorized || contactStore.isSyncingContacts)
+            }
+            .frame(maxWidth: .infinity)
+
+            if contactStore.isSyncingContacts && contactStore.hasLoadedContacts {
+                Label("Syncing contacts", systemImage: "arrow.triangle.2.circlepath")
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(SoftphoneTheme.muted)
+            }
+
+            content
+        }
+        .frame(maxWidth: 680)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            contactStore.refreshIfAuthorized()
+        }
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        switch contactStore.accessState {
+        case .idle:
+            SoftphoneContactsAccessPrompt(onRequestAccess: contactStore.requestAccess)
+        case .requesting:
+            SoftphoneEmptyState(title: "Requesting contacts", subtitle: "Waiting for macOS permission.")
+                .background(SoftphoneTheme.rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        case .denied:
+            SoftphoneEmptyState(title: "Contacts unavailable", subtitle: "Enable Contacts access for SIPMan in System Settings.")
+                .background(SoftphoneTheme.rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        case .failed(let message):
+            SoftphoneEmptyState(title: "Contacts failed", subtitle: message)
+                .background(SoftphoneTheme.rowBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        case .authorized:
+            let rows = contactStore.model.rows(withIDs: favourites.ids, matching: query)
+            if contactStore.isSyncingContacts && !contactStore.hasLoadedContacts {
+                SoftphoneContactsSyncingView()
+            } else if rows.isEmpty {
+                SoftphoneEmptyState(title: emptyFavouritesTitle, subtitle: emptyFavouritesSubtitle)
+                    .background(SoftphoneTheme.rowBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 6) {
+                        ForEach(rows) { row in
+                            SoftphoneContactRow(
+                                row: row,
+                                isFavourite: true,
+                                onToggleFavourite: {
+                                    onToggleFavourite(row)
+                                }
+                            ) {
+                                onCall(row.number)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            }
+        }
+    }
+
+    private var emptyFavouritesTitle: String {
+        query.isEmpty ? "No favourites" : "No favourites found"
+    }
+
+    private var emptyFavouritesSubtitle: String {
+        query.isEmpty ? "No starred contacts." : "No favourites match this search."
     }
 }
 
@@ -896,6 +1042,8 @@ private struct SoftphoneContactsSyncingView: View {
 
 private struct SoftphoneContactRow: View {
     let row: SoftphoneCallingContactRowModel
+    let isFavourite: Bool
+    let onToggleFavourite: () -> Void
     let onCall: () -> Void
 
     var body: some View {
@@ -920,6 +1068,20 @@ private struct SoftphoneContactRow: View {
             }
 
             Spacer()
+
+            Button {
+                onToggleFavourite()
+            } label: {
+                Image(systemName: isFavourite ? "star.fill" : "star")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(isFavourite ? SoftphoneTheme.gold : SoftphoneTheme.muted)
+                    .frame(width: 34, height: 30)
+            }
+            .buttonStyle(.plain)
+            .background(SoftphoneTheme.fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+            .help(isFavourite ? "Remove favourite" : "Add favourite")
 
             Button {
                 onCall()
@@ -2856,6 +3018,7 @@ private enum SoftphoneTheme {
     static let green = adaptive(light: color(0.14, 0.68, 0.34), dark: color(0.20, 0.78, 0.42))
     static let red = adaptive(light: color(0.88, 0.24, 0.22), dark: color(1.00, 0.38, 0.34))
     static let amber = adaptive(light: color(0.90, 0.55, 0.12), dark: color(1.00, 0.70, 0.22))
+    static let gold = adaptive(light: color(0.93, 0.66, 0.10), dark: color(1.00, 0.76, 0.18))
     static let windowBackground = adaptive(light: color(0.98, 0.98, 0.97), dark: color(0.07, 0.09, 0.12))
     static let sidebarBackground = adaptive(light: color(0.96, 0.95, 0.93, 0.78), dark: color(0.10, 0.13, 0.17, 0.86))
     static let controlBackground = adaptive(light: color(1.00, 1.00, 1.00, 0.82), dark: color(0.14, 0.18, 0.23, 0.92))

@@ -123,6 +123,10 @@ struct SoftphoneCallingContactsModel: Equatable {
         }
     }
 
+    func rows(withIDs ids: Set<String>, matching query: String) -> [SoftphoneCallingContactRowModel] {
+        rows(matching: query).filter { ids.contains($0.id) }
+    }
+
     private static func rows(for contact: Contact) -> [SoftphoneCallingContactRowModel] {
         contact.phones.compactMap { phone in
             let number = phone.number.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -136,6 +140,46 @@ struct SoftphoneCallingContactsModel: Equatable {
                 number: number,
                 displayNumber: displayNumber
             )
+        }
+    }
+}
+
+struct SoftphoneContactFavourites: Equatable {
+    static let storageKey = "SIPManCallingFavouriteContactRowIDs"
+
+    private(set) var ids: Set<String>
+
+    init(ids: Set<String> = []) {
+        self.ids = ids
+    }
+
+    init(rawValue: String) {
+        guard let data = rawValue.data(using: .utf8),
+              let decodedIDs = try? JSONDecoder().decode([String].self, from: data) else {
+            ids = []
+            return
+        }
+        ids = Set(decodedIDs)
+    }
+
+    var rawValue: String {
+        guard !ids.isEmpty,
+              let data = try? JSONEncoder().encode(ids.sorted()),
+              let value = String(data: data, encoding: .utf8) else {
+            return ""
+        }
+        return value
+    }
+
+    func contains(_ row: SoftphoneCallingContactRowModel) -> Bool {
+        ids.contains(row.id)
+    }
+
+    mutating func toggle(_ row: SoftphoneCallingContactRowModel) {
+        if ids.contains(row.id) {
+            ids.remove(row.id)
+        } else {
+            ids.insert(row.id)
         }
     }
 }

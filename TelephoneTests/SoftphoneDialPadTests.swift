@@ -134,4 +134,45 @@ final class SoftphoneDialPadTests: XCTestCase {
         XCTAssertEqual(sut.rows(matching: "office").map(\.name), ["Bob"])
         XCTAssertEqual(sut.rows(matching: "1001").map(\.name), ["Alice"])
     }
+
+    func testCallingContactsModelFiltersFavouriteRowsByIDAndQuery() {
+        let sut = SoftphoneCallingContactsModel(contacts: [
+            Contact(name: "Alice", phones: [Contact.Phone(number: "1001", label: "mobile")], emails: []),
+            Contact(name: "Bob", phones: [Contact.Phone(number: "2002", label: "office")], emails: [])
+        ])
+        let bob = sut.rows.first { $0.name == "Bob" }!
+
+        XCTAssertEqual(sut.rows(withIDs: [bob.id], matching: "").map(\.name), ["Bob"])
+        XCTAssertEqual(sut.rows(withIDs: [bob.id], matching: "office").map(\.name), ["Bob"])
+        XCTAssertTrue(sut.rows(withIDs: [bob.id], matching: "alice").isEmpty)
+    }
+
+    func testContactFavouritesToggleAddsAndRemovesRows() {
+        let row = SoftphoneCallingContactRowModel(
+            id: "Jane|mobile|123",
+            name: "Jane",
+            label: "mobile",
+            number: "123",
+            displayNumber: "123"
+        )
+        var sut = SoftphoneContactFavourites()
+
+        sut.toggle(row)
+        XCTAssertTrue(sut.contains(row))
+
+        sut.toggle(row)
+        XCTAssertFalse(sut.contains(row))
+    }
+
+    func testContactFavouritesRoundTripsStoredIDs() {
+        let original = SoftphoneContactFavourites(ids: ["Jane|mobile|123", "Bob|work|456"])
+
+        let sut = SoftphoneContactFavourites(rawValue: original.rawValue)
+
+        XCTAssertEqual(sut, original)
+    }
+
+    func testContactFavouritesTreatInvalidStoredValueAsEmpty() {
+        XCTAssertEqual(SoftphoneContactFavourites(rawValue: "not json"), SoftphoneContactFavourites())
+    }
 }

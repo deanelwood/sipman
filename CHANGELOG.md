@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added a Favourites tab to Calling, with tappable contact-row stars that
+  persist starred phone numbers, and bumped the build number to 198.
 - Fixed the SwiftUI registration status pill so registration attempts show
   Registering and failed/unavailable accounts show Registration failed instead
   of Registered, and bumped the build number to 197.
