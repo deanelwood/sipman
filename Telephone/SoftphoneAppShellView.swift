@@ -1430,18 +1430,19 @@ private struct SoftphoneMessagesScreen: View {
     var body: some View {
         HStack(spacing: 0) {
             VStack(alignment: .leading, spacing: 0) {
-                HStack {
-                    Text("Chats")
-                        .font(.system(size: 22, weight: .bold))
-                    Spacer()
+                HStack(spacing: 10) {
+                    SoftphoneSearchTextField(text: $searchText, placeholder: "Search conversations")
                     Button {
                     } label: {
                         Image(systemName: "square.and.pencil")
                             .font(.system(size: 17, weight: .semibold))
-                            .frame(width: 30, height: 30)
+                            .frame(width: 34, height: 34)
                     }
                     .buttonStyle(.plain)
                     .foregroundStyle(SoftphoneTheme.text)
+                    .background(SoftphoneTheme.fieldBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
                     .help("New message")
                     .disabled(true)
                 }
@@ -1449,20 +1450,24 @@ private struct SoftphoneMessagesScreen: View {
                 .padding(.top, 18)
                 .padding(.bottom, 14)
 
-                SoftphoneSearchTextField(text: $searchText, placeholder: "Search conversations")
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 14)
-
-                SoftphoneConversationFilterControl(selectedFilter: $selectedFilter)
+                HStack {
+                    Spacer()
+                    SoftphoneConversationFilterControl(selectedFilter: $selectedFilter)
+                    Spacer()
+                }
                     .padding(.horizontal, 18)
                     .padding(.bottom, 12)
 
                 if filteredConversations.isEmpty {
-                    SoftphoneEmptyState(
-                        title: emptyTitle,
-                        subtitle: emptySubtitle
-                    )
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    VStack {
+                        SoftphoneEmptyState(
+                            title: emptyTitle,
+                            subtitle: emptySubtitle
+                        )
+                        Spacer()
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.top, 44)
                 } else {
                     ScrollView {
                         LazyVStack(spacing: 0) {
@@ -1497,8 +1502,7 @@ private struct SoftphoneMessagesScreen: View {
                     .background(SoftphoneTheme.messageCanvas)
                     SoftphoneMessageComposerPlaceholder()
                 } else {
-                    SoftphoneEmptyState(title: "Select a conversation", subtitle: "SIP MESSAGE details will appear here.")
-                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    SoftphoneTheme.messageCanvas
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -1566,20 +1570,13 @@ private struct SoftphoneHistoryScreen: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("History")
-                        .font(.system(size: 21, weight: .bold))
-                    Text("Inbound and outbound SIP call history.")
-                        .font(.system(size: 13))
-                        .foregroundStyle(SoftphoneTheme.muted)
-                }
                 Spacer()
                 SoftphoneHistoryFilterControl(selectedFilter: $selectedFilter)
+                Spacer()
             }
             .padding(.horizontal, 48)
-            .padding(.top, 48)
-            .padding(.bottom, 24)
-            Divider()
+            .padding(.top, 28)
+            .padding(.bottom, 14)
             if filteredRows.isEmpty {
                 SoftphoneEmptyState(title: emptyStateTitle, subtitle: emptyStateSubtitle)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
