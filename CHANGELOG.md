@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Removed the duplicated large Account heading from Settings and bumped the
+  build number to 204.
 - Darkened the outer edge of the refreshed app icon to avoid a pale rim in the
   Dock, and bumped the build number to 203.
 - Removed the pale edge from the app icon by regenerating the grey-gradient

@@ -1964,7 +1964,6 @@ private struct SoftphoneAccountSettingsPane: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                SoftphoneSectionHeader(title: "Account", subtitle: "SIP account configuration.")
                 VStack(alignment: .leading, spacing: 12) {
                     HStack(spacing: 12) {
                         SoftphoneEditableField(
