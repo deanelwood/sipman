@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Hid the Settings Account UUID row and tightened the Account form with a
+  compact Transport menu, Port field, and account actions on one row, bumping
+  the build number to 205.
 - Removed the duplicated large Account heading from Settings and bumped the
   build number to 204.
 - Darkened the outer edge of the refreshed app icon to avoid a pale rim in the

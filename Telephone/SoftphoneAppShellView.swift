@@ -1989,16 +1989,16 @@ private struct SoftphoneAccountSettingsPane: View {
                             text: $password
                         )
                     }
-                    HStack(spacing: 12) {
+                    HStack(alignment: .bottom, spacing: 12) {
                         SoftphoneAccountTransportPicker(selectedTransport: $selectedAccountTransport)
+                            .frame(width: 126)
                         SoftphoneEditableField(
                             label: "Port",
                             placeholder: selectedAccountTransport.defaultPort,
                             text: $accountPort
                         )
-                    }
-                    SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
-                    HStack(spacing: 10) {
+                        .frame(width: 112)
+
                         Button {
                             saveAccountSettings()
                         } label: {
@@ -2451,24 +2451,36 @@ private struct SoftphoneAccountTransportPicker: View {
             Text("Transport")
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(SoftphoneTheme.muted)
-            HStack(spacing: 3) {
+            Menu {
                 ForEach(SoftphoneAccountTransport.allCases) { transport in
                     Button {
                         selectedTransport = transport
                     } label: {
-                        Text(transport.title)
-                            .softphoneSegment(isSelected: selectedTransport == transport)
-                            .frame(maxWidth: .infinity)
+                        if selectedTransport == transport {
+                            Label(transport.title, systemImage: "checkmark")
+                        } else {
+                            Text(transport.title)
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .help("Use \(transport.title)")
                 }
+            } label: {
+                HStack(spacing: 8) {
+                    Text(selectedTransport.title)
+                        .font(.system(size: 14, weight: .semibold))
+                    Spacer()
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10, weight: .bold))
+                        .foregroundStyle(SoftphoneTheme.placeholder)
+                }
+                .padding(.horizontal, 13)
+                .frame(height: 46)
+                .frame(maxWidth: .infinity)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
             }
-            .padding(4)
-            .frame(height: 46)
-            .background(SoftphoneTheme.fieldBackground)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+            .buttonStyle(.plain)
+            .help("Choose account transport")
         }
     }
 }
