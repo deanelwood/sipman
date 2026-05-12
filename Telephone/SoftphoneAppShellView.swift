@@ -321,7 +321,7 @@ private struct SoftphoneSidebar: View {
             Spacer()
         }
         .padding(.horizontal, 14)
-        .padding(.top, 82)
+        .padding(.top, 44)
         .padding(.bottom, 16)
         .frame(width: 64)
         .background(SoftphoneTheme.sidebarBackground)
@@ -350,9 +350,8 @@ private struct SoftphoneTopStatusBar: View {
                 Text(displayAddress)
             }
         }
-        .padding(.horizontal, 24)
-        .padding(.top, 8)
-        .frame(height: 84)
+        .padding(.horizontal, 20)
+        .frame(height: 44, alignment: .center)
     }
 
     private var displayAddress: String {

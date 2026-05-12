@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Reduced the main title/status bar height and vertically centered its contents,
+  with matching sidebar top spacing, and bumped the build number to 194.
 - Removed the Messages conversation type filter so the sidebar keeps only
   search and new-message controls, and bumped the build number to 193.
 - Made account Transport and Port editable in Settings, saving the selected SIP
