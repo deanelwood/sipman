@@ -1468,7 +1468,6 @@ private struct SoftphoneInlineCallHeader: View {
 private struct SoftphoneMessagesScreen: View {
     @ObservedObject var messageStore: SoftphoneMessageStore
     @State private var searchText = ""
-    @State private var selectedFilter: SoftphoneConversationFilter = .all
 
     var body: some View {
         HStack(spacing: 0) {
@@ -1491,15 +1490,7 @@ private struct SoftphoneMessagesScreen: View {
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 18)
-                .padding(.bottom, 14)
-
-                HStack {
-                    Spacer()
-                    SoftphoneConversationFilterControl(selectedFilter: $selectedFilter)
-                    Spacer()
-                }
-                    .padding(.horizontal, 18)
-                    .padding(.bottom, 12)
+                .padding(.bottom, 18)
 
                 if filteredConversations.isEmpty {
                     VStack {
@@ -1556,10 +1547,9 @@ private struct SoftphoneMessagesScreen: View {
 
     private var filteredConversations: [SoftphoneMessageConversationRowModel] {
         messageStore.conversations.filter { conversation in
-            selectedFilter.includes(conversation)
-                && (searchText.isEmpty
-                    || conversation.title.localizedCaseInsensitiveContains(searchText)
-                    || conversation.preview.localizedCaseInsensitiveContains(searchText))
+            searchText.isEmpty ||
+                conversation.title.localizedCaseInsensitiveContains(searchText) ||
+                conversation.preview.localizedCaseInsensitiveContains(searchText)
         }
     }
 
@@ -1570,37 +1560,7 @@ private struct SoftphoneMessagesScreen: View {
     private var emptySubtitle: String {
         messageStore.conversations.isEmpty
             ? "SIP MESSAGE conversations will appear here."
-            : "Try a different search or filter."
-    }
-}
-
-private enum SoftphoneConversationFilter: String, CaseIterable, Identifiable {
-    case all
-    case people
-    case groups
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .all:
-            return "All"
-        case .people:
-            return "People"
-        case .groups:
-            return "Groups"
-        }
-    }
-
-    func includes(_ conversation: SoftphoneMessageConversationRowModel) -> Bool {
-        switch self {
-        case .all:
-            return true
-        case .people:
-            return !conversation.title.contains(",")
-        case .groups:
-            return conversation.title.contains(",")
-        }
+            : "Try a different search."
     }
 }
 
@@ -2644,28 +2604,6 @@ private struct SoftphoneAvatar: View {
             .frame(width: size, height: size)
             .background(SoftphoneTheme.avatarBackground)
             .clipShape(Circle())
-    }
-}
-
-private struct SoftphoneConversationFilterControl: View {
-    @Binding var selectedFilter: SoftphoneConversationFilter
-
-    var body: some View {
-        HStack(spacing: 2) {
-            ForEach(SoftphoneConversationFilter.allCases) { filter in
-                Button {
-                    selectedFilter = filter
-                } label: {
-                    Text(filter.title)
-                        .softphoneSegment(isSelected: selectedFilter == filter)
-                }
-                .buttonStyle(.plain)
-                .help("Show \(filter.title.lowercased()) conversations")
-            }
-        }
-        .padding(3)
-        .background(SoftphoneTheme.fieldBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
     }
 }
 

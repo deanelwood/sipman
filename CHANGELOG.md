@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Removed the Messages conversation type filter so the sidebar keeps only
+  search and new-message controls, and bumped the build number to 193.
 - Made account Transport and Port editable in Settings, saving the selected SIP
   transport and registrar/proxy port with the account, and bumped the build
   number to 192.
