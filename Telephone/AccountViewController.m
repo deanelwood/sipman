@@ -36,6 +36,12 @@ static NSString *SoftphoneKeychainServiceForAccount(NSDictionary *account);
 static NSString *SoftphoneDisplayAddress(NSString *sipAddress, NSString *username, NSString *domain);
 static NSString *SoftphonePasswordStatus(NSString *username);
 static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
+static NSString *SoftphoneTransportDisplayName(AKSIPAccount *account);
+static NSString *SoftphoneAccountTransport(id value);
+static NSInteger SoftphoneAccountPort(id value);
+static NSInteger SoftphoneConfiguredAccountPort(AKSIPAccount *account);
+static NSString *SoftphonePortDisplayValue(NSInteger port);
+static NSString *SoftphoneRegistrarString(NSString *domain, NSString *existingRegistrar, NSInteger port);
 
 @interface AccountViewController () <SoftphoneCallTarget>
 
@@ -126,6 +132,8 @@ static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
                                                                           turnServerAddress:SoftphoneServerAddressString([defaults stringForKey:UserDefaultsKeys.turnServerHost],
                                                                                                                          [defaults integerForKey:UserDefaultsKeys.turnServerPort])
                                                                                      usesICE:[defaults boolForKey:UserDefaultsKeys.useICE]];
+    [self.softphoneDiagnosticsStore updateTransport:SoftphoneTransportDisplayName(SIPAccount)
+                                               port:SoftphonePortDisplayValue(SoftphoneConfiguredAccountPort(SIPAccount))];
     self.softphoneActiveCallStore = [[SoftphoneActiveCallStore alloc] init];
 
     [self.callHistoryViewEventTargetFactory makeWithAccount:self.account
@@ -278,6 +286,8 @@ static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
     NSString *domain = SoftphoneTrimmedString(settings[AKSIPAccountKeys.domain]);
     NSString *username = SoftphoneTrimmedString(settings[AKSIPAccountKeys.username]);
     NSString *newPassword = [settings[SoftphoneAccountPasswordKey] isKindOfClass:[NSString class]] ? settings[SoftphoneAccountPasswordKey] : @"";
+    NSString *transport = SoftphoneAccountTransport(settings[AKSIPAccountKeys.transport]);
+    NSInteger port = SoftphoneAccountPort(settings[AKSIPAccountKeys.proxyPort]);
     if (domain.length == 0 || username.length == 0) {
         return;
     }
@@ -297,6 +307,9 @@ static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
     accountDict[AKSIPAccountKeys.sipAddress] = sipAddress;
     accountDict[AKSIPAccountKeys.domain] = domain;
     accountDict[AKSIPAccountKeys.username] = username;
+    accountDict[AKSIPAccountKeys.transport] = transport;
+    accountDict[AKSIPAccountKeys.proxyPort] = @(port);
+    accountDict[AKSIPAccountKeys.registrar] = SoftphoneRegistrarString(domain, accountDict[AKSIPAccountKeys.registrar], port);
     savedAccounts[accountIndex] = accountDict;
     [defaults setObject:savedAccounts forKey:UserDefaultsKeys.accounts];
 
@@ -313,6 +326,8 @@ static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port);
                                                          sipAddress:displayAddress
                                                            username:username
                                                      passwordStatus:SoftphonePasswordStatus(username)];
+    [self.softphoneDiagnosticsStore updateTransport:transport
+                                               port:SoftphonePortDisplayValue(port)];
 }
 
 - (void)softphoneLogOutAccount {
@@ -375,4 +390,57 @@ static NSString *SoftphoneServerAddressString(NSString *host, NSInteger port) {
         return [[ServiceAddress alloc] initWithHost:trimmedHost port:@(port).stringValue].stringValue;
     }
     return [[ServiceAddress alloc] initWithHost:trimmedHost].stringValue;
+}
+
+static NSString *SoftphoneTransportDisplayName(AKSIPAccount *account) {
+    if (account.transport == TransportTCP) {
+        return AKSIPAccountKeys.transportTCP;
+    }
+    if (account.transport == TransportTLS) {
+        return AKSIPAccountKeys.transportTLS;
+    }
+    return AKSIPAccountKeys.transportUDP;
+}
+
+static NSString *SoftphoneAccountTransport(id value) {
+    NSString *transport = SoftphoneTrimmedString(value).uppercaseString;
+    if ([transport isEqualToString:AKSIPAccountKeys.transportTCP]) {
+        return AKSIPAccountKeys.transportTCP;
+    }
+    if ([transport isEqualToString:AKSIPAccountKeys.transportTLS]) {
+        return AKSIPAccountKeys.transportTLS;
+    }
+    return AKSIPAccountKeys.transportUDP;
+}
+
+static NSInteger SoftphoneAccountPort(id value) {
+    if (![value respondsToSelector:@selector(integerValue)]) {
+        return 0;
+    }
+    NSInteger port = [value integerValue];
+    return port > 0 && port <= 65535 ? port : 0;
+}
+
+static NSInteger SoftphoneConfiguredAccountPort(AKSIPAccount *account) {
+    NSInteger registrarPort = account.registrar.port.integerValue;
+    if (registrarPort > 0 && registrarPort <= 65535) {
+        return registrarPort;
+    }
+    return SoftphoneAccountPort(@(account.proxyPort));
+}
+
+static NSString *SoftphonePortDisplayValue(NSInteger port) {
+    return port > 0 && port <= 65535 ? [NSString stringWithFormat:@"%ld", (long)port] : @"Default";
+}
+
+static NSString *SoftphoneRegistrarString(NSString *domain, NSString *existingRegistrar, NSInteger port) {
+    NSString *trimmedRegistrar = SoftphoneTrimmedString(existingRegistrar);
+    NSString *registrarHost = trimmedRegistrar.length > 0 ? [[ServiceAddress alloc] initWithString:trimmedRegistrar].host : SoftphoneTrimmedString(domain);
+    if (registrarHost.length == 0) {
+        return @"";
+    }
+    if (port > 0 && port <= 65535) {
+        return [[ServiceAddress alloc] initWithHost:registrarHost port:@(port).stringValue].stringValue;
+    }
+    return trimmedRegistrar.length > 0 ? [[ServiceAddress alloc] initWithHost:registrarHost].stringValue : @"";
 }

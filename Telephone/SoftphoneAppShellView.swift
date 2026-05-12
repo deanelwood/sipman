@@ -53,6 +53,27 @@ private enum SoftphoneAccountSettingsKey {
     static let password = "Password"
 }
 
+private enum SoftphoneAccountTransport: String, CaseIterable, Identifiable {
+    case udp = "UDP"
+    case tcp = "TCP"
+    case tls = "TLS"
+
+    var id: String { rawValue }
+    var title: String { rawValue }
+    var defaultPort: String { self == .tls ? "5061" : "5060" }
+
+    init(displayValue: String) {
+        switch displayValue.trimmed.uppercased() {
+        case Self.tcp.rawValue:
+            self = .tcp
+        case Self.tls.rawValue:
+            self = .tls
+        default:
+            self = .udp
+        }
+    }
+}
+
 @objcMembers
 final class SoftphoneAppShellViewFactory: NSObject {
     @MainActor
@@ -1749,6 +1770,8 @@ private struct SoftphoneAccountSettingsPane: View {
     @State private var accountDomain = ""
     @State private var username = ""
     @State private var password = ""
+    @State private var selectedAccountTransport: SoftphoneAccountTransport = .udp
+    @State private var accountPort = ""
     @State private var stunServerAddress = ""
     @State private var turnServerAddress = ""
     @State private var usesICE = false
@@ -1783,8 +1806,12 @@ private struct SoftphoneAccountSettingsPane: View {
                         )
                     }
                     HStack(spacing: 12) {
-                        SoftphoneLabeledField(label: "Transport", value: diagnosticsStore.snapshot.transport)
-                        SoftphoneLabeledField(label: "Port", value: diagnosticsStore.snapshot.port)
+                        SoftphoneAccountTransportPicker(selectedTransport: $selectedAccountTransport)
+                        SoftphoneEditableField(
+                            label: "Port",
+                            placeholder: selectedAccountTransport.defaultPort,
+                            text: $accountPort
+                        )
                     }
                     SoftphoneLabeledField(label: "Account UUID", value: diagnosticsStore.snapshot.accountUUID)
                     HStack(spacing: 10) {
@@ -1832,20 +1859,39 @@ private struct SoftphoneAccountSettingsPane: View {
         .onChange(of: diagnosticsStore.snapshot.sipAddress) { _ in resetAccountSettings() }
         .onChange(of: diagnosticsStore.snapshot.domain) { _ in resetAccountSettings() }
         .onChange(of: diagnosticsStore.snapshot.username) { _ in resetAccountSettings() }
+        .onChange(of: diagnosticsStore.snapshot.transport) { _ in resetAccountSettings() }
+        .onChange(of: diagnosticsStore.snapshot.port) { _ in resetAccountSettings() }
         .onChange(of: diagnosticsStore.snapshot.stunServerAddress) { _ in resetNetworkSettings() }
         .onChange(of: diagnosticsStore.snapshot.turnServerAddress) { _ in resetNetworkSettings() }
         .onChange(of: diagnosticsStore.snapshot.usesICE) { _ in resetNetworkSettings() }
     }
 
     private var canSaveAccountSettings: Bool {
-        !accountDomain.trimmed.isEmpty && !username.trimmed.isEmpty && hasAccountSettingsChanges
+        !accountDomain.trimmed.isEmpty &&
+            !username.trimmed.isEmpty &&
+            normalizedAccountPort != nil &&
+            hasAccountSettingsChanges
     }
 
     private var hasAccountSettingsChanges: Bool {
         sipAddress.trimmed != diagnosticsStore.snapshot.sipAddress ||
             accountDomain.trimmed != diagnosticsStore.snapshot.domain ||
             username.trimmed != diagnosticsStore.snapshot.username ||
+            selectedAccountTransport.rawValue != diagnosticsStore.snapshot.transport.trimmed.uppercased() ||
+            accountPortDisplayValue != diagnosticsStore.snapshot.port ||
             !password.isEmpty
+    }
+
+    private var normalizedAccountPort: Int? {
+        let trimmedPort = accountPort.trimmed
+        guard !trimmedPort.isEmpty else { return 0 }
+        guard let port = Int(trimmedPort), (1...65535).contains(port) else { return nil }
+        return port
+    }
+
+    private var accountPortDisplayValue: String {
+        guard let port = normalizedAccountPort, port > 0 else { return "Default" }
+        return "\(port)"
     }
 
     private var hasNetworkSettingsChanges: Bool {
@@ -1859,13 +1905,18 @@ private struct SoftphoneAccountSettingsPane: View {
         accountDomain = diagnosticsStore.snapshot.domain
         username = diagnosticsStore.snapshot.username
         password = ""
+        selectedAccountTransport = SoftphoneAccountTransport(displayValue: diagnosticsStore.snapshot.transport)
+        accountPort = diagnosticsStore.snapshot.port == "Default" ? "" : diagnosticsStore.snapshot.port
     }
 
     private func saveAccountSettings() {
+        let port = normalizedAccountPort ?? 0
         onSaveAccountSettings([
             AKSIPAccountKeys.sipAddress: sipAddress.trimmed,
             AKSIPAccountKeys.domain: accountDomain.trimmed,
             AKSIPAccountKeys.username: username.trimmed,
+            AKSIPAccountKeys.transport: selectedAccountTransport.rawValue,
+            AKSIPAccountKeys.proxyPort: port,
             SoftphoneAccountSettingsKey.password: password
         ])
         password = ""
@@ -2167,6 +2218,36 @@ private struct SoftphoneTransportPicker: View {
                 .foregroundStyle(SoftphoneTheme.muted)
             HStack(spacing: 3) {
                 ForEach(SoftphoneSIPPingTransport.allCases) { transport in
+                    Button {
+                        selectedTransport = transport
+                    } label: {
+                        Text(transport.title)
+                            .softphoneSegment(isSelected: selectedTransport == transport)
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Use \(transport.title)")
+                }
+            }
+            .padding(4)
+            .frame(height: 46)
+            .background(SoftphoneTheme.fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        }
+    }
+}
+
+private struct SoftphoneAccountTransportPicker: View {
+    @Binding var selectedTransport: SoftphoneAccountTransport
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            Text("Transport")
+                .font(.system(size: 12, weight: .bold))
+                .foregroundStyle(SoftphoneTheme.muted)
+            HStack(spacing: 3) {
+                ForEach(SoftphoneAccountTransport.allCases) { transport in
                     Button {
                         selectedTransport = transport
                     } label: {

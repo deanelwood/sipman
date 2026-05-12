@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Made account Transport and Port editable in Settings, saving the selected SIP
+  transport and registrar/proxy port with the account, and bumped the build
+  number to 192.
 - Grouped the History call list with human date labels such as Today,
   Yesterday, and Last week, and bumped the build number to 191.
 - Added Settings controls for editing SIP account details and logging out of
