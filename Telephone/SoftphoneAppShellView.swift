@@ -2002,72 +2002,97 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
 
     let diagram: SoftphoneSIPFlowDiagramModel
 
+    @State private var selectedPacket: SoftphoneSIPFlowEventModel?
+
     var body: some View {
-        Canvas { context, size in
-            let top: CGFloat = 62
-            let bottom: CGFloat = 28
-            let rowHeight: CGFloat = 44
-            let laneXs = lanePositions(width: size.width, laneCount: diagram.lanes.count)
-            let diagramHeight = top + CGFloat(diagram.events.count) * rowHeight + bottom
+        ZStack(alignment: .topLeading) {
+            Canvas { context, size in
+                let top: CGFloat = 62
+                let bottom: CGFloat = 28
+                let rowHeight: CGFloat = 44
+                let laneXs = lanePositions(width: size.width, laneCount: diagram.lanes.count)
+                let diagramHeight = top + CGFloat(diagram.events.count) * rowHeight + bottom
 
-            context.draw(
-                Text("Time")
-                    .font(.system(size: 10, weight: .semibold, design: .monospaced))
-                    .foregroundColor(SoftphoneTheme.muted),
-                at: CGPoint(x: 54, y: 22),
-                anchor: .trailing
-            )
-
-            for (index, lane) in diagram.lanes.enumerated() {
-                let x = laneXs[index]
-                var lanePath = Path()
-                lanePath.move(to: CGPoint(x: x, y: top - 22))
-                lanePath.addLine(to: CGPoint(x: x, y: diagramHeight - bottom))
-                context.stroke(lanePath, with: .color(SoftphoneTheme.hairline), lineWidth: 1)
                 context.draw(
-                    Text(lane)
-                        .font(.system(size: 12, weight: .bold))
-                        .foregroundColor(SoftphoneTheme.text),
-                    at: CGPoint(x: x, y: 22),
-                    anchor: .center
-                )
-            }
-
-            for (index, event) in diagram.events.enumerated() {
-                let y = top + CGFloat(index) * rowHeight
-                context.draw(
-                    Text(event.timestamp)
-                        .font(.system(size: 10, weight: .regular, design: .monospaced))
+                    Text("Time")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
                         .foregroundColor(SoftphoneTheme.muted),
-                    at: CGPoint(x: 54, y: y),
+                    at: CGPoint(x: 54, y: 22),
                     anchor: .trailing
                 )
 
-                let start = CGPoint(x: laneXs[event.sourceLaneIndex], y: y)
-                let end = CGPoint(x: laneXs[event.destinationLaneIndex], y: y)
-                drawArrow(from: start, to: end, in: &context)
-
-                let labelPoint = CGPoint(x: (start.x + end.x) / 2, y: y - 10)
-                context.draw(
-                    Text(event.caption)
-                        .font(.system(size: 12, weight: .semibold))
-                        .foregroundColor(SoftphoneTheme.text),
-                    at: labelPoint,
-                    anchor: .center
-                )
-
-                let detail = [event.isRetransmit ? "retransmit" : nil, event.detail.isEmpty ? nil : event.detail]
-                    .compactMap { $0 }
-                    .joined(separator: " · ")
-                if !detail.isEmpty {
+                for (index, lane) in diagram.lanes.enumerated() {
+                    let x = laneXs[index]
+                    var lanePath = Path()
+                    lanePath.move(to: CGPoint(x: x, y: top - 22))
+                    lanePath.addLine(to: CGPoint(x: x, y: diagramHeight - bottom))
+                    context.stroke(lanePath, with: .color(SoftphoneTheme.hairline), lineWidth: 1)
                     context.draw(
-                        Text(detail)
-                            .font(.system(size: 10, weight: .regular, design: .monospaced))
-                            .foregroundColor(SoftphoneTheme.muted),
-                        at: CGPoint(x: (start.x + end.x) / 2, y: y + 11),
+                        Text(lane)
+                            .font(.system(size: 12, weight: .bold))
+                            .foregroundColor(SoftphoneTheme.text),
+                        at: CGPoint(x: x, y: 22),
                         anchor: .center
                     )
                 }
+
+                for (index, event) in diagram.events.enumerated() {
+                    let y = top + CGFloat(index) * rowHeight
+                    context.draw(
+                        Text(event.timestamp)
+                            .font(.system(size: 10, weight: .regular, design: .monospaced))
+                            .foregroundColor(SoftphoneTheme.muted),
+                        at: CGPoint(x: 54, y: y),
+                        anchor: .trailing
+                    )
+
+                    let start = CGPoint(x: laneXs[event.sourceLaneIndex], y: y)
+                    let end = CGPoint(x: laneXs[event.destinationLaneIndex], y: y)
+                    drawArrow(from: start, to: end, in: &context)
+
+                    let detail = [event.isRetransmit ? "retransmit" : nil, event.detail.isEmpty ? nil : event.detail]
+                        .compactMap { $0 }
+                        .joined(separator: " · ")
+                    if !detail.isEmpty {
+                        context.draw(
+                            Text(detail)
+                                .font(.system(size: 10, weight: .regular, design: .monospaced))
+                                .foregroundColor(SoftphoneTheme.muted),
+                            at: CGPoint(x: (start.x + end.x) / 2, y: y + 11),
+                            anchor: .center
+                        )
+                    }
+                }
+            }
+
+            ForEach(Array(diagram.events.enumerated()), id: \.element.id) { index, event in
+                let point = labelPoint(for: event, eventIndex: index)
+                Button {
+                    selectedPacket = event
+                } label: {
+                    Text(event.caption)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(SoftphoneTheme.blue)
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Show SIP packet")
+                .popover(
+                    isPresented: Binding(
+                        get: { selectedPacket?.id == event.id },
+                        set: { isPresented in
+                            if !isPresented {
+                                selectedPacket = nil
+                            }
+                        }
+                    ),
+                    arrowEdge: .top
+                ) {
+                    SoftphoneSIPPacketPopover(event: event)
+                }
+                .position(point)
             }
         }
         .frame(width: Self.preferredWidth, height: Self.height(forEventCount: diagram.events.count))
@@ -2090,6 +2115,14 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
         }
     }
 
+    private func labelPoint(for event: SoftphoneSIPFlowEventModel, eventIndex: Int) -> CGPoint {
+        let laneXs = lanePositions(width: Self.preferredWidth, laneCount: diagram.lanes.count)
+        let y = CGFloat(62 + eventIndex * 44 - 10)
+        let startX = laneXs[event.sourceLaneIndex]
+        let endX = laneXs[event.destinationLaneIndex]
+        return CGPoint(x: (startX + endX) / 2, y: y)
+    }
+
     private func drawArrow(from start: CGPoint, to end: CGPoint, in context: inout GraphicsContext) {
         let direction: CGFloat = end.x >= start.x ? 1 : -1
         let lineEnd = CGPoint(x: end.x - (direction * 10), y: end.y)
@@ -2104,6 +2137,50 @@ private struct SoftphoneSIPFlowDiagramCanvas: View {
         head.addLine(to: CGPoint(x: end.x - direction * 10, y: end.y + 5))
         head.closeSubpath()
         context.fill(head, with: .color(SoftphoneTheme.blue))
+    }
+}
+
+private struct SoftphoneSIPPacketPopover: View {
+    let event: SoftphoneSIPFlowEventModel
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(event.caption)
+                        .font(.system(size: 13, weight: .bold))
+                    Text(event.timestamp)
+                        .font(.system(size: 11, weight: .regular, design: .monospaced))
+                        .foregroundStyle(SoftphoneTheme.muted)
+                }
+
+                Spacer()
+
+                Button("Copy") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString(event.packet, forType: .string)
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle(width: 68))
+            }
+
+            ScrollView([.horizontal, .vertical]) {
+                Text(event.packet)
+                    .font(.system(size: 11, weight: .regular, design: .monospaced))
+                    .foregroundStyle(SoftphoneTheme.text)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(10)
+            }
+            .frame(width: 520, height: 300)
+            .background(SoftphoneTheme.windowBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                    .stroke(SoftphoneTheme.hairline)
+            )
+        }
+        .padding(14)
+        .frame(width: 560)
     }
 }
 

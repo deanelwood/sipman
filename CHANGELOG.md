@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Made SIP Flow Diagram message labels clickable, opening a compact popover
+  with the full SIP packet headers/body and a copy action, bumping the build
+  number to 212.
 - Updated SIP Flow Diagram lanes to use captured SIP transport endpoints
   instead of the dialed phone number, and enriched new SIP logs with packet
   source/destination metadata, bumping the build number to 211.

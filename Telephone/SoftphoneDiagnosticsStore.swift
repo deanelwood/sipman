@@ -390,6 +390,7 @@ struct SoftphoneSIPFlowEventModel: Equatable, Identifiable {
     let timestamp: String
     let caption: String
     let detail: String
+    let packet: String
     let sourceLaneIndex: Int
     let destinationLaneIndex: Int
     let isRetransmit: Bool
@@ -482,6 +483,7 @@ enum SoftphoneSIPFlowDiagramFactory {
                 timestamp: event.timestamp,
                 caption: event.caption,
                 detail: event.detail,
+                packet: event.packet,
                 sourceLaneIndex: event.sourceLaneIndex,
                 destinationLaneIndex: event.destinationLaneIndex,
                 isRetransmit: isRetransmit
@@ -502,6 +504,7 @@ private struct SoftphoneParsedSIPFlowEvent: Equatable {
     let method: String
     let caption: String
     let detail: String
+    let packet: String
     let localEndpoint: String?
     let peerEndpoint: String?
     let searchText: String
@@ -526,6 +529,7 @@ private struct SoftphoneParsedSIPFlowEvent: Equatable {
                 timestamp: timestamp,
                 caption: caption,
                 detail: detail,
+                packet: packet,
                 sourceLaneIndex: 0,
                 destinationLaneIndex: 1,
                 isRetransmit: false
@@ -535,6 +539,7 @@ private struct SoftphoneParsedSIPFlowEvent: Equatable {
                 timestamp: timestamp,
                 caption: caption,
                 detail: detail,
+                packet: packet,
                 sourceLaneIndex: 1,
                 destinationLaneIndex: 0,
                 isRetransmit: false
@@ -592,6 +597,7 @@ private enum SoftphoneSIPFlowParser {
             method: method,
             caption: caption,
             detail: portDisplay(firstLine: firstLine, headers: headers),
+            packet: envelope.message,
             localEndpoint: localEndpoint(direction: direction, envelope: envelope, headers: headers),
             peerEndpoint: peerEndpoint(direction: direction, envelope: envelope),
             searchText: envelope.message.lowercased()

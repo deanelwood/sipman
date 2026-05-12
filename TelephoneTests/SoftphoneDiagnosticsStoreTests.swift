@@ -259,6 +259,8 @@ final class SoftphoneDiagnosticsStoreTests: XCTestCase {
         XCTAssertEqual(diagram.lanes, ["192.168.1.25:5060", "203.0.113.10:5060"])
         XCTAssertEqual(diagram.events.map(\.caption), ["INVITE", "180 RINGING"])
         XCTAssertEqual(diagram.events.map(\.detail), [":5060", ":5060"])
+        XCTAssertTrue(diagram.events[0].packet.hasPrefix("INVITE sip:07508011111@example.com SIP/2.0"))
+        XCTAssertTrue(diagram.events[0].packet.contains("Call-ID: call-1"))
         XCTAssertEqual(diagram.events.map(\.sourceLaneIndex), [0, 1])
         XCTAssertEqual(diagram.events.map(\.destinationLaneIndex), [1, 0])
     }
