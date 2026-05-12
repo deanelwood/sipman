@@ -1793,6 +1793,7 @@ private struct SoftphoneAccountSettingsPane: View {
                     onSave: saveNetworkSettings
                 )
                 SoftphoneAppearanceSettingsRow()
+                SoftphoneVersionSettingsRow()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -1921,6 +1922,40 @@ private struct SoftphoneAppearanceSettingsRow: View {
                 appearanceModeRawValue = SoftphoneAppearanceMode(isDarkModeEnabled: isEnabled).rawValue
             }
         )
+    }
+}
+
+private struct SoftphoneVersionSettingsRow: View {
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "number")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(SoftphoneTheme.blue)
+                .frame(width: 32, height: 32)
+                .background(SoftphoneTheme.fieldBackground)
+                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Version")
+                    .font(.system(size: 13, weight: .semibold))
+                Text(displayVersion)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(SoftphoneTheme.muted)
+            }
+
+            Spacer()
+        }
+        .padding(12)
+        .background(SoftphoneTheme.rowBackground)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+    }
+
+    private var displayVersion: String {
+        let info = Bundle.main.infoDictionary
+        let marketingVersion = info?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        let buildNumber = info?["CFBundleVersion"] as? String ?? "Unknown"
+        return "\(marketingVersion) (\(buildNumber))"
     }
 }
 

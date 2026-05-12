@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added a Settings version label backed by the app bundle version, clarified
+  version-bump guidance for future changes, and bumped the build number to 187.
 - Refined the Messages screen into a chat-style layout with conversation search
   and filters, cleaner message cards, a stronger conversation header, and
   bumped the build number to 186.
