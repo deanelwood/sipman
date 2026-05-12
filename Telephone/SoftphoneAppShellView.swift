@@ -2149,20 +2149,41 @@ private struct SoftphoneSecureEditableField: View {
     let label: String
     let placeholder: String
     @Binding var text: String
+    @State private var isRevealed = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(label)
                 .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(SoftphoneTheme.muted)
-            SecureField(placeholder, text: $text)
+            HStack(spacing: 8) {
+                Group {
+                    if isRevealed {
+                        TextField(placeholder, text: $text)
+                    } else {
+                        SecureField(placeholder, text: $text)
+                    }
+                }
                 .textFieldStyle(.plain)
                 .font(.system(size: 14, weight: .semibold))
-                .padding(.horizontal, 13)
-                .frame(height: 46)
-                .background(SoftphoneTheme.fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+
+                Button {
+                    isRevealed.toggle()
+                } label: {
+                    Image(systemName: isRevealed ? "eye.slash" : "eye")
+                        .font(.system(size: 14, weight: .semibold))
+                        .frame(width: 28, height: 28)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(SoftphoneTheme.muted)
+                .help(isRevealed ? "Hide password" : "Show password")
+            }
+            .padding(.leading, 13)
+            .padding(.trailing, 9)
+            .frame(height: 46)
+            .background(SoftphoneTheme.fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         }
     }
 }

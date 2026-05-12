@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Added an eye button to the Settings password field for temporarily revealing
+  or hiding the entered password, and bumped the build number to 195.
 - Reduced the main title/status bar height and vertically centered its contents,
   with matching sidebar top spacing, and bumped the build number to 194.
 - Removed the Messages conversation type filter so the sidebar keeps only
