@@ -34,6 +34,11 @@ final class SoftphoneAppearanceTests: XCTestCase {
         XCTAssertEqual(SoftphoneAppearanceMode.light.nsAppearanceName, .aqua)
     }
 
+    func testTogglesAppearanceMode() {
+        XCTAssertEqual(SoftphoneAppearanceMode.light.toggled, .dark)
+        XCTAssertEqual(SoftphoneAppearanceMode.dark.toggled, .light)
+    }
+
     func testUsesStableUserDefaultsKey() {
         XCTAssertEqual(SoftphoneAppearance.userDefaultsKey, "SIPManAppearanceMode")
     }

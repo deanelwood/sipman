@@ -37,6 +37,10 @@ enum SoftphoneAppearanceMode: String {
     var nsAppearanceName: NSAppearance.Name {
         isDarkModeEnabled ? .darkAqua : .aqua
     }
+
+    var toggled: SoftphoneAppearanceMode {
+        isDarkModeEnabled ? .light : .dark
+    }
 }
 
 enum SoftphoneAppearance {

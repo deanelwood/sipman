@@ -2231,6 +2231,7 @@ private struct SoftphoneSettingsScreen: View {
             HStack(alignment: .center) {
                 SoftphoneSettingsTabControl(selectedTab: $selectedTab)
                 Spacer()
+                SoftphoneAppearanceModeButton()
                 SoftphoneVersionLabelButton {
                     showsThirdPartyNotices = true
                 }
@@ -2370,7 +2371,6 @@ private struct SoftphoneAccountSettingsPane: View {
                     canSave: hasNetworkSettingsChanges,
                     onSave: saveNetworkSettings
                 )
-                SoftphoneAppearanceSettingsRow()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -2514,49 +2514,28 @@ private struct SoftphoneNATTraversalSettingsPane: View {
     }
 }
 
-private struct SoftphoneAppearanceSettingsRow: View {
+private struct SoftphoneAppearanceModeButton: View {
     @AppStorage(SoftphoneAppearance.userDefaultsKey) private var appearanceModeRawValue = SoftphoneAppearanceMode.light.rawValue
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: appearanceMode.isDarkModeEnabled ? "moon.fill" : "sun.max.fill")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(appearanceMode.isDarkModeEnabled ? SoftphoneTheme.blue : SoftphoneTheme.amber)
+        Button {
+            appearanceModeRawValue = appearanceMode.toggled.rawValue
+        } label: {
+            Image(systemName: appearanceMode.isDarkModeEnabled ? "sun.max.fill" : "moon.fill")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(appearanceMode.isDarkModeEnabled ? SoftphoneTheme.amber : SoftphoneTheme.blue)
                 .frame(width: 32, height: 32)
                 .background(SoftphoneTheme.fieldBackground)
                 .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Dark mode")
-                    .font(.system(size: 13, weight: .semibold))
-                Text("Use SIPMan's dark palette.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(SoftphoneTheme.muted)
-            }
-
-            Spacer()
-
-            Toggle("", isOn: isDarkModeEnabled)
-                .labelsHidden()
-                .toggleStyle(.switch)
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         }
-        .padding(12)
-        .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        .buttonStyle(.plain)
+        .accessibilityLabel(appearanceMode.isDarkModeEnabled ? "Switch to light mode" : "Switch to dark mode")
+        .help(appearanceMode.isDarkModeEnabled ? "Switch to light mode" : "Switch to dark mode")
     }
 
     private var appearanceMode: SoftphoneAppearanceMode {
         SoftphoneAppearanceMode(rawValue: appearanceModeRawValue) ?? .light
-    }
-
-    private var isDarkModeEnabled: Binding<Bool> {
-        Binding(
-            get: { appearanceMode.isDarkModeEnabled },
-            set: { isEnabled in
-                appearanceModeRawValue = SoftphoneAppearanceMode(isDarkModeEnabled: isEnabled).rawValue
-            }
-        )
     }
 }
 

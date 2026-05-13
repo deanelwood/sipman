@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Replaced the full-width Settings dark mode row with a compact header
+  sun/moon button next to the version label, bumping the build number to 214.
 - Moved the Settings version label to the tab header and made it open bundled
   third-party component and license notices, bumping the build number to 213.
 - Made SIP Flow Diagram message labels clickable, opening a compact popover
