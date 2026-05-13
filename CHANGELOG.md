@@ -1,6 +1,8 @@
 # Changelog
 
 ## 1.7
+- Moved the Settings version label to the tab header and made it open bundled
+  third-party component and license notices, bumping the build number to 213.
 - Made SIP Flow Diagram message labels clickable, opening a compact popover
   with the full SIP packet headers/body and a copy action, bumping the build
   number to 212.

@@ -2224,10 +2224,17 @@ private struct SoftphoneSettingsScreen: View {
     let onLogOut: () -> Void
 
     @State private var selectedTab: SoftphoneSettingsTab = .account
+    @State private var showsThirdPartyNotices = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            SoftphoneSettingsTabControl(selectedTab: $selectedTab)
+            HStack(alignment: .center) {
+                SoftphoneSettingsTabControl(selectedTab: $selectedTab)
+                Spacer()
+                SoftphoneVersionLabelButton {
+                    showsThirdPartyNotices = true
+                }
+            }
 
             switch selectedTab {
             case .account:
@@ -2246,6 +2253,9 @@ private struct SoftphoneSettingsScreen: View {
             }
 
             Spacer()
+        }
+        .sheet(isPresented: $showsThirdPartyNotices) {
+            SoftphoneThirdPartyNoticesSheet()
         }
     }
 
@@ -2361,7 +2371,6 @@ private struct SoftphoneAccountSettingsPane: View {
                     onSave: saveNetworkSettings
                 )
                 SoftphoneAppearanceSettingsRow()
-                SoftphoneVersionSettingsRow()
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
@@ -2551,30 +2560,26 @@ private struct SoftphoneAppearanceSettingsRow: View {
     }
 }
 
-private struct SoftphoneVersionSettingsRow: View {
+private struct SoftphoneVersionLabelButton: View {
+    let action: () -> Void
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "number")
-                .font(.system(size: 15, weight: .semibold))
-                .foregroundStyle(SoftphoneTheme.blue)
-                .frame(width: 32, height: 32)
-                .background(SoftphoneTheme.fieldBackground)
-                .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-
-            VStack(alignment: .leading, spacing: 3) {
-                Text("Version")
-                    .font(.system(size: 13, weight: .semibold))
-                Text(displayVersion)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(SoftphoneTheme.muted)
+        Button(action: action) {
+            HStack(spacing: 6) {
+                Text("Version \(displayVersion)")
+                    .font(.system(size: 12, weight: .semibold))
+                Image(systemName: "info.circle")
+                    .font(.system(size: 12, weight: .semibold))
             }
-
-            Spacer()
+            .foregroundStyle(SoftphoneTheme.muted)
+            .padding(.horizontal, 10)
+            .frame(height: 32)
+            .background(SoftphoneTheme.fieldBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
         }
-        .padding(12)
-        .background(SoftphoneTheme.rowBackground)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        .buttonStyle(.plain)
+        .help("Show third-party notices and licenses")
     }
 
     private var displayVersion: String {
@@ -2582,6 +2587,112 @@ private struct SoftphoneVersionSettingsRow: View {
         let marketingVersion = info?["CFBundleShortVersionString"] as? String ?? "Unknown"
         let buildNumber = info?["CFBundleVersion"] as? String ?? "Unknown"
         return "\(marketingVersion) (\(buildNumber))"
+    }
+}
+
+private struct SoftphoneThirdPartyNoticesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    private let documents = SoftphoneThirdPartyNoticeDocument.bundledDocuments()
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Third-party notices")
+                        .font(.system(size: 18, weight: .bold))
+                    Text("SIPMan includes these linked third-party components and license notices.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(SoftphoneTheme.muted)
+                }
+                Spacer()
+                Button("Done") {
+                    dismiss()
+                }
+                .buttonStyle(SoftphoneSecondaryButtonStyle(width: 78))
+            }
+
+            ScrollView {
+                VStack(alignment: .leading, spacing: 18) {
+                    SoftphoneThirdPartyComponentList()
+
+                    ForEach(documents) { document in
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text(document.title)
+                                .font(.system(size: 14, weight: .bold))
+                            Text(document.content)
+                                .font(.system(size: 11, weight: .regular, design: .monospaced))
+                                .foregroundStyle(SoftphoneTheme.text)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                    }
+                }
+                .padding(14)
+            }
+            .frame(minHeight: 420)
+            .background(SoftphoneTheme.windowBackground)
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+        }
+        .padding(18)
+        .frame(width: 760, height: 620)
+        .background(SoftphoneTheme.windowBackground)
+    }
+}
+
+private struct SoftphoneThirdPartyComponentList: View {
+    private let components = [
+        "PJSIP / pjproject 2.10: pjsua, pjsip-ua, pjsip-simple, pjsip, pjmedia-codec, pjmedia, pjmedia-audiodev, pjnath, pjlib-util, pj",
+        "PJSIP bundled media libraries: resample, libSRTP, GSM codec, Speex, iLBC codec",
+        "LibreSSL 3.1.5: libcrypto, libssl",
+        "Opus 1.3.1: libopus"
+    ]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Included Components")
+                .font(.system(size: 14, weight: .bold))
+            VStack(alignment: .leading, spacing: 6) {
+                ForEach(components, id: \.self) { component in
+                    HStack(alignment: .firstTextBaseline, spacing: 8) {
+                        Text("-")
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(SoftphoneTheme.muted)
+                        Text(component)
+                            .font(.system(size: 12))
+                            .foregroundStyle(SoftphoneTheme.text)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private struct SoftphoneThirdPartyNoticeDocument: Identifiable {
+    let id: String
+    let title: String
+    let content: String
+
+    static func bundledDocuments(bundle: Bundle = .main) -> [SoftphoneThirdPartyNoticeDocument] {
+        [
+            document(named: "THIRD_PARTY_NOTICES", fileExtension: "md", title: "Third-Party Notices", bundle: bundle),
+            document(named: "LICENSE", fileExtension: nil, title: "SIPMan License", bundle: bundle),
+            document(named: "COPYING.GPL-2.0", fileExtension: nil, title: "GNU GPL 2.0", bundle: bundle),
+            document(named: "COPYING.LGPL-2.1", fileExtension: nil, title: "GNU LGPL 2.1", bundle: bundle),
+            document(named: "COPYING.LibreSSL", fileExtension: nil, title: "LibreSSL / OpenSSL Notices", bundle: bundle)
+        ]
+    }
+
+    private static func document(named name: String, fileExtension: String?, title: String, bundle: Bundle) -> SoftphoneThirdPartyNoticeDocument {
+        let content: String
+        if let url = bundle.url(forResource: name, withExtension: fileExtension),
+           let fileContents = try? String(contentsOf: url, encoding: .utf8) {
+            content = fileContents
+        } else {
+            content = "\(name)\(fileExtension.map { ".\($0)" } ?? "") was not found in the app bundle."
+        }
+        return SoftphoneThirdPartyNoticeDocument(id: name, title: title, content: content)
     }
 }
 

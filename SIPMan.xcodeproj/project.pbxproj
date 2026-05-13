@@ -277,6 +277,11 @@
 		8A6D96EE1D01DDA900D9C15B /* StoreViewSpy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6D96ED1D01DDA900D9C15B /* StoreViewSpy.swift */; };
 		8A6D96F01D05937900D9C15B /* NullStoreViewEventTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A6D96EF1D05937900D9C15B /* NullStoreViewEventTarget.swift */; };
 		8A70C46D1DAE832E002E8754 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 8A70C46C1DAE832E002E8754 /* Credits.rtf */; };
+		8AC0D2012D14010000D0F001 /* THIRD_PARTY_NOTICES.md in Resources */ = {isa = PBXBuildFile; fileRef = 8AC0D2002D14010000D0F001 /* THIRD_PARTY_NOTICES.md */; };
+		8AC0D2032D14010000D0F001 /* LICENSE in Resources */ = {isa = PBXBuildFile; fileRef = 8AC0D2022D14010000D0F001 /* LICENSE */; };
+		8AC0D2052D14010000D0F001 /* COPYING.GPL-2.0 in Resources */ = {isa = PBXBuildFile; fileRef = 8AC0D2042D14010000D0F001 /* COPYING.GPL-2.0 */; };
+		8AC0D2072D14010000D0F001 /* COPYING.LGPL-2.1 in Resources */ = {isa = PBXBuildFile; fileRef = 8AC0D2062D14010000D0F001 /* COPYING.LGPL-2.1 */; };
+		8AC0D2092D14010000D0F001 /* COPYING.LibreSSL in Resources */ = {isa = PBXBuildFile; fileRef = 8AC0D2082D14010000D0F001 /* COPYING.LibreSSL */; };
 		8A7292271EDDD6F600338592 /* ContactCallHistoryRecordGetAllUseCaseOutput.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7292261EDDD6F600338592 /* ContactCallHistoryRecordGetAllUseCaseOutput.swift */; };
 		8A7292391EDF2B2100338592 /* WaitingThread.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7292381EDF2B2100338592 /* WaitingThread.swift */; };
 		8A7567351CF7220400D91C04 /* ProductPurchaseUseCase.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A7567341CF7220400D91C04 /* ProductPurchaseUseCase.swift */; };
@@ -938,6 +943,11 @@
 		8AC0D13C2D12350000D0F001 /* SoftphoneActiveCallStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftphoneActiveCallStoreTests.swift; sourceTree = "<group>"; };
 		8AC0D13E2D12780000D0F001 /* SoftphoneAppearanceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftphoneAppearanceTests.swift; sourceTree = "<group>"; };
 		8AC0D1402D127D0000D0F001 /* SoftphoneAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoftphoneAppearance.swift; sourceTree = "<group>"; };
+		8AC0D2002D14010000D0F001 /* THIRD_PARTY_NOTICES.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = THIRD_PARTY_NOTICES.md; sourceTree = SOURCE_ROOT; };
+		8AC0D2022D14010000D0F001 /* LICENSE */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = LICENSE; sourceTree = SOURCE_ROOT; };
+		8AC0D2042D14010000D0F001 /* COPYING.GPL-2.0 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "COPYING.GPL-2.0"; sourceTree = SOURCE_ROOT; };
+		8AC0D2062D14010000D0F001 /* COPYING.LGPL-2.1 */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = "COPYING.LGPL-2.1"; sourceTree = SOURCE_ROOT; };
+		8AC0D2082D14010000D0F001 /* COPYING.LibreSSL */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = COPYING.LibreSSL; sourceTree = SOURCE_ROOT; };
 		8A0058F12F606A510020F9D2 /* ContactsActor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContactsActor.swift; sourceTree = "<group>"; };
 		8A01163520D2A8B500DA68A5 /* SystemAudioDevices.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioDevices.swift; sourceTree = "<group>"; };
 		8A01163820D2E99B00DA68A5 /* SystemAudioDevicesFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SystemAudioDevicesFactory.swift; sourceTree = "<group>"; };
@@ -2003,6 +2013,11 @@
 				8A628948245761C100609016 /* PublicCAs.pem */,
 				8AE4E95B1DABBBF90003F063 /* Images.xcassets */,
 				8A70C46C1DAE832E002E8754 /* Credits.rtf */,
+				8AC0D2002D14010000D0F001 /* THIRD_PARTY_NOTICES.md */,
+				8AC0D2022D14010000D0F001 /* LICENSE */,
+				8AC0D2042D14010000D0F001 /* COPYING.GPL-2.0 */,
+				8AC0D2062D14010000D0F001 /* COPYING.LGPL-2.1 */,
+				8AC0D2082D14010000D0F001 /* COPYING.LibreSSL */,
 			);
 			name = Resources;
 			sourceTree = "<group>";
@@ -3777,6 +3792,11 @@
 				8A70C46D1DAE832E002E8754 /* Credits.rtf in Resources */,
 				AADAA2CD107E56FD00789F2D /* ActiveCallView.xib in Resources */,
 				AADAA2D1107E572300789F2D /* EndedCallView.xib in Resources */,
+				8AC0D2012D14010000D0F001 /* THIRD_PARTY_NOTICES.md in Resources */,
+				8AC0D2032D14010000D0F001 /* LICENSE in Resources */,
+				8AC0D2052D14010000D0F001 /* COPYING.GPL-2.0 in Resources */,
+				8AC0D2072D14010000D0F001 /* COPYING.LGPL-2.1 in Resources */,
+				8AC0D2092D14010000D0F001 /* COPYING.LibreSSL in Resources */,
 				8A5DE3E3218B73F9002A4213 /* CallHistoryViewController.xib in Resources */,
 				8A3961EC1F7EEE7500209266 /* Localizable.stringsdict in Resources */,
 				AA7CB51F11442249004D79DA /* ActiveAccountTransferView.xib in Resources */,
@@ -5599,7 +5619,7 @@
 				CODE_SIGN_ENTITLEMENTS = Telephone/Telephone.entitlements;
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 212;
+				CURRENT_PROJECT_VERSION = 213;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = B5WSA37RY8;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -5656,7 +5676,7 @@
 				CODE_SIGN_ENTITLEMENTS = Telephone/Telephone.entitlements;
 				CODE_SIGN_IDENTITY = "Mac Developer";
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 212;
+				CURRENT_PROJECT_VERSION = 213;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = B5WSA37RY8;
 				ENABLE_HARDENED_RUNTIME = YES;
