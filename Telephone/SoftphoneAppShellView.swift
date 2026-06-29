@@ -36,6 +36,8 @@ protocol SoftphoneCallTarget: AnyObject {
     func softphoneToggleHoldForCall(withIdentifier identifier: String)
     @objc(softphoneSendDTMFDigit:forCallWithIdentifier:)
     func softphoneSendDTMFDigit(_ digit: String, forCallWithIdentifier identifier: String)
+    @objc(softphoneSendMessageTo:body:)
+    func softphoneSendMessage(to destination: String, body: String) -> String?
     @objc(softphoneSendSIPOptionsPingTo:transport:completion:)
     func softphoneSendSIPOptionsPing(
         to destination: String,
@@ -114,6 +116,9 @@ final class SoftphoneAppShellViewFactory: NSObject {
                 onSendDTMFDigit: { [weak callTarget] digit, identifier in
                     callTarget?.softphoneSendDTMFDigit(digit, forCallWithIdentifier: identifier)
                 },
+                onSendMessage: { [weak callTarget] destination, body in
+                    callTarget?.softphoneSendMessage(to: destination, body: body)
+                },
                 onSIPPing: { [weak callTarget] destination, transport, completion in
                     callTarget?.softphoneSendSIPOptionsPing(to: destination, transport: transport, completion: completion)
                 },
@@ -146,6 +151,7 @@ struct SoftphoneAppShellView: View {
     let onToggleMute: (String) -> Void
     let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
+    let onSendMessage: (String, String) -> String?
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
     let onSaveNetworkSettings: ([String: Any]) -> Void
     let onSaveAccountSettings: ([String: Any]) -> Void
@@ -181,6 +187,7 @@ struct SoftphoneAppShellView: View {
                     onToggleMute: onToggleMute,
                     onToggleHold: onToggleHold,
                     onSendDTMFDigit: onSendDTMFDigit,
+                    onSendMessage: onSendMessage,
                     onSIPPing: onSIPPing,
                     onSaveNetworkSettings: onSaveNetworkSettings,
                     onSaveAccountSettings: onSaveAccountSettings,
@@ -398,6 +405,7 @@ private struct SoftphoneMainContent: View {
     let onToggleMute: (String) -> Void
     let onToggleHold: (String) -> Void
     let onSendDTMFDigit: (String, String) -> Void
+    let onSendMessage: (String, String) -> String?
     let onSIPPing: (String, String, @escaping ([String: Any]) -> Void) -> Void
     let onSaveNetworkSettings: ([String: Any]) -> Void
     let onSaveAccountSettings: ([String: Any]) -> Void
@@ -418,7 +426,7 @@ private struct SoftphoneMainContent: View {
                     onSendDTMFDigit: onSendDTMFDigit
                 )
             case .messages:
-                SoftphoneMessagesScreen(messageStore: messageStore)
+                SoftphoneMessagesScreen(messageStore: messageStore, onCall: onCall, onSendMessage: onSendMessage)
             case .history:
                 SoftphoneHistoryScreen(
                     callHistoryStore: callHistoryStore,
@@ -1679,7 +1687,13 @@ private struct SoftphoneInlineCallHeader: View {
 
 private struct SoftphoneMessagesScreen: View {
     @ObservedObject var messageStore: SoftphoneMessageStore
+    let onCall: (String) -> Void
+    let onSendMessage: (String, String) -> String?
     @State private var searchText = ""
+    @State private var draftRecipient = ""
+    @State private var draftBody = ""
+    @State private var isComposingNewMessage = false
+    @State private var sendError = ""
 
     var body: some View {
         HStack(spacing: 0) {
@@ -1687,6 +1701,10 @@ private struct SoftphoneMessagesScreen: View {
                 HStack(spacing: 10) {
                     SoftphoneSearchTextField(text: $searchText, placeholder: "Search conversations")
                     Button {
+                        isComposingNewMessage = true
+                        draftRecipient = ""
+                        draftBody = ""
+                        sendError = ""
                     } label: {
                         Image(systemName: "square.and.pencil")
                             .font(.system(size: 17, weight: .semibold))
@@ -1698,7 +1716,6 @@ private struct SoftphoneMessagesScreen: View {
                     .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                     .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
                     .help("New message")
-                    .disabled(true)
                 }
                 .padding(.horizontal, 18)
                 .padding(.top, 18)
@@ -1722,6 +1739,8 @@ private struct SoftphoneMessagesScreen: View {
                                     conversation: conversation,
                                     isSelected: conversation.id == messageStore.selectedConversationId
                                 ) {
+                                    isComposingNewMessage = false
+                                    sendError = ""
                                     messageStore.selectConversation(id: conversation.id)
                                 }
                             }
@@ -1733,20 +1752,37 @@ private struct SoftphoneMessagesScreen: View {
             .background(SoftphoneTheme.sidebarBackground)
             Divider()
             VStack(spacing: 0) {
-                if let selectedConversation = messageStore.conversations.first(where: { $0.id == messageStore.selectedConversationId }) {
-                    SoftphoneMessageHeader(conversation: selectedConversation)
-                    Divider()
-                    ScrollView {
-                        LazyVStack(spacing: 18) {
-                            ForEach(messageStore.messages) { message in
-                                SoftphoneMessageBubble(message: message)
+                if let composerState = composerState {
+                    if let selectedConversation = composerState.conversation {
+                        SoftphoneMessageHeader(conversation: selectedConversation, onCall: onCall)
+                        Divider()
+                        ScrollView {
+                            LazyVStack(spacing: 18) {
+                                ForEach(messageStore.messages) { message in
+                                    SoftphoneMessageBubble(message: message)
+                                }
                             }
+                            .padding(.horizontal, 32)
+                            .padding(.vertical, 26)
                         }
-                        .padding(.horizontal, 32)
-                        .padding(.vertical, 26)
+                        .background(SoftphoneTheme.messageCanvas)
+                    } else {
+                        SoftphoneMessageDraftHeader()
+                        Divider()
+                        SoftphoneEmptyState(
+                            title: "New message",
+                            subtitle: "Send a compact SIP MESSAGE from the selected account."
+                        )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(SoftphoneTheme.messageCanvas)
                     }
-                    .background(SoftphoneTheme.messageCanvas)
-                    SoftphoneMessageComposerPlaceholder()
+                    SoftphoneMessageComposer(
+                        recipient: bindingForRecipient(composerState),
+                        body: $draftBody,
+                        sendError: sendError,
+                        canEditRecipient: composerState.conversation == nil,
+                        onSend: sendCurrentMessage
+                    )
                 } else {
                     SoftphoneTheme.messageCanvas
                 }
@@ -1774,6 +1810,50 @@ private struct SoftphoneMessagesScreen: View {
             ? "SIP MESSAGE conversations will appear here."
             : "Try a different search."
     }
+
+    private var composerState: SoftphoneComposerState? {
+        if isComposingNewMessage || messageStore.selectedConversationId == nil {
+            return SoftphoneComposerState(conversation: nil, recipient: draftRecipient)
+        }
+        guard let conversation = messageStore.conversations.first(where: { $0.id == messageStore.selectedConversationId }) else {
+            return nil
+        }
+        return SoftphoneComposerState(conversation: conversation, recipient: conversation.address)
+    }
+
+    private func bindingForRecipient(_ state: SoftphoneComposerState) -> Binding<String> {
+        if state.conversation == nil {
+            return $draftRecipient
+        }
+        return .constant(state.recipient)
+    }
+
+    private func sendCurrentMessage() {
+        guard let composerState else { return }
+        let recipient = composerState.recipient.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = draftBody.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !recipient.isEmpty, !body.isEmpty else {
+            sendError = "Destination and message body are required."
+            return
+        }
+
+        if let error = onSendMessage(recipient, body) {
+            sendError = error
+            return
+        }
+
+        draftBody = ""
+        sendError = ""
+        if composerState.conversation == nil {
+            draftRecipient = ""
+            isComposingNewMessage = false
+        }
+    }
+}
+
+private struct SoftphoneComposerState {
+    let conversation: SoftphoneMessageConversationRowModel?
+    let recipient: String
 }
 
 private struct SoftphoneHistoryScreen: View {
@@ -3108,7 +3188,7 @@ private struct SoftphoneConversationRow: View {
                         .font(.system(size: 13))
                         .foregroundStyle(SoftphoneTheme.muted)
                         .lineLimit(1)
-                    Text("SMS")
+                    Text("MESSAGE")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundStyle(SoftphoneTheme.blue)
                 }
@@ -3129,6 +3209,7 @@ private struct SoftphoneConversationRow: View {
 
 private struct SoftphoneMessageHeader: View {
     let conversation: SoftphoneMessageConversationRowModel
+    let onCall: (String) -> Void
 
     var body: some View {
         HStack(spacing: 16) {
@@ -3139,11 +3220,11 @@ private struct SoftphoneMessageHeader: View {
                     .foregroundStyle(SoftphoneTheme.text)
                     .lineLimit(1)
                 HStack(spacing: 8) {
-                    Text(conversation.title)
+                    Text(conversation.address)
                         .font(.system(size: 13, weight: .medium))
                         .foregroundStyle(SoftphoneTheme.muted)
                         .lineLimit(1)
-                    Text("SMS")
+                    Text("MESSAGE")
                         .font(.system(size: 11, weight: .bold))
                         .foregroundStyle(SoftphoneTheme.blue)
                         .padding(.horizontal, 8)
@@ -3155,6 +3236,7 @@ private struct SoftphoneMessageHeader: View {
             Spacer()
             HStack(spacing: 14) {
                 Button {
+                    onCall(conversation.address)
                 } label: {
                     Image(systemName: "phone")
                         .font(.system(size: 19, weight: .medium))
@@ -3163,7 +3245,6 @@ private struct SoftphoneMessageHeader: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(SoftphoneTheme.muted)
                 .help("Call conversation")
-                .disabled(true)
 
                 Button {
                 } label: {
@@ -3185,6 +3266,19 @@ private struct SoftphoneMessageHeader: View {
         let parts = value.split(separator: " ").prefix(2)
         let result = parts.compactMap(\.first).map(String.init).joined()
         return result.isEmpty ? "?" : result.uppercased()
+    }
+}
+
+private struct SoftphoneMessageDraftHeader: View {
+    var body: some View {
+        HStack {
+            Text("New message")
+                .font(.system(size: 22, weight: .bold))
+                .foregroundStyle(SoftphoneTheme.text)
+            Spacer()
+        }
+        .padding(.horizontal, 28)
+        .frame(height: 84)
     }
 }
 
@@ -3227,41 +3321,58 @@ private struct SoftphoneMessageBubble: View {
     }
 }
 
-private struct SoftphoneMessageComposerPlaceholder: View {
-    var body: some View {
-        HStack(spacing: 12) {
-            Button {
-            } label: {
-                Image(systemName: "face.smiling")
-                    .font(.system(size: 19, weight: .medium))
-                    .frame(width: 32, height: 32)
-            }
-            .buttonStyle(.plain)
-            .foregroundStyle(SoftphoneTheme.muted)
-            .help("Emoji")
-            .disabled(true)
+private struct SoftphoneMessageComposer: View {
+    @Binding var recipient: String
+    @Binding var body: String
+    let sendError: String
+    let canEditRecipient: Bool
+    let onSend: () -> Void
 
-            Text("SMS message")
-                .font(.system(size: 16, weight: .medium))
-                .foregroundStyle(SoftphoneTheme.placeholder)
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, 18)
-                .frame(height: 50)
-                .background(SoftphoneTheme.fieldBackground)
-                .clipShape(Capsule())
-                .overlay(Capsule().stroke(SoftphoneTheme.blue, lineWidth: 1.8))
-            Button {
-            } label: {
-                Image(systemName: "paperplane.fill")
-                    .font(.system(size: 18, weight: .semibold))
-                    .frame(width: 48, height: 48)
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            if !sendError.isEmpty {
+                Text(sendError)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(.red)
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.white)
-            .background(SoftphoneTheme.sendButtonBackground)
-            .clipShape(Circle())
-            .disabled(true)
-            .help("Send message")
+
+            HStack(spacing: 12) {
+                TextField("sip:destination@example.com", text: $recipient)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 15, weight: .medium))
+                    .foregroundStyle(SoftphoneTheme.text)
+                    .disabled(!canEditRecipient)
+                    .padding(.horizontal, 18)
+                    .frame(height: 42)
+                    .background(SoftphoneTheme.fieldBackground)
+                    .clipShape(Capsule())
+                    .overlay(Capsule().stroke(SoftphoneTheme.hairline, lineWidth: 0.5))
+            }
+
+            HStack(spacing: 12) {
+                TextField("SIP MESSAGE body", text: $body, axis: .vertical)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 16, weight: .medium))
+                    .foregroundStyle(SoftphoneTheme.text)
+                    .lineLimit(1...4)
+                    .padding(.horizontal, 18)
+                    .padding(.vertical, 13)
+                    .background(SoftphoneTheme.fieldBackground)
+                    .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).stroke(SoftphoneTheme.blue, lineWidth: 1.4))
+
+                Button(action: onSend) {
+                    Image(systemName: "paperplane.fill")
+                        .font(.system(size: 18, weight: .semibold))
+                        .frame(width: 48, height: 48)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.white)
+                .background(SoftphoneTheme.sendButtonBackground)
+                .clipShape(Circle())
+                .disabled(recipient.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || body.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                .help("Send message")
+            }
         }
         .padding(.horizontal, 28)
         .padding(.vertical, 16)

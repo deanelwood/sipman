@@ -52,6 +52,16 @@ typedef struct _AKSIPUserAgentCallData {
 
 // An invalid identifier for all sorts of identifiers.
 extern const NSInteger kAKSIPUserAgentInvalidIdentifier;
+extern NSString * const SoftphoneSIPMessageDidReceiveNotification;
+extern NSString * const SoftphoneSIPMessageDidUpdateDeliveryNotification;
+extern NSString * const SoftphoneSIPMessageAccountUUIDKey;
+extern NSString * const SoftphoneSIPMessageIdentifierKey;
+extern NSString * const SoftphoneSIPMessageSenderKey;
+extern NSString * const SoftphoneSIPMessageRecipientKey;
+extern NSString * const SoftphoneSIPMessageBodyKey;
+extern NSString * const SoftphoneSIPMessageDateKey;
+extern NSString * const SoftphoneSIPMessageDeliveryStateKey;
+extern NSString * const SoftphoneSIPMessageFailureReasonKey;
 
 @class AKSIPAccount, AKSIPCall, AKSIPURIParser;
 typedef void (^AKSIPOptionsPingCompletion)(NSDictionary *result);
@@ -214,5 +224,11 @@ typedef void (^AKSIPOptionsPingCompletion)(NSDictionary *result);
                    transport:(NSString *)transport
                       account:(AKSIPAccount *)account
                    completion:(AKSIPOptionsPingCompletion)completion;
+
+- (BOOL)sendSIPMessageTo:(NSString *)destination
+                    body:(NSString *)body
+                 account:(AKSIPAccount *)account
+           messageIDHint:(NSString *)messageIDHint
+                   error:(NSError * _Nullable * _Nullable)error;
 
 @end

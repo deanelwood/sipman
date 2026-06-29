@@ -22,7 +22,7 @@ import XCTest
 @MainActor
 final class SoftphoneMessageStoreTests: XCTestCase {
     func testShowsLatestConversationRowsForAccountMessages() {
-        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001")
+        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001", userDefaults: ephemeralDefaults())
         let older = incoming(identifier: "older", accountUUID: "account-1", sender: "2002", body: "Older", seconds: 1)
         let newer = incoming(identifier: "newer", accountUUID: "account-1", sender: "2002", body: "Newer", seconds: 2)
         let otherAccount = incoming(identifier: "other", accountUUID: "account-2", sender: "3003", body: "Ignored", seconds: 3)
@@ -36,7 +36,7 @@ final class SoftphoneMessageStoreTests: XCTestCase {
     }
 
     func testPrettyFormatsRegularPhoneNumbersInConversationRows() {
-        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001")
+        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001", userDefaults: ephemeralDefaults())
         let record = incoming(
             identifier: "message-1",
             accountUUID: "account-1",
@@ -51,7 +51,7 @@ final class SoftphoneMessageStoreTests: XCTestCase {
     }
 
     func testSelectingConversationShowsMessagesInDateOrder() {
-        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001")
+        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001", userDefaults: ephemeralDefaults())
         let first = incoming(identifier: "first", accountUUID: "account-1", sender: "2002", body: "First", seconds: 1)
         let second = SIPMessageRecord.outgoing(
             identifier: "second",
@@ -73,7 +73,7 @@ final class SoftphoneMessageStoreTests: XCTestCase {
     }
 
     func testMakeOutgoingRecordReturnsPendingRecordForNonEmptyBodyAndRecipients() {
-        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001")
+        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001", userDefaults: ephemeralDefaults())
 
         let result = sut.makeOutgoingRecord(to: ["2002"], body: "Hello", date: Date(timeIntervalSinceReferenceDate: 1))
 
@@ -85,10 +85,39 @@ final class SoftphoneMessageStoreTests: XCTestCase {
     }
 
     func testMakeOutgoingRecordRejectsEmptyInputs() {
-        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001")
+        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001", userDefaults: ephemeralDefaults())
 
         XCTAssertNil(sut.makeOutgoingRecord(to: [], body: "Hello"))
         XCTAssertNil(sut.makeOutgoingRecord(to: ["2002"], body: ""))
+    }
+
+    func testPersistsMessagesAcrossStoreInstances() {
+        let defaults = ephemeralDefaults()
+        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001@example.com", userDefaults: defaults)
+
+        let identifier = sut.beginOutgoingMessage(to: "2002@example.com", body: "Hello")
+
+        let reloaded = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001@example.com", userDefaults: defaults)
+
+        XCTAssertEqual(identifier.isEmpty, false)
+        XCTAssertEqual(reloaded.conversations.count, 1)
+        XCTAssertEqual(reloaded.conversations.first?.address, "2002@example.com")
+        XCTAssertEqual(reloaded.messages.first?.deliveryState, "Sending")
+    }
+
+    func testMarksPersistedMessagesSentAndFailed() {
+        let defaults = ephemeralDefaults()
+        let sut = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001@example.com", userDefaults: defaults)
+        let identifier = sut.beginOutgoingMessage(to: "2002@example.com", body: "Hello")
+
+        sut.markMessageWithIdentifierSent(identifier)
+        XCTAssertEqual(sut.messages.first?.deliveryState, "Sent")
+
+        sut.markMessage(withIdentifier: identifier, failedWithReason: "403 Forbidden")
+        XCTAssertEqual(sut.messages.first?.deliveryState, "Failed: 403 Forbidden")
+
+        let reloaded = SoftphoneMessageStore(accountUUID: "account-1", accountAddress: "1001@example.com", userDefaults: defaults)
+        XCTAssertEqual(reloaded.messages.first?.deliveryState, "Failed: 403 Forbidden")
     }
 }
 
@@ -107,4 +136,11 @@ private func incoming(
         content: SIPMessageContent(body: body),
         date: Date(timeIntervalSinceReferenceDate: seconds)
     )
+}
+
+private func ephemeralDefaults() -> UserDefaults {
+    let suiteName = "SoftphoneMessageStoreTests.\(UUID().uuidString)"
+    let defaults = UserDefaults(suiteName: suiteName)!
+    defaults.removePersistentDomain(forName: suiteName)
+    return defaults
 }

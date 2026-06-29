@@ -30,3 +30,20 @@ void PJSUAOnCallReplaced(pjsua_call_id oldCallID, pjsua_call_id newCallID);
 void PJSUAOnAccountRegistrationState(pjsua_acc_id accountID);
 void PJSUAOnNATDetect(const pj_stun_nat_detect_result *result);
 void PJSUAOnAccountFindForIncoming(const pjsip_rx_data *rdata, pjsua_acc_id *acc_id);
+void PJSUAOnPager2(pjsua_call_id callID,
+                   const pj_str_t *from,
+                   const pj_str_t *to,
+                   const pj_str_t *contact,
+                   const pj_str_t *mimeType,
+                   const pj_str_t *body,
+                   pjsip_rx_data *rdata,
+                   pjsua_acc_id accountID);
+void PJSUAOnPagerStatus2(pjsua_call_id callID,
+                         const pj_str_t *to,
+                         const pj_str_t *body,
+                         void *userData,
+                         pjsip_status_code status,
+                         const pj_str_t *reason,
+                         pjsip_tx_data *tdata,
+                         pjsip_rx_data *rdata,
+                         pjsua_acc_id accountID);

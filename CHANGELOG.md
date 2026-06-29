@@ -1,6 +1,9 @@
 # Changelog
 
 ## 1.7
+- Finished the SIP MESSAGE workflow with a real composer, PJSIP MESSAGE
+  send/receive wiring, local history persistence, delivery-state updates, and
+  bumped the build number to 215.
 - Replaced the full-width Settings dark mode row with a compact header
   sun/moon button next to the version label, bumping the build number to 214.
 - Moved the Settings version label to the tab header and made it open bundled

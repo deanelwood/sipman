@@ -71,6 +71,8 @@ static NSString *SoftphoneRegistrarString(NSString *domain, NSString *existingRe
 - (void)showSoftphoneAppShell;
 - (void)hideLegacyAccountViews;
 - (AKSIPAccount *)softphoneSIPAccount;
+- (void)handleSoftphoneInboundMessage:(NSNotification *)notification;
+- (void)handleSoftphoneMessageDeliveryUpdate:(NSNotification *)notification;
 
 @end
 
@@ -118,9 +120,9 @@ static NSString *SoftphoneRegistrarString(NSString *domain, NSString *existingRe
     self.bottomViewHeightConstraint.constant = 0;
 
     self.softphoneCallHistoryStore = [[SoftphoneCallHistoryStore alloc] init];
-    self.softphoneMessageStore = [[SoftphoneMessageStore alloc] initWithAccountUUID:self.account.uuid
-                                                                     accountAddress:self.account.domain];
     AKSIPAccount *SIPAccount = [self softphoneSIPAccount];
+    self.softphoneMessageStore = [[SoftphoneMessageStore alloc] initWithAccountUUID:self.account.uuid
+                                                                     accountAddress:(SIPAccount.SIPAddress ?: self.account.domain)];
     NSUserDefaults *defaults = NSUserDefaults.standardUserDefaults;
     self.softphoneDiagnosticsStore = [[SoftphoneDiagnosticsStore alloc] initWithAccountUUID:self.account.uuid
                                                                                      domain:self.account.domain
@@ -143,8 +145,21 @@ static NSString *SoftphoneRegistrarString(NSString *domain, NSString *existingRe
                                                      [self.callHistoryViewEventTarget shouldReloadData];
                                                  }];
 
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleSoftphoneInboundMessage:)
+                                                 name:SoftphoneSIPMessageDidReceiveNotification
+                                               object:[AKSIPUserAgent sharedUserAgent]];
+    [[NSNotificationCenter defaultCenter] addObserver:self
+                                             selector:@selector(handleSoftphoneMessageDeliveryUpdate:)
+                                                 name:SoftphoneSIPMessageDidUpdateDeliveryNotification
+                                               object:[AKSIPUserAgent sharedUserAgent]];
+
     [self showSoftphoneAppShell];
     [self hideLegacyAccountViews];
+}
+
+- (void)dealloc {
+    [[NSNotificationCenter defaultCenter] removeObserver:self];
 }
 
 #pragma mark -
@@ -271,6 +286,32 @@ static NSString *SoftphoneRegistrarString(NSString *domain, NSString *existingRe
                                                  completion:completion];
 }
 
+- (nullable NSString *)softphoneSendMessageTo:(NSString *)destination body:(NSString *)body {
+    AKSIPAccount *SIPAccount = [self softphoneSIPAccount];
+    if (SIPAccount == nil) {
+        return @"No active SIP account is available.";
+    }
+
+    NSString *messageIdentifier = [self.softphoneMessageStore beginOutgoingMessageTo:destination body:body];
+    if (messageIdentifier.length == 0) {
+        return @"Destination and message body are required.";
+    }
+
+    NSError *error = nil;
+    BOOL didSend = [[AKSIPUserAgent sharedUserAgent] sendSIPMessageTo:destination
+                                                                 body:body
+                                                              account:SIPAccount
+                                                        messageIDHint:messageIdentifier
+                                                                error:&error];
+    if (didSend) {
+        return nil;
+    }
+
+    NSString *message = error.localizedDescription ?: @"Could not send SIP MESSAGE.";
+    [self.softphoneMessageStore markMessageWithIdentifier:messageIdentifier failedWithReason:message];
+    return message;
+}
+
 - (void)softphoneSaveNetworkSettings:(NSDictionary<NSString *,id> *)settings {
     NSString *STUNServerHost = [settings[UserDefaultsKeys.stunServerHost] isKindOfClass:[NSString class]] ? settings[UserDefaultsKeys.stunServerHost] : @"";
     NSInteger STUNServerPort = [settings[UserDefaultsKeys.stunServerPort] integerValue];
@@ -340,6 +381,39 @@ static NSString *SoftphoneRegistrarString(NSString *domain, NSString *existingRe
                                                      passwordStatus:SoftphonePasswordStatus(username)];
     [self.softphoneDiagnosticsStore updateTransport:transport
                                                port:SoftphonePortDisplayValue(port)];
+}
+
+- (void)handleSoftphoneInboundMessage:(NSNotification *)notification {
+    NSDictionary *userInfo = notification.userInfo;
+    if (![userInfo[SoftphoneSIPMessageAccountUUIDKey] isEqual:self.account.uuid]) {
+        return;
+    }
+
+    NSString *sender = [userInfo[SoftphoneSIPMessageSenderKey] isKindOfClass:[NSString class]] ? userInfo[SoftphoneSIPMessageSenderKey] : @"";
+    NSString *recipient = [userInfo[SoftphoneSIPMessageRecipientKey] isKindOfClass:[NSString class]] ? userInfo[SoftphoneSIPMessageRecipientKey] : @"";
+    NSString *body = [userInfo[SoftphoneSIPMessageBodyKey] isKindOfClass:[NSString class]] ? userInfo[SoftphoneSIPMessageBodyKey] : @"";
+    NSDate *date = [userInfo[SoftphoneSIPMessageDateKey] isKindOfClass:[NSDate class]] ? userInfo[SoftphoneSIPMessageDateKey] : [NSDate date];
+    [self.softphoneMessageStore receiveIncomingMessageFrom:sender to:recipient body:body date:date];
+}
+
+- (void)handleSoftphoneMessageDeliveryUpdate:(NSNotification *)notification {
+    NSDictionary *userInfo = notification.userInfo;
+    if (![userInfo[SoftphoneSIPMessageAccountUUIDKey] isEqual:self.account.uuid]) {
+        return;
+    }
+
+    NSString *messageIdentifier = [userInfo[SoftphoneSIPMessageIdentifierKey] isKindOfClass:[NSString class]] ? userInfo[SoftphoneSIPMessageIdentifierKey] : @"";
+    NSString *state = [userInfo[SoftphoneSIPMessageDeliveryStateKey] isKindOfClass:[NSString class]] ? userInfo[SoftphoneSIPMessageDeliveryStateKey] : @"";
+    NSString *reason = [userInfo[SoftphoneSIPMessageFailureReasonKey] isKindOfClass:[NSString class]] ? userInfo[SoftphoneSIPMessageFailureReasonKey] : @"";
+    if (messageIdentifier.length == 0) {
+        return;
+    }
+
+    if ([state isEqualToString:@"sent"]) {
+        [self.softphoneMessageStore markMessageWithIdentifierSent:messageIdentifier];
+    } else if ([state isEqualToString:@"failed"]) {
+        [self.softphoneMessageStore markMessageWithIdentifier:messageIdentifier failedWithReason:reason];
+    }
 }
 
 - (void)softphoneLogOutAccount {

@@ -45,6 +45,16 @@ enum {
 };
 
 const NSInteger kAKSIPUserAgentInvalidIdentifier = PJSUA_INVALID_ID;
+NSString * const SoftphoneSIPMessageDidReceiveNotification = @"SoftphoneSIPMessageDidReceiveNotification";
+NSString * const SoftphoneSIPMessageDidUpdateDeliveryNotification = @"SoftphoneSIPMessageDidUpdateDeliveryNotification";
+NSString * const SoftphoneSIPMessageAccountUUIDKey = @"accountUUID";
+NSString * const SoftphoneSIPMessageIdentifierKey = @"identifier";
+NSString * const SoftphoneSIPMessageSenderKey = @"sender";
+NSString * const SoftphoneSIPMessageRecipientKey = @"recipient";
+NSString * const SoftphoneSIPMessageBodyKey = @"body";
+NSString * const SoftphoneSIPMessageDateKey = @"date";
+NSString * const SoftphoneSIPMessageDeliveryStateKey = @"deliveryState";
+NSString * const SoftphoneSIPMessageFailureReasonKey = @"failureReason";
 
 // Maximum number of name servers to take into account.
 static const NSInteger kAKSIPUserAgentNameServersMax = 4;
@@ -68,6 +78,8 @@ static NSString * const SoftphoneSIPLogMessageKey = @"message";
 static NSString * const SoftphoneSIPPingStatusResponse = @"Response";
 static NSString * const SoftphoneSIPPingStatusTimeout = @"Timeout";
 static NSString * const SoftphoneSIPPingStatusFailed = @"Failed";
+static NSString * const SoftphoneSIPMessageDeliveryStateSent = @"sent";
+static NSString * const SoftphoneSIPMessageDeliveryStateFailed = @"failed";
 
 static pthread_mutex_t SoftphonePJSIPLogFileMutex = PTHREAD_MUTEX_INITIALIZER;
 static FILE *SoftphonePJSIPLogFile = NULL;
@@ -109,6 +121,16 @@ static pjsip_module SoftphoneSIPLogModule = {
 @end
 
 @implementation AKSIPOptionsPingToken
+@end
+
+@interface SoftphoneSIPMessageToken : NSObject
+
+@property(nonatomic, copy) NSString *messageIdentifier;
+@property(nonatomic, copy) NSString *accountUUID;
+
+@end
+
+@implementation SoftphoneSIPMessageToken
 @end
 
 // PJSIP allows only one application log callback, so this callback tees the
@@ -341,6 +363,7 @@ static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
 
 @property(nonatomic, readonly) NSMutableArray *accounts;
 @property(nonatomic, readonly) NSMutableSet<AKSIPOptionsPingToken *> *sipOptionsPingTokens;
+@property(nonatomic, readonly) NSMutableSet<SoftphoneSIPMessageToken *> *sipMessageTokens;
 
 // Ringback slot.
 @property(nonatomic, assign) pjsua_conf_port_id ringbackSlot;
@@ -366,6 +389,15 @@ static void SoftphonePJSIPLogCallback(int level, const char *data, int len) {
 
 /// Returns default priority for codec with specified identifier.
 - (NSUInteger)priorityForCodec:(NSString *)identifier;
+- (void)didReceivePagerFrom:(const pj_str_t *)from
+                         to:(const pj_str_t *)to
+                       body:(const pj_str_t *)body
+                  accountID:(pjsua_acc_id)accountID;
+- (void)didUpdatePagerDeliveryFor:(void *)userData
+                               to:(const pj_str_t *)to
+                           status:(pjsip_status_code)status
+                           reason:(const pj_str_t *)reason
+                        accountID:(pjsua_acc_id)accountID;
 
 @end
 
@@ -466,6 +498,83 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
         }
         [token.userAgent.sipOptionsPingTokens removeObject:token];
     });
+}
+
+static NSString *SoftphoneStringFromPJString(const pj_str_t *value) {
+    if (value == NULL || value->ptr == NULL || value->slen <= 0) {
+        return @"";
+    }
+    return [NSString stringWithPJString:*value] ?: @"";
+}
+
+static NSString *SoftphoneTrimmedSIPMessageValue(NSString *value) {
+    return [value stringByTrimmingCharactersInSet:[NSCharacterSet whitespaceAndNewlineCharacterSet]];
+}
+
+static NSString *SoftphoneCanonicalSIPMessageParty(NSString *value, NSString *fallbackHost) {
+    NSString *trimmed = SoftphoneTrimmedSIPMessageValue(value);
+    if (trimmed.length == 0) {
+        return @"";
+    }
+
+    URI *uri = [[URI alloc] initWithString:trimmed];
+    if (uri != nil) {
+        if (uri.user.length > 0 && uri.host.length > 0) {
+            return [[SIPAddress alloc] initWithUser:uri.user host:uri.host].stringValue;
+        }
+        if (uri.user.length > 0) {
+            if (fallbackHost.length > 0) {
+                return [[SIPAddress alloc] initWithUser:uri.user host:fallbackHost].stringValue;
+            }
+            return uri.user;
+        }
+        return uri.host;
+    }
+
+    NSString *lowercased = trimmed.lowercaseString;
+    if ([lowercased hasPrefix:@"sip:"] || [lowercased hasPrefix:@"sips:"]) {
+        NSRange schemeRange = [trimmed rangeOfString:@":"];
+        NSString *withoutScheme = schemeRange.location != NSNotFound
+            ? [trimmed substringFromIndex:schemeRange.location + 1]
+            : trimmed;
+        trimmed = withoutScheme;
+    }
+
+    if ([trimmed containsString:@"@"] || fallbackHost.length == 0) {
+        return trimmed;
+    }
+    return [[SIPAddress alloc] initWithUser:trimmed host:fallbackHost].stringValue;
+}
+
+void PJSUAOnPager2(pjsua_call_id callID,
+                   const pj_str_t *from,
+                   const pj_str_t *to,
+                   const pj_str_t *contact,
+                   const pj_str_t *mimeType,
+                   const pj_str_t *body,
+                   pjsip_rx_data *rdata,
+                   pjsua_acc_id accountID) {
+    (void)callID;
+    (void)contact;
+    (void)mimeType;
+    (void)rdata;
+    [[AKSIPUserAgent sharedUserAgent] didReceivePagerFrom:from to:to body:body accountID:accountID];
+}
+
+void PJSUAOnPagerStatus2(pjsua_call_id callID,
+                         const pj_str_t *to,
+                         const pj_str_t *body,
+                         void *userData,
+                         pjsip_status_code status,
+                         const pj_str_t *reason,
+                         pjsip_tx_data *tdata,
+                         pjsip_rx_data *rdata,
+                         pjsua_acc_id accountID) {
+    (void)callID;
+    (void)body;
+    (void)tdata;
+    (void)rdata;
+    [[AKSIPUserAgent sharedUserAgent] didUpdatePagerDeliveryFor:userData to:to status:status reason:reason accountID:accountID];
 }
 
 
@@ -616,6 +725,7 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
     [self setDelegate:aDelegate];
     _accounts = [[NSMutableArray alloc] init];
     _sipOptionsPingTokens = [[NSMutableSet alloc] init];
+    _sipMessageTokens = [[NSMutableSet alloc] init];
     [self setDetectedNATType:kAKNATTypeUnknown];
 
     [self setOutboundProxyPort:kAKSIPUserAgentDefaultOutboundProxyPort];
@@ -788,6 +898,8 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
     userAgentConfig.cb.on_reg_state = &PJSUAOnAccountRegistrationState;
     userAgentConfig.cb.on_nat_detect = &PJSUAOnNATDetect;
     userAgentConfig.cb.on_acc_find_for_incoming = &PJSUAOnAccountFindForIncoming;
+    userAgentConfig.cb.on_pager2 = &PJSUAOnPager2;
+    userAgentConfig.cb.on_pager_status2 = &PJSUAOnPagerStatus2;
 
     // Initialize PJSUA.
     status = pjsua_init(&userAgentConfig, &loggingConfig, &mediaConfig);
@@ -1385,6 +1497,133 @@ static void SoftphoneSIPOptionsPingCallback(void *rawToken, pjsip_event *event) 
         if (removeToken) {
             [self.sipOptionsPingTokens removeObject:token];
         }
+    });
+}
+
+- (BOOL)sendSIPMessageTo:(NSString *)destination
+                    body:(NSString *)body
+                 account:(AKSIPAccount *)account
+           messageIDHint:(NSString *)messageIDHint
+                   error:(NSError * _Nullable __autoreleasing *)error {
+    NSString *trimmedBody = SoftphoneTrimmedSIPMessageValue(body);
+    NSString *canonicalDestination = SoftphoneCanonicalSIPMessageParty(destination, account.domain);
+    if (trimmedBody.length == 0 || canonicalDestination.length == 0) {
+        if (error != NULL) {
+            *error = [NSError errorWithDomain:@"SIPMan.SIPMessage"
+                                         code:1
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Destination and message body are required."}];
+        }
+        return NO;
+    }
+    if (![self isStarted] || account.identifier == kAKSIPUserAgentInvalidIdentifier || !account.isRegistered) {
+        if (error != NULL) {
+            *error = [NSError errorWithDomain:@"SIPMan.SIPMessage"
+                                         code:2
+                                     userInfo:@{NSLocalizedDescriptionKey: @"Register the selected account before sending a SIP MESSAGE."}];
+        }
+        return NO;
+    }
+
+    SoftphoneSIPMessageToken *token = [[SoftphoneSIPMessageToken alloc] init];
+    token.messageIdentifier = messageIDHint.length > 0 ? messageIDHint : NSUUID.UUID.UUIDString;
+    token.accountUUID = account.uuid ?: @"";
+    [self.sipMessageTokens addObject:token];
+
+    NSDictionary *request = @{
+        @"token": token,
+        @"destination": canonicalDestination,
+        @"body": trimmedBody,
+        @"accountID": @(account.identifier)
+    };
+    [self performSelector:@selector(thread_sendSIPMessage:) onThread:self.thread withObject:request waitUntilDone:NO];
+    return YES;
+}
+
+- (void)thread_sendSIPMessage:(NSDictionary *)request {
+    @autoreleasepool {
+        SoftphoneSIPMessageToken *token = request[@"token"];
+        NSString *destination = request[@"destination"];
+        NSString *body = request[@"body"];
+        pjsua_acc_id accountID = (pjsua_acc_id)[request[@"accountID"] intValue];
+
+        pj_str_t to = [[@"sip:" stringByAppendingString:destination] pjString];
+        pj_str_t mimeType = pj_str("text/plain");
+        pj_str_t content = [body pjString];
+        pj_status_t status = pjsua_im_send(accountID, &to, &mimeType, &content, NULL, (__bridge void *)token);
+        if (status == PJ_SUCCESS) {
+            return;
+        }
+
+        NSString *reason = SoftphonePJSIPErrorString(status);
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:SoftphoneSIPMessageDidUpdateDeliveryNotification
+                                                                object:self
+                                                              userInfo:@{
+                SoftphoneSIPMessageAccountUUIDKey: token.accountUUID ?: @"",
+                SoftphoneSIPMessageIdentifierKey: token.messageIdentifier ?: @"",
+                SoftphoneSIPMessageRecipientKey: destination ?: @"",
+                SoftphoneSIPMessageDeliveryStateKey: SoftphoneSIPMessageDeliveryStateFailed,
+                SoftphoneSIPMessageFailureReasonKey: reason ?: @""
+            }];
+            [self.sipMessageTokens removeObject:token];
+        });
+    }
+}
+
+- (void)didReceivePagerFrom:(const pj_str_t *)from
+                         to:(const pj_str_t *)to
+                       body:(const pj_str_t *)body
+                  accountID:(pjsua_acc_id)accountID {
+    NSString *sender = SoftphoneStringFromPJString(from);
+    NSString *recipient = SoftphoneStringFromPJString(to);
+    NSString *messageBody = SoftphoneStringFromPJString(body);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        AKSIPAccount *account = [self accountWithIdentifier:accountID];
+        if (account == nil) {
+            return;
+        }
+
+        NSString *canonicalSender = SoftphoneCanonicalSIPMessageParty(sender, account.domain);
+        NSString *canonicalRecipient = SoftphoneCanonicalSIPMessageParty(recipient, account.domain);
+        [[NSNotificationCenter defaultCenter] postNotificationName:SoftphoneSIPMessageDidReceiveNotification
+                                                            object:self
+                                                          userInfo:@{
+            SoftphoneSIPMessageAccountUUIDKey: account.uuid ?: @"",
+            SoftphoneSIPMessageSenderKey: canonicalSender ?: @"",
+            SoftphoneSIPMessageRecipientKey: canonicalRecipient ?: @"",
+            SoftphoneSIPMessageBodyKey: messageBody ?: @"",
+            SoftphoneSIPMessageDateKey: [NSDate date]
+        }];
+    });
+}
+
+- (void)didUpdatePagerDeliveryFor:(void *)userData
+                               to:(const pj_str_t *)to
+                           status:(pjsip_status_code)status
+                           reason:(const pj_str_t *)reason
+                        accountID:(pjsua_acc_id)accountID {
+    SoftphoneSIPMessageToken *token = (__bridge SoftphoneSIPMessageToken *)userData;
+    NSString *recipient = SoftphoneStringFromPJString(to);
+    NSString *reasonString = SoftphoneStringFromPJString(reason);
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+        AKSIPAccount *account = [self accountWithIdentifier:accountID];
+        NSString *canonicalRecipient = SoftphoneCanonicalSIPMessageParty(recipient, account.domain);
+        BOOL wasDelivered = status >= 200 && status < 300;
+        NSMutableDictionary *userInfo = [@{
+            SoftphoneSIPMessageAccountUUIDKey: token.accountUUID ?: account.uuid ?: @"",
+            SoftphoneSIPMessageIdentifierKey: token.messageIdentifier ?: @"",
+            SoftphoneSIPMessageRecipientKey: canonicalRecipient ?: @"",
+            SoftphoneSIPMessageDeliveryStateKey: wasDelivered ? SoftphoneSIPMessageDeliveryStateSent : SoftphoneSIPMessageDeliveryStateFailed
+        } mutableCopy];
+        if (!wasDelivered && reasonString.length > 0) {
+            userInfo[SoftphoneSIPMessageFailureReasonKey] = reasonString;
+        }
+        [[NSNotificationCenter defaultCenter] postNotificationName:SoftphoneSIPMessageDidUpdateDeliveryNotification
+                                                            object:self
+                                                          userInfo:userInfo];
+        [self.sipMessageTokens removeObject:token];
     });
 }
 
